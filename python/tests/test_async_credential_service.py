@@ -412,3 +412,114 @@ class TestAsyncCredentialService:
         result2 = await get_credential("PERSISTENT_KEY", "default")
         assert result2 == "persistent_value"
         assert result1 == result2
+
+    @pytest.mark.asyncio
+    async def test_get_active_provider_split_providers(self):
+        """Test get_active_provider with split provider configuration"""
+        # Setup cache with split provider configuration
+        credential_service._cache = {
+            "CHAT_PROVIDER": "openrouter",
+            "EMBEDDING_PROVIDER": "openai",
+            "CHAT_BASE_URL": "https://openrouter.ai/api/v1",
+            "EMBEDDING_BASE_URL": None,
+            "MODEL_CHOICE": "anthropic/claude-3.5-sonnet",
+            "EMBEDDING_MODEL": "text-embedding-3-small",
+            "OPENROUTER_API_KEY": {"encrypted_value": "encrypted_openrouter_key", "is_encrypted": True},
+            "OPENAI_API_KEY": {"encrypted_value": "encrypted_openai_key", "is_encrypted": True},
+        }
+        credential_service._cache_initialized = True
+
+        with patch.object(credential_service, "_decrypt_value") as mock_decrypt:
+            mock_decrypt.side_effect = lambda x: f"decrypted_{x}"
+
+            # Test chat provider
+            chat_config = await credential_service.get_active_provider("llm")
+            assert chat_config["provider"] == "openrouter"
+            assert chat_config["model"] == "anthropic/claude-3.5-sonnet"
+            assert chat_config["base_url"] == "https://openrouter.ai/api/v1"
+            assert chat_config["api_key"] == "decrypted_encrypted_openrouter_key"
+
+            # Test embedding provider
+            embedding_config = await credential_service.get_active_provider("embedding")
+            assert embedding_config["provider"] == "openai"
+            assert embedding_config["model"] == "text-embedding-3-small"
+            assert embedding_config["base_url"] is None  # Uses OpenAI default
+            assert embedding_config["api_key"] == "decrypted_encrypted_openai_key"
+
+    @pytest.mark.asyncio
+    async def test_get_active_provider_backward_compatibility(self):
+        """Test backward compatibility with legacy LLM_PROVIDER"""
+        # Setup cache with only legacy LLM_PROVIDER
+        credential_service._cache = {
+            "LLM_PROVIDER": "google",
+            "LLM_BASE_URL": "https://custom-google-url.com",
+            "MODEL_CHOICE": "gemini-1.5-flash",
+            "EMBEDDING_MODEL": "text-embedding-004",
+            "GOOGLE_API_KEY": {"encrypted_value": "encrypted_google_key", "is_encrypted": True},
+        }
+        credential_service._cache_initialized = True
+
+        with patch.object(credential_service, "_decrypt_value") as mock_decrypt:
+            mock_decrypt.return_value = "decrypted_google_key"
+
+            # Both chat and embedding should fallback to LLM_PROVIDER
+            chat_config = await credential_service.get_active_provider("llm")
+            assert chat_config["provider"] == "google"
+            assert chat_config["base_url"] == "https://custom-google-url.com"
+
+            embedding_config = await credential_service.get_active_provider("embedding")
+            assert embedding_config["provider"] == "google"
+            assert embedding_config["base_url"] == "https://custom-google-url.com"
+
+    @pytest.mark.asyncio
+    async def test_get_active_provider_new_providers(self):
+        """Test support for new providers (huggingface, local)"""
+        # Setup cache with new providers
+        credential_service._cache = {
+            "CHAT_PROVIDER": "ollama",
+            "EMBEDDING_PROVIDER": "huggingface",
+            "EMBEDDING_BASE_URL": "https://api-inference.huggingface.co/models",
+            "HUGGINGFACE_API_KEY": {"encrypted_value": "encrypted_hf_key", "is_encrypted": True},
+        }
+        credential_service._cache_initialized = True
+
+        with patch.object(credential_service, "_decrypt_value") as mock_decrypt:
+            mock_decrypt.return_value = "decrypted_hf_key"
+
+            # Test Ollama (no API key needed)
+            chat_config = await credential_service.get_active_provider("llm")
+            assert chat_config["provider"] == "ollama"
+            assert chat_config["api_key"] == "ollama"
+            assert chat_config["base_url"] == "http://localhost:11434/v1"
+
+            # Test Hugging Face
+            embedding_config = await credential_service.get_active_provider("embedding")
+            assert embedding_config["provider"] == "huggingface"
+            assert embedding_config["api_key"] == "decrypted_hf_key"
+            assert embedding_config["base_url"] == "https://api-inference.huggingface.co/models"
+
+    @pytest.mark.asyncio
+    async def test_set_active_provider_split_configuration(self):
+        """Test setting active provider for specific service types"""
+        with patch.object(credential_service, "set_credential") as mock_set:
+            mock_set.return_value = True
+
+            # Set chat provider
+            result = await credential_service.set_active_provider("openrouter", "llm")
+            assert result is True
+            mock_set.assert_called_with(
+                "CHAT_PROVIDER",
+                "openrouter",
+                category="rag_strategy",
+                description="Active chat/LLM provider: openrouter"
+            )
+
+            # Set embedding provider
+            result = await credential_service.set_active_provider("huggingface", "embedding")
+            assert result is True
+            mock_set.assert_called_with(
+                "EMBEDDING_PROVIDER",
+                "huggingface",
+                category="rag_strategy",
+                description="Active embedding provider: huggingface"
+            )

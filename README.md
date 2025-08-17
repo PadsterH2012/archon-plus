@@ -42,7 +42,7 @@ This new vision for Archon replaces the old one (the agenteer). Archon used to b
 ### Prerequisites
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - [Supabase](https://supabase.com/) account (free tier or local Supabase both work)
-- [OpenAI API key](https://platform.openai.com/api-keys) (Gemini and Ollama are supported too!)
+- [OpenAI API key](https://platform.openai.com/api-keys) or other provider API keys (see [Provider Support](#-provider-support) below)
 
 ### Setup Instructions
 
@@ -79,9 +79,11 @@ This new vision for Archon replaces the old one (the agenteer). Archon used to b
 
    Ports are configurable in your .env as well!
 
-5. **Configure API Keys**:
+5. **Configure Providers**:
    - Open http://localhost:3737
-   - Go to **Settings** → Select your LLM/embedding provider and set the API key (OpenAI is default)
+   - Go to **Settings** → **RAG Settings**
+   - Configure your **Chat Provider** and **Embedding Provider** (see [Provider Support](#-provider-support))
+   - Add required API keys for your selected providers
    - Test by uploading a document or crawling a website
 
 ## 🔄 Database Reset (Start Fresh if Needed)
@@ -102,8 +104,9 @@ If you need to completely reset your database and start fresh:
    docker-compose up -d
    ```
 
-4. **Reconfigure**: 
-   - Select your LLM/embedding provider and set the API key again
+4. **Reconfigure**:
+   - Configure your Chat and Embedding providers again in RAG Settings
+   - Add required API keys for your selected providers
    - Re-upload any documents or re-crawl websites
 
 The reset script safely removes all tables, functions, triggers, and policies with proper dependency handling.
@@ -119,7 +122,40 @@ Once everything is running:
 3. **Test Projects**: Projects → Create a new project and add tasks
 4. **Integrate with your AI coding assistant**: MCP Dashboard → Copy connection config for your AI coding assistant
 
-## 📚 Documentation
+## � Provider Support
+
+Archon v2.0 introduces **Split Provider Architecture**, allowing you to use different providers for chat and embedding models. This enables powerful combinations like using OpenRouter for chat while leveraging OpenAI's embeddings.
+
+### Supported Providers
+
+| Provider | Chat Support | Embedding Support | API Key Required | Get API Key |
+|----------|-------------|------------------|------------------|-------------|
+| **OpenAI** | ✅ | ✅ | Yes | [platform.openai.com](https://platform.openai.com/api-keys) |
+| **OpenRouter** | ✅ | ❌ | Yes | [openrouter.ai](https://openrouter.ai/keys) |
+| **Google Gemini** | ✅ | ✅ | Yes | [aistudio.google.com](https://aistudio.google.com/apikey) |
+| **Ollama** | ✅ | ✅ | No | [Local installation](https://ollama.ai) |
+| **Hugging Face** | ❌ | ✅ | Yes | [huggingface.co](https://huggingface.co/settings/tokens) |
+| **Local Server** | ❌ | ✅ | Optional | Your local embedding server |
+
+### Popular Combinations
+
+- **Cost-Optimized**: OpenRouter (chat) + OpenAI (embedding)
+- **Privacy-First**: Ollama (chat) + Local TEI (embedding)
+- **Balanced**: Google (chat) + OpenAI (embedding)
+- **Diverse Models**: OpenAI (chat) + Hugging Face (embedding)
+
+### Configuration
+
+Configure providers in the web interface:
+1. Go to **Settings** → **RAG Settings**
+2. Select your **Chat Provider** and **Embedding Provider**
+3. Configure base URLs if needed (for Ollama, local servers)
+4. Add required API keys
+5. Set model names for each provider
+
+For detailed setup instructions, see our [Provider Combinations Guide](./docs/docs/provider-combinations.mdx).
+
+## �📚 Documentation
 
 ### Core Services
 
@@ -142,7 +178,8 @@ Once everything is running:
 ### 🤖 AI Integration  
 - **Model Context Protocol (MCP)**: Connect any MCP-compatible client (Claude Code, Cursor, even non-AI coding assistants like Claude Desktop)
 - **10 MCP Tools**: Comprehensive yet simple set of tools for RAG queries, task management, and project operations
-- **Multi-LLM Support**: Works with OpenAI, Ollama, and Google Gemini models
+- **Split Provider Architecture**: Separate providers for chat and embedding models (see [Provider Support](#-provider-support))
+- **Multi-LLM Support**: Works with OpenAI, OpenRouter, Google Gemini, Ollama, Hugging Face, and local servers
 - **RAG Strategies**: Hybrid search, contextual embeddings, and result reranking for optimal AI responses
 - **Real-time Streaming**: Live responses from AI agents with progress tracking
 

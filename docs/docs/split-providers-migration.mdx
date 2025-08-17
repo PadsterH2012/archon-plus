@@ -1,0 +1,444 @@
+---
+title: Split Providers Migration Guide
+description: Step-by-step guide for migrating to split provider architecture
+sidebar_position: 13
+---
+
+# Split Providers Migration Guide
+
+This guide walks you through migrating from the legacy single-provider system to the new split provider architecture in Archon v2.0.
+
+## Pre-Migration Checklist
+
+### 1. Backup Current Configuration
+
+Before starting the migration, backup your current settings:
+
+```bash
+# Backup database
+docker exec postgres pg_dump -U archon archon > archon_backup_$(date +%Y%m%d).sql
+
+# Export current RAG settings
+docker exec Archon-Server python -c "
+import asyncio
+from src.server.services.credential_service import credential_service
+
+async def backup_settings():
+    try:
+        settings = await credential_service.get_credentials_by_category('rag_strategy')
+        print('=== CURRENT RAG SETTINGS ===')
+        for key, value in settings.items():
+            if 'API_KEY' not in key:  # Don't log API keys
+                print(f'{key}: {value}')
+    except Exception as e:
+        print(f'Error: {e}')
+
+asyncio.run(backup_settings())
+"
+```
+
+### 2. Document Current Setup
+
+Record your current configuration:
+- **LLM Provider**: `_________________`
+- **Chat Model**: `_________________`
+- **Embedding Model**: `_________________`
+- **Base URL** (if custom): `_________________`
+- **API Keys Used**: `_________________`
+
+### 3. Plan New Configuration
+
+Decide on your split provider setup:
+
+| Current Setup | Recommended Split Setup | Benefits |
+|---------------|------------------------|----------|
+| All OpenAI | Chat: OpenRouter, Embedding: OpenAI | Cost savings on chat |
+| All Google | Chat: Google, Embedding: OpenAI | Better embedding quality |
+| All Ollama | Chat: Ollama, Embedding: Local | Full local setup |
+| Mixed | Optimize per service | Best of both worlds |
+
+## Migration Process
+
+### Step 1: Update Archon
+
+```bash
+# Stop current services
+docker-compose down
+
+# Pull latest version
+git pull origin main
+
+# Rebuild containers
+docker-compose build
+
+# Start services (migration runs automatically)
+docker-compose up -d
+```
+
+### Step 2: Verify Migration
+
+Check that the migration completed successfully:
+
+```bash
+# Check migration status
+docker exec Archon-Server python -c "
+import asyncio
+from src.server.services.credential_service import credential_service
+
+async def check_migration():
+    try:
+        settings = await credential_service.get_credentials_by_category('rag_strategy')
+        
+        # Check for new fields
+        has_chat_provider = 'CHAT_PROVIDER' in settings
+        has_embedding_provider = 'EMBEDDING_PROVIDER' in settings
+        
+        print(f'Migration Status:')
+        print(f'  CHAT_PROVIDER field: {\"✅\" if has_chat_provider else \"❌\"}')
+        print(f'  EMBEDDING_PROVIDER field: {\"✅\" if has_embedding_provider else \"❌\"}')
+        
+        if has_chat_provider or has_embedding_provider:
+            print('✅ Migration completed successfully')
+        else:
+            print('⚠️  Migration may not have completed')
+            
+    except Exception as e:
+        print(f'Error checking migration: {e}')
+
+asyncio.run(check_migration())
+"
+```
+
+### Step 3: Configure Split Providers
+
+#### Option A: Via Web UI (Recommended)
+
+1. **Open Archon UI**: Navigate to `http://localhost:3737`
+2. **Go to Settings**: Click the settings icon in the sidebar
+3. **Open RAG Settings**: Find the RAG configuration section
+4. **Configure Providers**:
+   - Select your desired **Chat Provider**
+   - Select your desired **Embedding Provider**
+   - Configure base URLs if needed
+   - Set model names
+5. **Save Settings**: Click "Save Settings"
+
+#### Option B: Via API
+
+```bash
+# Set chat provider
+curl -X POST http://localhost:8181/api/credentials \
+  -H "Content-Type: application/json" \
+  -d '{
+    "key": "CHAT_PROVIDER",
+    "value": "openrouter",
+    "category": "rag_strategy"
+  }'
+
+# Set embedding provider
+curl -X POST http://localhost:8181/api/credentials \
+  -H "Content-Type: application/json" \
+  -d '{
+    "key": "EMBEDDING_PROVIDER", 
+    "value": "openai",
+    "category": "rag_strategy"
+  }'
+```
+
+#### Option C: Via Environment Variables
+
+```bash
+# Add to docker-compose.yml or .env
+CHAT_PROVIDER=openrouter
+EMBEDDING_PROVIDER=openai
+CHAT_BASE_URL=https://openrouter.ai/api/v1
+EMBEDDING_BASE_URL=  # Leave empty for OpenAI default
+```
+
+### Step 4: Add Required API Keys
+
+Based on your provider selection, add the necessary API keys:
+
+```bash
+# For OpenRouter
+curl -X POST http://localhost:8181/api/credentials \
+  -H "Content-Type: application/json" \
+  -d '{
+    "key": "OPENROUTER_API_KEY",
+    "value": "your_openrouter_key_here",
+    "is_encrypted": true,
+    "category": "api_keys"
+  }'
+
+# For Hugging Face
+curl -X POST http://localhost:8181/api/credentials \
+  -H "Content-Type: application/json" \
+  -d '{
+    "key": "HUGGINGFACE_API_KEY",
+    "value": "your_hf_key_here", 
+    "is_encrypted": true,
+    "category": "api_keys"
+  }'
+
+# For Local Embedding Server (if authentication required)
+curl -X POST http://localhost:8181/api/credentials \
+  -H "Content-Type: application/json" \
+  -d '{
+    "key": "LOCAL_EMBEDDING_API_KEY",
+    "value": "your_local_key_here",
+    "is_encrypted": true,
+    "category": "api_keys"
+  }'
+```
+
+### Step 5: Test Configuration
+
+Verify that both chat and embedding functionality work:
+
+```bash
+# Test chat functionality
+curl -X POST http://localhost:8181/api/chat/sessions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Migration Test",
+    "initial_message": "Hello, testing split providers!"
+  }'
+
+# Test embedding functionality
+curl -X POST http://localhost:8181/api/knowledge/items \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "This is a test document for embedding functionality.",
+    "source": "migration-test",
+    "title": "Migration Test Document"
+  }'
+```
+
+## Migration Scenarios
+
+### Scenario 1: OpenAI → OpenRouter + OpenAI
+
+**Before:**
+```yaml
+LLM_PROVIDER: openai
+MODEL_CHOICE: gpt-4o-mini
+EMBEDDING_MODEL: text-embedding-3-small
+```
+
+**After:**
+```yaml
+CHAT_PROVIDER: openrouter
+EMBEDDING_PROVIDER: openai
+MODEL_CHOICE: anthropic/claude-3.5-sonnet
+EMBEDDING_MODEL: text-embedding-3-small
+```
+
+**Benefits:**
+- Access to multiple chat models via OpenRouter
+- Keep high-quality OpenAI embeddings
+- Potential cost savings on chat
+
+### Scenario 2: Google → Google + Local
+
+**Before:**
+```yaml
+LLM_PROVIDER: google
+MODEL_CHOICE: gemini-1.5-flash
+EMBEDDING_MODEL: text-embedding-004
+```
+
+**After:**
+```yaml
+CHAT_PROVIDER: google
+EMBEDDING_PROVIDER: local
+EMBEDDING_BASE_URL: http://tei-container:8080
+MODEL_CHOICE: gemini-1.5-flash
+EMBEDDING_MODEL: all-MiniLM-L6-v2
+```
+
+**Benefits:**
+- Keep Google's chat quality
+- Private, local embeddings
+- Reduced embedding costs
+
+### Scenario 3: Ollama → Ollama + Hugging Face
+
+**Before:**
+```yaml
+LLM_PROVIDER: ollama
+LLM_BASE_URL: http://localhost:11434/v1
+MODEL_CHOICE: llama3.2:3b
+EMBEDDING_MODEL: nomic-embed-text
+```
+
+**After:**
+```yaml
+CHAT_PROVIDER: ollama
+EMBEDDING_PROVIDER: huggingface
+CHAT_BASE_URL: http://localhost:11434/v1
+MODEL_CHOICE: llama3.2:3b
+EMBEDDING_MODEL: sentence-transformers/all-mpnet-base-v2
+```
+
+**Benefits:**
+- Keep local chat privacy
+- Access to diverse embedding models
+- Better embedding quality options
+
+## Troubleshooting Migration Issues
+
+### Issue 1: Migration Script Fails
+
+**Symptoms:**
+```
+Error: relation "archon_settings" does not exist
+```
+
+**Solution:**
+```bash
+# Run migration manually
+docker exec Archon-Server python -c "
+from src.server.database.migrations import run_migration
+run_migration('add_split_providers.sql')
+"
+```
+
+### Issue 2: UI Shows Old Interface
+
+**Symptoms:**
+- Only single LLM Provider dropdown visible
+- No separate Chat/Embedding provider options
+
+**Solution:**
+```bash
+# Clear browser cache and refresh
+# Or force rebuild frontend
+docker-compose build frontend
+docker-compose up -d frontend
+```
+
+### Issue 3: Provider Configuration Not Saved
+
+**Symptoms:**
+```
+Error: Failed to save settings
+```
+
+**Solution:**
+```bash
+# Check database connectivity
+docker exec Archon-Server python -c "
+from src.server.services.credential_service import credential_service
+import asyncio
+async def test():
+    try:
+        await credential_service.get_credentials_by_category('rag_strategy')
+        print('✅ Database connection OK')
+    except Exception as e:
+        print(f'❌ Database error: {e}')
+asyncio.run(test())
+"
+```
+
+### Issue 4: API Key Errors
+
+**Symptoms:**
+```
+Error: OpenRouter API key not found
+```
+
+**Solution:**
+```bash
+# Verify API key is set
+docker exec Archon-Server python -c "
+from src.server.services.credential_service import credential_service
+import asyncio
+async def check_keys():
+    try:
+        key = await credential_service.get_credential('OPENROUTER_API_KEY')
+        print(f'OpenRouter key: {\"✅ Set\" if key else \"❌ Missing\"}')
+    except Exception as e:
+        print(f'Error: {e}')
+asyncio.run(check_keys())
+"
+```
+
+## Rollback Procedure
+
+If you need to rollback to the previous version:
+
+### 1. Stop Services
+```bash
+docker-compose down
+```
+
+### 2. Restore Database
+```bash
+# Restore from backup
+docker exec postgres psql -U archon -d archon < archon_backup_YYYYMMDD.sql
+```
+
+### 3. Revert Code
+```bash
+# Checkout previous version
+git checkout previous-version-tag
+
+# Rebuild containers
+docker-compose build
+docker-compose up -d
+```
+
+### 4. Verify Rollback
+```bash
+# Check that old configuration is working
+curl -X GET http://localhost:8181/api/health
+```
+
+## Post-Migration Optimization
+
+### 1. Monitor Performance
+
+```bash
+# Check response times
+docker logs Archon-Server | grep -E "(chat|embedding)" | tail -20
+
+# Monitor resource usage
+docker stats Archon-Server
+```
+
+### 2. Optimize Configuration
+
+- **Adjust Models**: Try different models for better performance/cost
+- **Tune Base URLs**: Use regional endpoints for lower latency
+- **Configure Timeouts**: Adjust for your network conditions
+
+### 3. Set Up Monitoring
+
+```bash
+# Add health checks for both providers
+curl -X GET http://localhost:8181/api/providers/chat/health
+curl -X GET http://localhost:8181/api/providers/embedding/health
+```
+
+## Next Steps
+
+After successful migration:
+
+1. **Explore Provider Combinations**: Try different combinations to find optimal setup
+2. **Configure Monitoring**: Set up alerts for provider failures
+3. **Optimize Costs**: Monitor usage and adjust providers as needed
+4. **Update Documentation**: Document your specific configuration for team members
+
+## Support
+
+If you encounter issues during migration:
+
+1. **Check Logs**: `docker logs Archon-Server`
+2. **Review Configuration**: Verify all required fields are set
+3. **Test Connectivity**: Ensure all providers are accessible
+4. **Consult Documentation**: Review provider-specific setup guides
+
+For additional help, refer to:
+- [Split Providers Overview](./split-providers.mdx)
+- [Provider Combinations Guide](./provider-combinations.mdx)
+- [Configuration Reference](./configuration.mdx)

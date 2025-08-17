@@ -99,7 +99,19 @@ ON CONFLICT (key) DO NOTHING;
 
 -- Add provider API key placeholders
 INSERT INTO archon_settings (key, encrypted_value, is_encrypted, category, description) VALUES
-('GOOGLE_API_KEY', NULL, true, 'api_keys', 'Google API Key for Gemini models. Get from: https://aistudio.google.com/apikey')
+('GOOGLE_API_KEY', NULL, true, 'api_keys', 'Google API Key for Gemini models. Get from: https://aistudio.google.com/apikey'),
+('OPENROUTER_API_KEY', NULL, true, 'api_keys', 'OpenRouter API Key for accessing multiple LLM providers. Get from: https://openrouter.ai/keys'),
+('HUGGINGFACE_API_KEY', NULL, true, 'api_keys', 'Hugging Face API Key for embedding models. Get from: https://huggingface.co/settings/tokens'),
+('LOCAL_EMBEDDING_API_KEY', NULL, true, 'api_keys', 'API Key for local embedding server (if authentication required)')
+ON CONFLICT (key) DO NOTHING;
+
+-- Split Provider Configuration (New in v2.0)
+-- Allows separate providers for chat and embedding models
+INSERT INTO archon_settings (key, value, is_encrypted, category, description) VALUES
+('CHAT_PROVIDER', 'openrouter', false, 'rag_strategy', 'Chat/LLM provider: openai, google, openrouter, ollama, huggingface, local'),
+('EMBEDDING_PROVIDER', 'openai', false, 'rag_strategy', 'Embedding provider: openai, google, ollama, huggingface, local'),
+('CHAT_BASE_URL', NULL, false, 'rag_strategy', 'Custom base URL for chat provider (overrides provider defaults)'),
+('EMBEDDING_BASE_URL', NULL, false, 'rag_strategy', 'Custom base URL for embedding provider (overrides provider defaults)')
 ON CONFLICT (key) DO NOTHING;
 
 -- Code Extraction Settings Migration

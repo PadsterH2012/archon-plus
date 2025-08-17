@@ -396,37 +396,46 @@ class CredentialService:
     # Provider Management Methods
     async def get_active_provider(self, service_type: str = "llm") -> dict[str, Any]:
         """
-        Get the currently active provider configuration.
+        Get the currently active provider configuration for the specified service type.
 
         Args:
-            service_type: Either 'llm' or 'embedding'
+            service_type: Either 'llm'/'chat' or 'embedding'
 
         Returns:
-            Dict with provider, api_key, base_url, and models
+            Dict with provider, api_key, base_url, and model for the service type
         """
         try:
             # Get RAG strategy settings (where UI saves provider selection)
             rag_settings = await self.get_credentials_by_category("rag_strategy")
 
-            # Get the selected provider
-            provider = rag_settings.get("LLM_PROVIDER", "openai")
+            # Determine provider and configuration based on service type
+            if service_type == "embedding":
+                # Use EMBEDDING_PROVIDER, fallback to LLM_PROVIDER for backward compatibility
+                provider = rag_settings.get("EMBEDDING_PROVIDER",
+                                           rag_settings.get("LLM_PROVIDER", "openai"))
+                base_url_key = "EMBEDDING_BASE_URL"
+                model = rag_settings.get("EMBEDDING_MODEL", "")
+            else:  # llm/chat
+                # Use CHAT_PROVIDER, fallback to LLM_PROVIDER for backward compatibility
+                provider = rag_settings.get("CHAT_PROVIDER",
+                                           rag_settings.get("LLM_PROVIDER", "openai"))
+                base_url_key = "CHAT_BASE_URL"
+                model = rag_settings.get("MODEL_CHOICE", "")
 
             # Get API key for this provider
             api_key = await self._get_provider_api_key(provider)
 
-            # Get base URL if needed
-            base_url = self._get_provider_base_url(provider, rag_settings)
-
-            # Get models
-            chat_model = rag_settings.get("MODEL_CHOICE", "")
-            embedding_model = rag_settings.get("EMBEDDING_MODEL", "")
+            # Get service-specific base URL
+            base_url = self._get_provider_base_url(provider, rag_settings, base_url_key)
 
             return {
                 "provider": provider,
                 "api_key": api_key,
                 "base_url": base_url,
-                "chat_model": chat_model,
-                "embedding_model": embedding_model,
+                "model": model,
+                # Legacy fields for backward compatibility
+                "chat_model": rag_settings.get("MODEL_CHOICE", ""),
+                "embedding_model": rag_settings.get("EMBEDDING_MODEL", ""),
             }
 
         except Exception as e:
@@ -437,6 +446,7 @@ class CredentialService:
                 "provider": provider,
                 "api_key": os.getenv("OPENAI_API_KEY"),
                 "base_url": None,
+                "model": "",
                 "chat_model": "",
                 "embedding_model": "",
             }
@@ -447,31 +457,71 @@ class CredentialService:
             "openai": "OPENAI_API_KEY",
             "google": "GOOGLE_API_KEY",
             "openrouter": "OPENROUTER_API_KEY",
+            "huggingface": "HUGGINGFACE_API_KEY",
+            "local": "LOCAL_EMBEDDING_API_KEY",
             "ollama": None,  # No API key needed
         }
 
         key_name = key_mapping.get(provider)
         if key_name:
             return await self.get_credential(key_name)
-        return "ollama" if provider == "ollama" else None
 
-    def _get_provider_base_url(self, provider: str, rag_settings: dict) -> str | None:
-        """Get base URL for provider."""
+        # Return provider name for providers that don't need API keys
+        if provider in ["ollama", "local"]:
+            return provider
+        return None
+
+    def _get_provider_base_url(self, provider: str, rag_settings: dict, url_key: str = "LLM_BASE_URL") -> str | None:
+        """
+        Get base URL for provider with service-specific configuration support.
+
+        Args:
+            provider: Provider name (openai, google, openrouter, ollama, huggingface, local)
+            rag_settings: RAG configuration settings
+            url_key: Service-specific URL key (CHAT_BASE_URL, EMBEDDING_BASE_URL, or LLM_BASE_URL)
+        """
+        # Check for service-specific custom URL first
+        custom_url = rag_settings.get(url_key)
+        if custom_url:
+            return custom_url
+
+        # Fallback to LLM_BASE_URL for backward compatibility
+        if url_key != "LLM_BASE_URL":
+            legacy_url = rag_settings.get("LLM_BASE_URL")
+            if legacy_url:
+                return legacy_url
+
+        # Provider-specific defaults
         if provider == "ollama":
-            return rag_settings.get("LLM_BASE_URL", "http://localhost:11434/v1")
+            return "http://localhost:11434/v1"
         elif provider == "google":
             return "https://generativelanguage.googleapis.com/v1beta/openai/"
+        elif provider == "openrouter":
+            return "https://openrouter.ai/api/v1"
+        elif provider == "huggingface":
+            return "https://api-inference.huggingface.co/models"
+        elif provider == "local":
+            return "http://localhost:8080"
+
         return None  # Use default for OpenAI
 
     async def set_active_provider(self, provider: str, service_type: str = "llm") -> bool:
-        """Set the active provider for a service type."""
+        """Set the active provider for a specific service type."""
         try:
-            # For now, we'll update the RAG strategy settings
+            # Determine the correct setting key based on service type
+            if service_type == "embedding":
+                key = "EMBEDDING_PROVIDER"
+                description = f"Active embedding provider: {provider}"
+            else:  # llm/chat
+                key = "CHAT_PROVIDER"
+                description = f"Active chat/LLM provider: {provider}"
+
+            # Update the service-specific provider setting
             return await self.set_credential(
-                "llm_provider",
+                key,
                 provider,
                 category="rag_strategy",
-                description=f"Active {service_type} provider",
+                description=description,
             )
         except Exception as e:
             logger.error(f"Error setting active provider {provider} for {service_type}: {e}")

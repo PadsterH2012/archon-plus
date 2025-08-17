@@ -1,0 +1,414 @@
+---
+title: Provider Combinations Guide
+description: Detailed setup examples for different provider combinations
+sidebar_position: 14
+---
+
+# Provider Combinations Guide
+
+This guide provides detailed setup instructions for popular provider combinations, including configuration examples, use cases, and optimization tips.
+
+## Quick Reference
+
+| Combination | Use Case | Cost | Privacy | Setup Complexity |
+|-------------|----------|------|---------|------------------|
+| OpenRouter + OpenAI | Cost-optimized cloud | 💰💰 | ☁️ | ⭐ |
+| Google + OpenAI | Balanced performance | 💰💰💰 | ☁️ | ⭐ |
+| Ollama + Local | Full privacy | 💰 | 🔒🔒🔒 | ⭐⭐⭐ |
+| OpenAI + Hugging Face | Diverse models | 💰💰 | ☁️ | ⭐⭐ |
+| Ollama + OpenAI | Hybrid privacy | 💰💰 | 🔒☁️ | ⭐⭐ |
+
+## 1. OpenRouter + OpenAI (Recommended)
+
+**Best for**: Cost optimization while maintaining quality
+
+### Configuration
+
+```yaml
+# Provider Configuration
+CHAT_PROVIDER: "openrouter"
+EMBEDDING_PROVIDER: "openai"
+
+# Models
+MODEL_CHOICE: "anthropic/claude-3.5-sonnet"
+EMBEDDING_MODEL: "text-embedding-3-small"
+
+# API Keys
+OPENROUTER_API_KEY: "sk-or-v1-..."
+OPENAI_API_KEY: "sk-..."
+```
+
+### Setup Steps
+
+1. **Get API Keys**:
+   - OpenRouter: https://openrouter.ai/keys
+   - OpenAI: https://platform.openai.com/api-keys
+
+2. **Configure in Archon**:
+   ```bash
+   # Via UI: Settings → RAG Settings
+   # Or via API:
+   curl -X POST http://localhost:8181/api/credentials \
+     -H "Content-Type: application/json" \
+     -d '{"key": "CHAT_PROVIDER", "value": "openrouter", "category": "rag_strategy"}'
+   
+   curl -X POST http://localhost:8181/api/credentials \
+     -H "Content-Type: application/json" \
+     -d '{"key": "EMBEDDING_PROVIDER", "value": "openai", "category": "rag_strategy"}'
+   ```
+
+3. **Add API Keys**:
+   ```bash
+   curl -X POST http://localhost:8181/api/credentials \
+     -H "Content-Type: application/json" \
+     -d '{"key": "OPENROUTER_API_KEY", "value": "your_key", "is_encrypted": true, "category": "api_keys"}'
+   ```
+
+### Model Recommendations
+
+| Task | Model | Cost/1M tokens | Quality |
+|------|-------|----------------|---------|
+| **Chat (General)** | `anthropic/claude-3.5-sonnet` | $3.00 | ⭐⭐⭐⭐⭐ |
+| **Chat (Budget)** | `deepseek/deepseek-chat` | $0.14 | ⭐⭐⭐⭐ |
+| **Chat (Coding)** | `anthropic/claude-3.5-sonnet` | $3.00 | ⭐⭐⭐⭐⭐ |
+| **Embeddings** | `text-embedding-3-small` | $0.02 | ⭐⭐⭐⭐ |
+
+### Benefits
+- ✅ Access to 100+ models via OpenRouter
+- ✅ High-quality OpenAI embeddings
+- ✅ Competitive pricing
+- ✅ Easy setup
+
+### Considerations
+- ⚠️ Requires internet connectivity
+- ⚠️ Data sent to cloud providers
+- ⚠️ Rate limits apply
+
+## 2. Ollama + Local TEI (Privacy-First)
+
+**Best for**: Complete data privacy and control
+
+### Prerequisites
+
+```bash
+# Install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Pull models
+ollama pull llama3.2:3b
+ollama pull nomic-embed-text
+
+# Run Text Embeddings Inference (TEI)
+docker run -d --name tei-container \
+  -p 8080:80 \
+  -v $PWD/data:/data \
+  ghcr.io/huggingface/text-embeddings-inference:latest \
+  --model-id sentence-transformers/all-MiniLM-L6-v2
+```
+
+### Configuration
+
+```yaml
+# Provider Configuration
+CHAT_PROVIDER: "ollama"
+EMBEDDING_PROVIDER: "local"
+
+# Base URLs
+CHAT_BASE_URL: "http://localhost:11434/v1"
+EMBEDDING_BASE_URL: "http://localhost:8080"
+
+# Models
+MODEL_CHOICE: "llama3.2:3b"
+EMBEDDING_MODEL: "all-MiniLM-L6-v2"
+
+# No API keys required
+```
+
+### Docker Compose Setup
+
+```yaml
+version: '3.8'
+services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+
+  tei:
+    image: ghcr.io/huggingface/text-embeddings-inference:latest
+    ports:
+      - "8080:80"
+    command: --model-id sentence-transformers/all-MiniLM-L6-v2
+    volumes:
+      - tei_data:/data
+
+volumes:
+  ollama_data:
+  tei_data:
+```
+
+### Benefits
+- ✅ Complete data privacy
+- ✅ No API costs
+- ✅ Full control over models
+- ✅ Works offline
+
+### Considerations
+- ⚠️ Requires local GPU for good performance
+- ⚠️ Higher setup complexity
+- ⚠️ Limited model selection
+- ⚠️ Maintenance overhead
+
+## 3. Google + Hugging Face (Diverse Models)
+
+**Best for**: Access to diverse embedding models
+
+### Configuration
+
+```yaml
+# Provider Configuration
+CHAT_PROVIDER: "google"
+EMBEDDING_PROVIDER: "huggingface"
+
+# Models
+MODEL_CHOICE: "gemini-1.5-flash"
+EMBEDDING_MODEL: "sentence-transformers/all-mpnet-base-v2"
+
+# API Keys
+GOOGLE_API_KEY: "AIza..."
+HUGGINGFACE_API_KEY: "hf_..."
+```
+
+### Setup Steps
+
+1. **Get API Keys**:
+   - Google: https://aistudio.google.com/apikey
+   - Hugging Face: https://huggingface.co/settings/tokens
+
+2. **Configure Providers**:
+   ```bash
+   # Set providers
+   curl -X POST http://localhost:8181/api/credentials \
+     -d '{"key": "CHAT_PROVIDER", "value": "google", "category": "rag_strategy"}'
+   
+   curl -X POST http://localhost:8181/api/credentials \
+     -d '{"key": "EMBEDDING_PROVIDER", "value": "huggingface", "category": "rag_strategy"}'
+   ```
+
+### Embedding Model Options
+
+| Model | Dimensions | Performance | Use Case |
+|-------|------------|-------------|----------|
+| `all-MiniLM-L6-v2` | 384 | Fast | General purpose |
+| `all-mpnet-base-v2` | 768 | Balanced | High quality |
+| `all-MiniLM-L12-v2` | 384 | Medium | Better than L6 |
+| `paraphrase-multilingual-MiniLM-L12-v2` | 384 | Medium | Multilingual |
+
+### Benefits
+- ✅ Access to many embedding models
+- ✅ Good chat quality with Gemini
+- ✅ Competitive pricing
+- ✅ Multilingual support
+
+### Considerations
+- ⚠️ HuggingFace Inference API can be slow
+- ⚠️ Rate limits on free tier
+- ⚠️ Model cold starts
+
+## 4. OpenAI + Local (Hybrid)
+
+**Best for**: Balancing quality and privacy
+
+### Configuration
+
+```yaml
+# Provider Configuration
+CHAT_PROVIDER: "openai"
+EMBEDDING_PROVIDER: "local"
+
+# Base URLs
+EMBEDDING_BASE_URL: "http://embedding-server:8080"
+
+# Models
+MODEL_CHOICE: "gpt-4o-mini"
+EMBEDDING_MODEL: "all-MiniLM-L6-v2"
+
+# API Keys
+OPENAI_API_KEY: "sk-..."
+```
+
+### Local Embedding Server Setup
+
+```bash
+# Option 1: TEI (Recommended)
+docker run -d --name embedding-server \
+  -p 8080:80 \
+  ghcr.io/huggingface/text-embeddings-inference:latest \
+  --model-id sentence-transformers/all-MiniLM-L6-v2
+
+# Option 2: Ollama with embedding model
+ollama pull nomic-embed-text
+# Use EMBEDDING_BASE_URL: "http://localhost:11434/v1"
+```
+
+### Benefits
+- ✅ High-quality chat with GPT-4
+- ✅ Private embeddings
+- ✅ Cost savings on embeddings
+- ✅ Reduced data exposure
+
+### Considerations
+- ⚠️ Chat data still goes to OpenAI
+- ⚠️ Local server maintenance
+- ⚠️ Mixed latency characteristics
+
+## 5. All-Local Development Setup
+
+**Best for**: Development and testing
+
+### Configuration
+
+```yaml
+# Provider Configuration
+CHAT_PROVIDER: "ollama"
+EMBEDDING_PROVIDER: "ollama"
+
+# Base URLs
+CHAT_BASE_URL: "http://localhost:11434/v1"
+EMBEDDING_BASE_URL: "http://localhost:11434/v1"
+
+# Models
+MODEL_CHOICE: "llama3.2:3b"
+EMBEDDING_MODEL: "nomic-embed-text"
+```
+
+### Quick Setup
+
+```bash
+# Install and start Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+ollama serve
+
+# Pull models
+ollama pull llama3.2:3b
+ollama pull nomic-embed-text
+
+# Configure Archon
+curl -X POST http://localhost:8181/api/credentials \
+  -d '{"key": "CHAT_PROVIDER", "value": "ollama", "category": "rag_strategy"}'
+
+curl -X POST http://localhost:8181/api/credentials \
+  -d '{"key": "EMBEDDING_PROVIDER", "value": "ollama", "category": "rag_strategy"}'
+```
+
+### Benefits
+- ✅ No API costs
+- ✅ Complete privacy
+- ✅ Fast iteration
+- ✅ Offline capable
+
+### Considerations
+- ⚠️ Lower quality than cloud models
+- ⚠️ Requires good hardware
+- ⚠️ Limited model selection
+
+## Performance Optimization
+
+### Latency Optimization
+
+1. **Geographic Proximity**:
+   ```yaml
+   # Use regional endpoints
+   CHAT_BASE_URL: "https://api.openai.com/v1"  # US
+   EMBEDDING_BASE_URL: "https://api.openai.com/v1"  # US
+   ```
+
+2. **Connection Pooling**:
+   ```yaml
+   # Configure in environment
+   HTTP_POOL_CONNECTIONS: 20
+   HTTP_POOL_MAXSIZE: 20
+   ```
+
+3. **Caching**:
+   ```yaml
+   # Enable embedding caching
+   ENABLE_EMBEDDING_CACHE: true
+   CACHE_TTL_SECONDS: 3600
+   ```
+
+### Cost Optimization
+
+1. **Model Selection**:
+   - Use cheaper models for development
+   - Optimize model choice per use case
+   - Monitor token usage
+
+2. **Batch Processing**:
+   ```yaml
+   # Process embeddings in batches
+   EMBEDDING_BATCH_SIZE: 100
+   EMBEDDING_BATCH_TIMEOUT: 5
+   ```
+
+3. **Rate Limiting**:
+   ```yaml
+   # Prevent cost overruns
+   MAX_REQUESTS_PER_MINUTE: 60
+   MAX_TOKENS_PER_REQUEST: 4000
+   ```
+
+## Monitoring and Troubleshooting
+
+### Health Checks
+
+```bash
+# Check provider status
+curl -X GET http://localhost:8181/api/providers/status
+
+# Test chat provider
+curl -X POST http://localhost:8181/api/chat/test \
+  -d '{"message": "Hello"}'
+
+# Test embedding provider
+curl -X POST http://localhost:8181/api/embeddings/test \
+  -d '{"text": "Test embedding"}'
+```
+
+### Common Issues
+
+1. **Connection Timeouts**:
+   ```yaml
+   # Increase timeouts
+   PROVIDER_TIMEOUT_SECONDS: 30
+   PROVIDER_RETRY_COUNT: 3
+   ```
+
+2. **Rate Limit Errors**:
+   ```yaml
+   # Add delays between requests
+   REQUEST_DELAY_MS: 100
+   EXPONENTIAL_BACKOFF: true
+   ```
+
+3. **Model Not Found**:
+   ```bash
+   # Verify model availability
+   curl -X GET https://openrouter.ai/api/v1/models
+   ```
+
+## Next Steps
+
+1. **Choose Your Combination**: Based on your requirements
+2. **Start with Recommended**: OpenRouter + OpenAI for most users
+3. **Monitor Performance**: Track latency and costs
+4. **Iterate and Optimize**: Adjust based on usage patterns
+
+For more information:
+- [Split Providers Overview](./split-providers.mdx)
+- [Migration Guide](./split-providers-migration.mdx)
+- [Configuration Reference](./configuration.mdx)

@@ -128,6 +128,24 @@ async def get_llm_client(provider: str | None = None, use_embedding_provider: bo
             )
             logger.info("OpenRouter client created successfully")
 
+        elif provider_name == "huggingface":
+            if not api_key:
+                raise ValueError("Hugging Face API key not found")
+
+            client = openai.AsyncOpenAI(
+                api_key=api_key,
+                base_url=base_url or "https://api-inference.huggingface.co/models",
+            )
+            logger.info("Hugging Face client created successfully")
+
+        elif provider_name == "local":
+            # Local servers may not require authentication
+            client = openai.AsyncOpenAI(
+                api_key=api_key or "local",  # Use provided key or default
+                base_url=base_url or "http://localhost:8080",
+            )
+            logger.info(f"Local embedding server client created successfully with base URL: {base_url or 'http://localhost:8080'}")
+
         else:
             raise ValueError(f"Unsupported LLM provider: {provider_name}")
 
@@ -188,6 +206,12 @@ async def get_embedding_model(provider: str | None = None) -> str:
         elif provider_name == "google":
             # Google's embedding model
             return "text-embedding-004"
+        elif provider_name == "huggingface":
+            # Hugging Face default embedding model
+            return "sentence-transformers/all-MiniLM-L6-v2"
+        elif provider_name == "local":
+            # Local server default (commonly used model)
+            return "all-MiniLM-L6-v2"
         else:
             # Fallback to OpenAI's model
             return "text-embedding-3-small"

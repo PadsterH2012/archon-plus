@@ -472,3 +472,135 @@ class TestAsyncLLMProviderService:
 
                 # Should have been called once for each provider
                 assert mock_credential_service.get_active_provider.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_get_llm_client_huggingface_provider(self, mock_credential_service):
+        """Test LLM client creation for Hugging Face provider"""
+        mock_credential_service.get_active_provider.return_value = {
+            "provider": "huggingface",
+            "api_key": "hf_test_key",
+            "base_url": "https://api-inference.huggingface.co/models",
+        }
+
+        with patch(
+            "src.server.services.llm_provider_service.credential_service", mock_credential_service
+        ):
+            with patch(
+                "src.server.services.llm_provider_service.openai.AsyncOpenAI"
+            ) as mock_openai:
+                mock_client = MagicMock()
+                mock_openai.return_value = mock_client
+
+                async with get_llm_client() as client:
+                    assert client == mock_client
+                    mock_openai.assert_called_once_with(
+                        api_key="hf_test_key",
+                        base_url="https://api-inference.huggingface.co/models",
+                    )
+
+    @pytest.mark.asyncio
+    async def test_get_llm_client_local_provider(self, mock_credential_service):
+        """Test LLM client creation for local provider"""
+        mock_credential_service.get_active_provider.return_value = {
+            "provider": "local",
+            "api_key": "local",
+            "base_url": "http://localhost:8080",
+        }
+
+        with patch(
+            "src.server.services.llm_provider_service.credential_service", mock_credential_service
+        ):
+            with patch(
+                "src.server.services.llm_provider_service.openai.AsyncOpenAI"
+            ) as mock_openai:
+                mock_client = MagicMock()
+                mock_openai.return_value = mock_client
+
+                async with get_llm_client() as client:
+                    assert client == mock_client
+                    mock_openai.assert_called_once_with(
+                        api_key="local",
+                        base_url="http://localhost:8080",
+                    )
+
+    @pytest.mark.asyncio
+    async def test_get_llm_client_local_provider_no_auth(self, mock_credential_service):
+        """Test LLM client creation for local provider without API key"""
+        mock_credential_service.get_active_provider.return_value = {
+            "provider": "local",
+            "api_key": None,
+            "base_url": "http://localhost:9000",
+        }
+
+        with patch(
+            "src.server.services.llm_provider_service.credential_service", mock_credential_service
+        ):
+            with patch(
+                "src.server.services.llm_provider_service.openai.AsyncOpenAI"
+            ) as mock_openai:
+                mock_client = MagicMock()
+                mock_openai.return_value = mock_client
+
+                async with get_llm_client() as client:
+                    assert client == mock_client
+                    mock_openai.assert_called_once_with(
+                        api_key="local",  # Should default to "local"
+                        base_url="http://localhost:9000",
+                    )
+
+    @pytest.mark.asyncio
+    async def test_get_llm_client_huggingface_missing_api_key(self, mock_credential_service):
+        """Test error handling for Hugging Face provider without API key"""
+        mock_credential_service.get_active_provider.return_value = {
+            "provider": "huggingface",
+            "api_key": None,
+            "base_url": "https://api-inference.huggingface.co/models",
+        }
+
+        with patch(
+            "src.server.services.llm_provider_service.credential_service", mock_credential_service
+        ):
+            with pytest.raises(ValueError, match="Hugging Face API key not found"):
+                async with get_llm_client():
+                    pass
+
+    @pytest.mark.asyncio
+    async def test_get_embedding_model_new_providers(self, mock_credential_service):
+        """Test embedding model selection for new providers"""
+        # Test Hugging Face
+        mock_credential_service.get_active_provider.return_value = {
+            "provider": "huggingface",
+            "embedding_model": "",
+        }
+
+        with patch(
+            "src.server.services.llm_provider_service.credential_service", mock_credential_service
+        ):
+            model = await get_embedding_model()
+            assert model == "sentence-transformers/all-MiniLM-L6-v2"
+
+        # Test Local
+        mock_credential_service.get_active_provider.return_value = {
+            "provider": "local",
+            "embedding_model": "",
+        }
+
+        with patch(
+            "src.server.services.llm_provider_service.credential_service", mock_credential_service
+        ):
+            model = await get_embedding_model()
+            assert model == "all-MiniLM-L6-v2"
+
+    @pytest.mark.asyncio
+    async def test_get_embedding_model_custom_model_override(self, mock_credential_service):
+        """Test custom embedding model override for new providers"""
+        mock_credential_service.get_active_provider.return_value = {
+            "provider": "huggingface",
+            "embedding_model": "sentence-transformers/all-mpnet-base-v2",
+        }
+
+        with patch(
+            "src.server.services.llm_provider_service.credential_service", mock_credential_service
+        ):
+            model = await get_embedding_model()
+            assert model == "sentence-transformers/all-mpnet-base-v2"
