@@ -21,6 +21,7 @@ from .embedding_exceptions import (
     EmbeddingQuotaExhaustedError,
     EmbeddingRateLimitError,
 )
+from .embedding_fallback_service import embedding_fallback_service
 
 
 @dataclass
@@ -331,6 +332,105 @@ async def create_embeddings_batch(
                 )
 
             return result
+
+
+async def create_embedding_with_fallback(text: str, provider: str | None = None) -> tuple[list[float], str]:
+    """
+    Create an embedding for a single text with automatic fallback to alternative providers.
+
+    Args:
+        text: Text to create an embedding for
+        provider: Optional provider override
+
+    Returns:
+        Tuple of (embedding, provider_used)
+
+    Raises:
+        EmbeddingQuotaExhaustedError: When all providers' quotas are exhausted
+        EmbeddingRateLimitError: When all providers are rate limited
+        EmbeddingAPIError: For other API errors
+    """
+    try:
+        # Get primary provider configuration
+        primary_provider = None
+        if provider:
+            # If specific provider requested, create config for it
+            primary_provider = await credential_service.get_active_provider("embedding")
+            primary_provider["provider"] = provider
+
+        return await embedding_fallback_service.create_embedding_with_fallback(
+            text, primary_provider
+        )
+    except EmbeddingError:
+        # Re-raise our custom exceptions
+        raise
+    except Exception as e:
+        # Convert to appropriate exception type
+        error_msg = str(e)
+        search_logger.error(f"Embedding creation with fallback failed: {error_msg}", exc_info=True)
+        search_logger.error(f"Failed text preview: {text[:100]}...")
+
+        if "insufficient_quota" in error_msg:
+            raise EmbeddingQuotaExhaustedError(
+                f"All providers quota exhausted: {error_msg}", text_preview=text
+            )
+        elif "rate_limit" in error_msg.lower():
+            raise EmbeddingRateLimitError(f"All providers rate limited: {error_msg}", text_preview=text)
+        else:
+            raise EmbeddingAPIError(
+                f"All embedding providers failed: {error_msg}", text_preview=text, original_error=e
+            )
+
+
+async def create_embeddings_batch_with_fallback(
+    texts: list[str],
+    websocket: Any | None = None,
+    progress_callback: Any | None = None,
+    provider: str | None = None,
+) -> EmbeddingBatchResult:
+    """
+    Create embeddings for multiple texts with automatic fallback support.
+
+    This function processes texts with fallback capabilities, automatically switching
+    to alternative providers when the primary provider fails. Each text is processed
+    individually to allow per-text fallback decisions.
+
+    Args:
+        texts: List of texts to create embeddings for
+        websocket: Optional WebSocket for progress updates
+        progress_callback: Optional callback for progress reporting
+        provider: Optional provider override
+
+    Returns:
+        EmbeddingBatchResult with successful embeddings and failure details
+    """
+    if not texts:
+        return EmbeddingBatchResult()
+
+    try:
+        # Get primary provider configuration
+        primary_provider = None
+        if provider:
+            primary_provider = await credential_service.get_active_provider("embedding")
+            primary_provider["provider"] = provider
+
+        return await embedding_fallback_service.create_embeddings_batch_with_fallback(
+            texts, websocket, progress_callback, primary_provider
+        )
+    except Exception as e:
+        # Fallback to original batch processing if fallback service fails
+        search_logger.warning(f"Fallback service failed, using original batch processing: {e}")
+        return await create_embeddings_batch(texts, websocket, progress_callback, provider)
+
+
+async def get_embedding_provider_health() -> dict[str, dict[str, Any]]:
+    """
+    Get health status of all embedding providers.
+
+    Returns:
+        Dict mapping provider names to their health status
+    """
+    return await embedding_fallback_service.get_provider_health_status()
 
 
 # Deprecated functions - kept for backward compatibility

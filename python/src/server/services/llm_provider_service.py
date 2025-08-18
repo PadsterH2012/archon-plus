@@ -146,6 +146,14 @@ async def get_llm_client(provider: str | None = None, use_embedding_provider: bo
             )
             logger.info(f"Local embedding server client created successfully with base URL: {base_url or 'http://localhost:8080'}")
 
+        elif provider_name == "tei":
+            # Text Embeddings Inference (TEI) server
+            client = openai.AsyncOpenAI(
+                api_key=api_key or "tei",  # TEI doesn't require authentication
+                base_url=base_url or "http://archon-embeddings:80",
+            )
+            logger.info(f"TEI embedding server client created successfully with base URL: {base_url or 'http://archon-embeddings:80'}")
+
         else:
             raise ValueError(f"Unsupported LLM provider: {provider_name}")
 
@@ -212,6 +220,9 @@ async def get_embedding_model(provider: str | None = None) -> str:
         elif provider_name == "local":
             # Local server default (commonly used model)
             return "all-MiniLM-L6-v2"
+        elif provider_name == "tei":
+            # TEI server default (configurable via EMBEDDING_MODEL_ID)
+            return "sentence-transformers/all-MiniLM-L6-v2"
         else:
             # Fallback to OpenAI's model
             return "text-embedding-3-small"

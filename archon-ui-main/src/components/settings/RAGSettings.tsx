@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Settings, Check, Save, Loader, ChevronDown, ChevronUp, Zap, Database } from 'lucide-react';
+import { Settings, Check, Save, Loader, ChevronDown, ChevronUp, Zap, Database, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { useToast } from '../../contexts/ToastContext';
-import { credentialsService } from '../../services/credentialsService';
+import { credentialsService, ProviderTestResult } from '../../services/credentialsService';
 
 interface RAGSettingsProps {
   ragSettings: {
@@ -23,6 +23,13 @@ interface RAGSettingsProps {
     EMBEDDING_PROVIDER?: string;
     CHAT_BASE_URL?: string;
     EMBEDDING_BASE_URL?: string;
+    // Fallback Provider Configuration
+    EMBEDDING_FALLBACK_PROVIDERS?: string;
+    CHAT_FALLBACK_PROVIDERS?: string;
+    ENABLE_PROVIDER_FALLBACK?: boolean;
+    PROVIDER_HEALTH_CHECK_INTERVAL?: number;
+    PROVIDER_FAILURE_THRESHOLD?: number;
+    PROVIDER_COOLDOWN_PERIOD?: number;
     // Crawling Performance Settings
     CRAWL_BATCH_SIZE?: number;
     CRAWL_MAX_CONCURRENT?: number;
@@ -52,6 +59,113 @@ export const RAGSettings = ({
   const [showStorageSettings, setShowStorageSettings] = useState(false);
   const { showToast } = useToast();
 
+  // Provider validation state
+  const [chatProviderStatus, setChatProviderStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [embeddingProviderStatus, setEmbeddingProviderStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [chatProviderError, setChatProviderError] = useState<string>('');
+  const [embeddingProviderError, setEmbeddingProviderError] = useState<string>('');
+
+  // Provider validation functions
+  const testChatProvider = async () => {
+    const provider = getChatProvider(ragSettings);
+    const baseUrl = ragSettings.CHAT_BASE_URL;
+    const model = ragSettings.MODEL_CHOICE;
+
+    setChatProviderStatus('testing');
+    setChatProviderError('');
+
+    try {
+      const result = await credentialsService.testChatProvider(provider, undefined, baseUrl, model);
+      if (result.success) {
+        setChatProviderStatus('success');
+        showToast('Chat provider connection successful!', 'success');
+      } else {
+        setChatProviderStatus('error');
+        setChatProviderError(result.error || result.message);
+        showToast(`Chat provider test failed: ${result.message}`, 'error');
+      }
+    } catch (error) {
+      setChatProviderStatus('error');
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      setChatProviderError(errorMsg);
+      showToast(`Chat provider test failed: ${errorMsg}`, 'error');
+    }
+  };
+
+  const testEmbeddingProvider = async () => {
+    const provider = getEmbeddingProvider(ragSettings);
+    const baseUrl = ragSettings.EMBEDDING_BASE_URL;
+    const model = ragSettings.EMBEDDING_MODEL;
+
+    setEmbeddingProviderStatus('testing');
+    setEmbeddingProviderError('');
+
+    try {
+      const result = await credentialsService.testEmbeddingProvider(provider, undefined, baseUrl, model);
+      if (result.success) {
+        setEmbeddingProviderStatus('success');
+        showToast('Embedding provider connection successful!', 'success');
+      } else {
+        setEmbeddingProviderStatus('error');
+        setEmbeddingProviderError(result.error || result.message);
+        showToast(`Embedding provider test failed: ${result.message}`, 'error');
+      }
+    } catch (error) {
+      setEmbeddingProviderStatus('error');
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      setEmbeddingProviderError(errorMsg);
+      showToast(`Embedding provider test failed: ${errorMsg}`, 'error');
+    }
+  };
+
+  // Validation status component
+  const ValidationStatus = ({
+    status,
+    error,
+    onTest
+  }: {
+    status: 'idle' | 'testing' | 'success' | 'error';
+    error: string;
+    onTest: () => void;
+  }) => {
+    const getIcon = () => {
+      switch (status) {
+        case 'testing':
+          return <Loader className="w-4 h-4 animate-spin text-blue-500" />;
+        case 'success':
+          return <CheckCircle className="w-4 h-4 text-green-500" />;
+        case 'error':
+          return <XCircle className="w-4 h-4 text-red-500" />;
+        default:
+          return <AlertCircle className="w-4 h-4 text-gray-400" />;
+      }
+    };
+
+    const getTooltip = () => {
+      switch (status) {
+        case 'testing':
+          return 'Testing provider connection...';
+        case 'success':
+          return 'Provider connection successful';
+        case 'error':
+          return `Connection failed: ${error}`;
+        default:
+          return 'Click to test provider connection';
+      }
+    };
+
+    return (
+      <button
+        onClick={onTest}
+        disabled={status === 'testing'}
+        className="ml-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+        title={getTooltip()}
+      >
+        {getIcon()}
+      </button>
+    );
+  };
+
   return (
     <Card accentColor="green" className="overflow-hidden p-8">
         {/* Description */}
@@ -63,39 +177,68 @@ export const RAGSettings = ({
         {/* Split Provider Selection Row */}
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <Select
-              label="Chat Provider"
-              value={ragSettings.CHAT_PROVIDER || ragSettings.LLM_PROVIDER || 'openrouter'}
-              onChange={e => setRagSettings({
-                ...ragSettings,
-                CHAT_PROVIDER: e.target.value
-              })}
-              accentColor="green"
-              options={[
-                { value: 'openai', label: 'OpenAI' },
-                { value: 'google', label: 'Google Gemini' },
-                { value: 'openrouter', label: 'OpenRouter' },
-                { value: 'ollama', label: 'Ollama' },
-              ]}
-            />
+            <div className="flex items-center">
+              <div className="flex-1">
+                <Select
+                  label="Chat Provider"
+                  value={ragSettings.CHAT_PROVIDER || ragSettings.LLM_PROVIDER || 'openrouter'}
+                  onChange={e => {
+                    setRagSettings({
+                      ...ragSettings,
+                      CHAT_PROVIDER: e.target.value
+                    });
+                    // Reset validation status when provider changes
+                    setChatProviderStatus('idle');
+                    setChatProviderError('');
+                  }}
+                  accentColor="green"
+                  options={[
+                    { value: 'openai', label: 'OpenAI' },
+                    { value: 'google', label: 'Google Gemini' },
+                    { value: 'openrouter', label: 'OpenRouter' },
+                    { value: 'ollama', label: 'Ollama' },
+                  ]}
+                />
+              </div>
+              <ValidationStatus
+                status={chatProviderStatus}
+                error={chatProviderError}
+                onTest={testChatProvider}
+              />
+            </div>
           </div>
           <div>
-            <Select
-              label="Embedding Provider"
-              value={ragSettings.EMBEDDING_PROVIDER || ragSettings.LLM_PROVIDER || 'openai'}
-              onChange={e => setRagSettings({
-                ...ragSettings,
-                EMBEDDING_PROVIDER: e.target.value
-              })}
-              accentColor="green"
-              options={[
-                { value: 'openai', label: 'OpenAI' },
-                { value: 'google', label: 'Google Gemini' },
-                { value: 'ollama', label: 'Ollama' },
-                { value: 'huggingface', label: 'Hugging Face' },
-                { value: 'local', label: 'Local Server' },
-              ]}
-            />
+            <div className="flex items-center">
+              <div className="flex-1">
+                <Select
+                  label="Embedding Provider"
+                  value={ragSettings.EMBEDDING_PROVIDER || ragSettings.LLM_PROVIDER || 'openai'}
+                  onChange={e => {
+                    setRagSettings({
+                      ...ragSettings,
+                      EMBEDDING_PROVIDER: e.target.value
+                    });
+                    // Reset validation status when provider changes
+                    setEmbeddingProviderStatus('idle');
+                    setEmbeddingProviderError('');
+                  }}
+                  accentColor="green"
+                  options={[
+                    { value: 'openai', label: 'OpenAI' },
+                    { value: 'google', label: 'Google Gemini' },
+                    { value: 'ollama', label: 'Ollama' },
+                    { value: 'huggingface', label: 'Hugging Face' },
+                    { value: 'tei', label: 'TEI (Text Embeddings Inference)' },
+                    { value: 'local', label: 'Local Server' },
+                  ]}
+                />
+              </div>
+              <ValidationStatus
+                status={embeddingProviderStatus}
+                error={embeddingProviderError}
+                onTest={testEmbeddingProvider}
+              />
+            </div>
           </div>
         </div>
 
@@ -106,7 +249,7 @@ export const RAGSettings = ({
             {getChatProvider(ragSettings) && shouldShowBaseUrl(getChatProvider(ragSettings)) && (
               <Input
                 label={`${getChatProvider(ragSettings)} Chat Base URL`}
-                value={ragSettings.CHAT_BASE_URL || ragSettings.LLM_BASE_URL || getDefaultBaseUrl(getChatProvider(ragSettings))}
+                value={ragSettings.CHAT_BASE_URL || getDefaultBaseUrl(getChatProvider(ragSettings))}
                 onChange={e => setRagSettings({
                   ...ragSettings,
                   CHAT_BASE_URL: e.target.value
@@ -121,7 +264,7 @@ export const RAGSettings = ({
             {getEmbeddingProvider(ragSettings) && shouldShowBaseUrl(getEmbeddingProvider(ragSettings)) && (
               <Input
                 label={`${getEmbeddingProvider(ragSettings)} Embedding Base URL`}
-                value={ragSettings.EMBEDDING_BASE_URL || ragSettings.LLM_BASE_URL || getDefaultBaseUrl(getEmbeddingProvider(ragSettings))}
+                value={ragSettings.EMBEDDING_BASE_URL || getDefaultBaseUrl(getEmbeddingProvider(ragSettings))}
                 onChange={e => setRagSettings({
                   ...ragSettings,
                   EMBEDDING_BASE_URL: e.target.value
@@ -131,6 +274,127 @@ export const RAGSettings = ({
               />
             )}
           </div>
+        </div>
+
+        {/* Fallback Provider Configuration */}
+        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+          <div className="flex items-center gap-2 mb-4">
+            <Zap className="w-5 h-5 text-yellow-500" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Provider Fallback Configuration
+            </h3>
+          </div>
+
+          {/* Enable Fallback Toggle */}
+          <div className="mb-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={ragSettings.ENABLE_PROVIDER_FALLBACK === true}
+                onChange={e => setRagSettings({
+                  ...ragSettings,
+                  ENABLE_PROVIDER_FALLBACK: e.target.checked
+                })}
+                className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 dark:focus:ring-green-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+              />
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-300">
+                Enable automatic provider fallback
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Automatically switch to backup providers when primary provider fails
+            </p>
+          </div>
+
+          {ragSettings.ENABLE_PROVIDER_FALLBACK === true && (
+            <>
+              {/* Fallback Provider Lists */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <Input
+                    label="Embedding Fallback Providers"
+                    value={ragSettings.EMBEDDING_FALLBACK_PROVIDERS || 'openai,ollama,local'}
+                    onChange={e => setRagSettings({
+                      ...ragSettings,
+                      EMBEDDING_FALLBACK_PROVIDERS: e.target.value
+                    })}
+                    placeholder="openai,ollama,local"
+                    accentColor="yellow"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Comma-separated list in priority order
+                  </p>
+                </div>
+                <div>
+                  <Input
+                    label="Chat Fallback Providers"
+                    value={ragSettings.CHAT_FALLBACK_PROVIDERS || 'openai,google,ollama'}
+                    onChange={e => setRagSettings({
+                      ...ragSettings,
+                      CHAT_FALLBACK_PROVIDERS: e.target.value
+                    })}
+                    placeholder="openai,google,ollama"
+                    accentColor="yellow"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Comma-separated list in priority order
+                  </p>
+                </div>
+              </div>
+
+              {/* Advanced Fallback Settings */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Input
+                    label="Failure Threshold"
+                    type="number"
+                    value={ragSettings.PROVIDER_FAILURE_THRESHOLD || 3}
+                    onChange={e => setRagSettings({
+                      ...ragSettings,
+                      PROVIDER_FAILURE_THRESHOLD: parseInt(e.target.value) || 3
+                    })}
+                    placeholder="3"
+                    accentColor="yellow"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Failures before marking unhealthy
+                  </p>
+                </div>
+                <div>
+                  <Input
+                    label="Cooldown Period (seconds)"
+                    type="number"
+                    value={ragSettings.PROVIDER_COOLDOWN_PERIOD || 300}
+                    onChange={e => setRagSettings({
+                      ...ragSettings,
+                      PROVIDER_COOLDOWN_PERIOD: parseInt(e.target.value) || 300
+                    })}
+                    placeholder="300"
+                    accentColor="yellow"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Wait time before retrying failed provider
+                  </p>
+                </div>
+                <div>
+                  <Input
+                    label="Health Check Interval (seconds)"
+                    type="number"
+                    value={ragSettings.PROVIDER_HEALTH_CHECK_INTERVAL || 300}
+                    onChange={e => setRagSettings({
+                      ...ragSettings,
+                      PROVIDER_HEALTH_CHECK_INTERVAL: parseInt(e.target.value) || 300
+                    })}
+                    placeholder="300"
+                    accentColor="yellow"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Interval between health checks
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Save Button Row */}
@@ -534,7 +798,7 @@ function getEmbeddingProvider(ragSettings: any): string {
 }
 
 function shouldShowBaseUrl(provider: string): boolean {
-  return ['ollama', 'openrouter', 'huggingface', 'local'].includes(provider);
+  return ['ollama', 'openrouter', 'huggingface', 'tei', 'local'].includes(provider);
 }
 
 function getDefaultBaseUrl(provider: string): string {
@@ -547,6 +811,8 @@ function getDefaultBaseUrl(provider: string): string {
       return 'https://api-inference.huggingface.co/models';
     case 'local':
       return 'http://localhost:8080';
+    case 'tei':
+      return 'http://archon-embeddings:80';
     default:
       return '';
   }
@@ -586,6 +852,8 @@ function getEmbeddingPlaceholder(provider: string): string {
       return 'Default: sentence-transformers/all-MiniLM-L6-v2';
     case 'local':
       return 'Default: all-MiniLM-L6-v2';
+    case 'tei':
+      return 'Default: sentence-transformers/all-MiniLM-L6-v2';
     default:
       return 'Default: text-embedding-3-small';
   }

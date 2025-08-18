@@ -111,12 +111,18 @@ async def process_chunk_with_context(
 
 
 async def _get_model_choice(provider: str | None = None) -> str:
-    """Get model choice from credential service."""
+    """Get model choice from credential service with OpenAI format correction."""
     from ..credential_service import credential_service
 
     # Get the active provider configuration
     provider_config = await credential_service.get_active_provider("llm")
-    model = provider_config.get("chat_model", "gpt-4.1-nano")
+    model = provider_config.get("chat_model", "gpt-4o-mini")
+
+    # Fix OpenRouter format for direct OpenAI usage
+    # If model has "openai/" prefix, remove it for direct OpenAI API calls
+    if model.startswith("openai/"):
+        model = model.replace("openai/", "")
+        search_logger.debug(f"Removed OpenRouter prefix, using model: {model}")
 
     search_logger.debug(f"Using model from credential service: {model}")
 

@@ -20,6 +20,18 @@ export interface RagSettings {
   LLM_PROVIDER?: string;
   LLM_BASE_URL?: string;
   EMBEDDING_MODEL?: string;
+  // Split Provider Configuration
+  CHAT_PROVIDER?: string;
+  EMBEDDING_PROVIDER?: string;
+  CHAT_BASE_URL?: string;
+  EMBEDDING_BASE_URL?: string;
+  // Fallback Provider Configuration
+  EMBEDDING_FALLBACK_PROVIDERS?: string;
+  CHAT_FALLBACK_PROVIDERS?: string;
+  ENABLE_PROVIDER_FALLBACK?: boolean;
+  PROVIDER_HEALTH_CHECK_INTERVAL?: number;
+  PROVIDER_FAILURE_THRESHOLD?: number;
+  PROVIDER_COOLDOWN_PERIOD?: number;
   // Crawling Performance Settings
   CRAWL_BATCH_SIZE?: number;
   CRAWL_MAX_CONCURRENT?: number;
@@ -51,6 +63,16 @@ export interface CodeExtractionSettings {
   CODE_EXTRACTION_MAX_WORKERS: number;
   CONTEXT_WINDOW_SIZE: number;
   ENABLE_CODE_SUMMARIES: boolean;
+}
+
+export interface ProviderTestResult {
+  success: boolean;
+  provider: string;
+  model?: string;
+  message: string;
+  error?: string;
+  test_response?: string;
+  embedding_dimensions?: number;
 }
 
 import { getApiUrl } from '../config/api';
@@ -128,6 +150,18 @@ class CredentialsService {
       LLM_PROVIDER: 'openai',
       LLM_BASE_URL: '',
       EMBEDDING_MODEL: '',
+      // Split Provider Configuration defaults
+      CHAT_PROVIDER: 'openrouter',
+      EMBEDDING_PROVIDER: 'openai',
+      CHAT_BASE_URL: '',
+      EMBEDDING_BASE_URL: '',
+      // Fallback Provider Configuration defaults
+      EMBEDDING_FALLBACK_PROVIDERS: 'openai,ollama,tei,local',
+      CHAT_FALLBACK_PROVIDERS: 'openai,google,ollama',
+      ENABLE_PROVIDER_FALLBACK: true,
+      PROVIDER_HEALTH_CHECK_INTERVAL: 300,
+      PROVIDER_FAILURE_THRESHOLD: 3,
+      PROVIDER_COOLDOWN_PERIOD: 300,
       // Crawling Performance Settings defaults
       CRAWL_BATCH_SIZE: 50,
       CRAWL_MAX_CONCURRENT: 10,
@@ -150,14 +184,17 @@ class CredentialsService {
     [...ragCredentials, ...apiKeysCredentials].forEach(cred => {
       if (cred.key in settings) {
         // String fields
-        if (['MODEL_CHOICE', 'LLM_PROVIDER', 'LLM_BASE_URL', 'EMBEDDING_MODEL', 'CRAWL_WAIT_STRATEGY'].includes(cred.key)) {
+        if (['MODEL_CHOICE', 'LLM_PROVIDER', 'LLM_BASE_URL', 'EMBEDDING_MODEL', 'CRAWL_WAIT_STRATEGY',
+             'CHAT_PROVIDER', 'EMBEDDING_PROVIDER', 'CHAT_BASE_URL', 'EMBEDDING_BASE_URL',
+             'EMBEDDING_FALLBACK_PROVIDERS', 'CHAT_FALLBACK_PROVIDERS'].includes(cred.key)) {
           (settings as any)[cred.key] = cred.value || '';
-        } 
+        }
         // Number fields
-        else if (['CONTEXTUAL_EMBEDDINGS_MAX_WORKERS', 'CRAWL_BATCH_SIZE', 'CRAWL_MAX_CONCURRENT', 
-                  'CRAWL_PAGE_TIMEOUT', 'DOCUMENT_STORAGE_BATCH_SIZE', 'EMBEDDING_BATCH_SIZE', 
+        else if (['CONTEXTUAL_EMBEDDINGS_MAX_WORKERS', 'CRAWL_BATCH_SIZE', 'CRAWL_MAX_CONCURRENT',
+                  'CRAWL_PAGE_TIMEOUT', 'DOCUMENT_STORAGE_BATCH_SIZE', 'EMBEDDING_BATCH_SIZE',
                   'DELETE_BATCH_SIZE', 'MEMORY_THRESHOLD_PERCENT', 'DISPATCHER_CHECK_INTERVAL',
-                  'CODE_EXTRACTION_BATCH_SIZE', 'CODE_SUMMARY_MAX_WORKERS'].includes(cred.key)) {
+                  'CODE_EXTRACTION_BATCH_SIZE', 'CODE_SUMMARY_MAX_WORKERS',
+                  'PROVIDER_HEALTH_CHECK_INTERVAL', 'PROVIDER_FAILURE_THRESHOLD', 'PROVIDER_COOLDOWN_PERIOD'].includes(cred.key)) {
           (settings as any)[cred.key] = parseInt(cred.value || '0', 10) || (settings as any)[cred.key];
         }
         // Float fields
@@ -276,7 +313,7 @@ class CredentialsService {
 
   async updateCodeExtractionSettings(settings: CodeExtractionSettings): Promise<void> {
     const promises = [];
-    
+
     // Update all code extraction settings
     for (const [key, value] of Object.entries(settings)) {
       promises.push(
@@ -288,8 +325,48 @@ class CredentialsService {
         })
       );
     }
-    
+
     await Promise.all(promises);
+  }
+
+  async testChatProvider(provider: string, apiKey?: string, baseUrl?: string, model?: string): Promise<ProviderTestResult> {
+    const response = await fetch(`${this.baseUrl}/api/test-chat-provider`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        provider,
+        api_key: apiKey,
+        base_url: baseUrl,
+        model,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to test chat provider');
+    }
+    return response.json();
+  }
+
+  async testEmbeddingProvider(provider: string, apiKey?: string, baseUrl?: string, model?: string): Promise<ProviderTestResult> {
+    const response = await fetch(`${this.baseUrl}/api/test-embedding-provider`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        provider,
+        api_key: apiKey,
+        base_url: baseUrl,
+        model,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to test embedding provider');
+    }
+    return response.json();
   }
 }
 

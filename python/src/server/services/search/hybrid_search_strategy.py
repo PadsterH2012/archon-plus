@@ -16,7 +16,7 @@ from typing import Any
 from supabase import Client
 
 from ...config.logfire_config import get_logger, safe_span
-from ..embeddings.embedding_service import create_embedding
+from ..embeddings.embedding_service import create_embedding_with_fallback
 from .keyword_extractor import build_search_terms, extract_keywords
 
 logger = get_logger(__name__)
@@ -219,8 +219,9 @@ class HybridSearchStrategy:
         """
         with safe_span("hybrid_search_code_examples") as span:
             try:
-                # Create query embedding (no enhancement needed)
-                query_embedding = await create_embedding(query)
+                # Create query embedding with fallback support (no enhancement needed)
+                query_embedding, provider_used = await create_embedding_with_fallback(query)
+                logger.info(f"Code example query embedding created using provider: {provider_used}")
 
                 if not query_embedding:
                     logger.error("Failed to create embedding for code example query")

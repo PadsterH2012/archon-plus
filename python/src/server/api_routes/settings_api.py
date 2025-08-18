@@ -15,7 +15,8 @@ from pydantic import BaseModel
 
 # Import logging
 from ..config.logfire_config import logfire
-from ..services.credential_service import credential_service, initialize_credentials
+from ..services.credential_service import credential_service
+from ..services.embeddings import get_embedding_provider_health
 from ..utils import get_supabase_client
 
 router = APIRouter(prefix="/api", tags=["settings"])
@@ -266,7 +267,7 @@ async def initialize_credentials_endpoint():
     """Reload credentials from database."""
     try:
         logfire.info("Reloading credentials from database")
-        await initialize_credentials()
+        await credential_service.initialize_credentials()
 
         logfire.info("Credentials reloaded successfully")
 
@@ -339,3 +340,194 @@ async def settings_health():
     result = {"status": "healthy", "service": "settings"}
 
     return result
+
+
+@router.get("/provider-health")
+async def get_provider_health():
+    """
+    Get health status of all embedding providers.
+
+    Returns provider health information including failure counts,
+    last failure times, and whether providers are currently healthy.
+    """
+    try:
+        logfire.info("Getting provider health status")
+        health_status = await get_embedding_provider_health()
+
+        # Add summary statistics
+        total_providers = len(health_status)
+        healthy_providers = sum(1 for status in health_status.values() if status["is_healthy"])
+        unhealthy_providers = total_providers - healthy_providers
+
+        overall_health = "healthy" if unhealthy_providers == 0 else "degraded" if healthy_providers > 0 else "critical"
+
+        logfire.info(
+            f"Provider health retrieved | total={total_providers} | healthy={healthy_providers} | unhealthy={unhealthy_providers} | overall={overall_health}"
+        )
+
+        return {
+            "providers": health_status,
+            "summary": {
+                "total_providers": total_providers,
+                "healthy_providers": healthy_providers,
+                "unhealthy_providers": unhealthy_providers,
+                "overall_health": overall_health
+            }
+        }
+    except Exception as e:
+        logfire.error(f"Error getting provider health | error={str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get provider health: {str(e)}")
+
+
+@router.post("/provider-health/reset")
+async def reset_provider_health():
+    """
+    Reset health status for all providers.
+
+    This clears failure counts and marks all providers as healthy.
+    Useful for testing or after resolving provider issues.
+    """
+    try:
+        logfire.info("Resetting provider health status")
+        from ..services.embeddings.embedding_fallback_service import embedding_fallback_service
+
+        # Reset all provider health
+        provider_count = len(embedding_fallback_service.provider_health)
+        embedding_fallback_service.provider_health.clear()
+
+        logfire.info(f"Provider health reset successfully | providers_reset={provider_count}")
+
+        return {"success": True, "message": f"Provider health status reset for {provider_count} providers"}
+    except Exception as e:
+        logfire.error(f"Error resetting provider health | error={str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to reset provider health: {str(e)}")
+
+
+@router.post("/test-chat-provider")
+async def test_chat_provider(request: dict[str, Any]):
+    """
+    Test a chat provider connection and validate it's working.
+
+    Args:
+        request: Dict containing provider, api_key, base_url, model
+
+    Returns:
+        Dict with success status and details
+    """
+    try:
+        provider = request.get("provider")
+        api_key = request.get("api_key")
+        base_url = request.get("base_url")
+        model = request.get("model", "gpt-4o-mini")
+
+        if not provider:
+            raise HTTPException(status_code=400, detail="Provider is required")
+
+        logfire.info(f"Testing chat provider | provider={provider} | model={model}")
+
+        # Import here to avoid circular imports
+        from ..services.llm_provider_service import get_llm_client
+
+        # Test the provider with a simple chat completion
+        async with get_llm_client(provider=provider) as client:
+            # Override client configuration if custom values provided
+            if api_key:
+                client.api_key = api_key
+            if base_url:
+                client.base_url = base_url
+
+            response = await client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": "Hello, this is a connection test. Please respond with 'OK'."}],
+                max_tokens=10,
+                temperature=0
+            )
+
+            if response.choices and len(response.choices) > 0:
+                content = response.choices[0].message.content
+                logfire.info(f"Chat provider test successful | provider={provider} | response_length={len(content) if content else 0}")
+
+                return {
+                    "success": True,
+                    "provider": provider,
+                    "model": model,
+                    "message": "Provider connection successful",
+                    "test_response": content[:50] + "..." if content and len(content) > 50 else content
+                }
+            else:
+                raise Exception("No response received from provider")
+
+    except Exception as e:
+        error_msg = str(e)
+        logfire.error(f"Chat provider test failed | provider={provider} | error={error_msg}")
+
+        return {
+            "success": False,
+            "provider": provider,
+            "error": error_msg,
+            "message": f"Provider connection failed: {error_msg}"
+        }
+
+
+@router.post("/test-embedding-provider")
+async def test_embedding_provider(request: dict[str, Any]):
+    """
+    Test an embedding provider connection and validate it's working.
+
+    Args:
+        request: Dict containing provider, api_key, base_url, model
+
+    Returns:
+        Dict with success status and details
+    """
+    try:
+        provider = request.get("provider")
+        api_key = request.get("api_key")
+        base_url = request.get("base_url")
+        model = request.get("model", "text-embedding-3-small")
+
+        if not provider:
+            raise HTTPException(status_code=400, detail="Provider is required")
+
+        logfire.info(f"Testing embedding provider | provider={provider} | model={model}")
+
+        # Import here to avoid circular imports
+        from ..services.llm_provider_service import get_llm_client
+
+        # Test the provider with a simple embedding
+        async with get_llm_client(provider=provider, use_embedding_provider=True) as client:
+            # Override client configuration if custom values provided
+            if api_key:
+                client.api_key = api_key
+            if base_url:
+                client.base_url = base_url
+
+            response = await client.embeddings.create(
+                model=model,
+                input=["This is a test embedding to validate the provider connection."]
+            )
+
+            if response.data and len(response.data) > 0 and response.data[0].embedding:
+                embedding_length = len(response.data[0].embedding)
+                logfire.info(f"Embedding provider test successful | provider={provider} | embedding_length={embedding_length}")
+
+                return {
+                    "success": True,
+                    "provider": provider,
+                    "model": model,
+                    "message": "Provider connection successful",
+                    "embedding_dimensions": embedding_length
+                }
+            else:
+                raise Exception("No embedding received from provider")
+
+    except Exception as e:
+        error_msg = str(e)
+        logfire.error(f"Embedding provider test failed | provider={provider} | error={error_msg}")
+
+        return {
+            "success": False,
+            "provider": provider,
+            "error": error_msg,
+            "message": f"Provider connection failed: {error_msg}"
+        }

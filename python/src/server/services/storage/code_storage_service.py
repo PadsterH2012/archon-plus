@@ -21,7 +21,7 @@ from ..embeddings.embedding_service import create_embeddings_batch
 
 
 def _get_model_choice() -> str:
-    """Get MODEL_CHOICE with direct fallback."""
+    """Get MODEL_CHOICE with direct fallback and OpenAI format correction."""
     try:
         # Direct cache/env fallback
         from ..credential_service import credential_service
@@ -29,12 +29,19 @@ def _get_model_choice() -> str:
         if credential_service._cache_initialized and "MODEL_CHOICE" in credential_service._cache:
             model = credential_service._cache["MODEL_CHOICE"]
         else:
-            model = os.getenv("MODEL_CHOICE", "gpt-4.1-nano")
+            model = os.getenv("MODEL_CHOICE", "gpt-4o-mini")
+
+        # Fix OpenRouter format for direct OpenAI usage
+        # If model has "openai/" prefix, remove it for direct OpenAI API calls
+        if model.startswith("openai/"):
+            model = model.replace("openai/", "")
+            search_logger.debug(f"Removed OpenRouter prefix, using model: {model}")
+
         search_logger.debug(f"Using model choice: {model}")
         return model
     except Exception as e:
         search_logger.warning(f"Error getting model choice: {e}, using default")
-        return "gpt-4.1-nano"
+        return "gpt-4o-mini"
 
 
 def _get_max_workers() -> int:

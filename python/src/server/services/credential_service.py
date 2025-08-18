@@ -402,7 +402,7 @@ class CredentialService:
             service_type: Either 'llm'/'chat' or 'embedding'
 
         Returns:
-            Dict with provider, api_key, base_url, and model for the service type
+            Dict with provider, api_key, base_url, model, and fallback_providers for the service type
         """
         try:
             # Get RAG strategy settings (where UI saves provider selection)
@@ -428,11 +428,15 @@ class CredentialService:
             # Get service-specific base URL
             base_url = self._get_provider_base_url(provider, rag_settings, base_url_key)
 
+            # Get fallback providers for this service type
+            fallback_providers = await self._get_fallback_providers(service_type, rag_settings)
+
             return {
                 "provider": provider,
                 "api_key": api_key,
                 "base_url": base_url,
                 "model": model,
+                "fallback_providers": fallback_providers,
                 # Legacy fields for backward compatibility
                 "chat_model": rag_settings.get("MODEL_CHOICE", ""),
                 "embedding_model": rag_settings.get("EMBEDDING_MODEL", ""),
@@ -460,6 +464,7 @@ class CredentialService:
             "huggingface": "HUGGINGFACE_API_KEY",
             "local": "LOCAL_EMBEDDING_API_KEY",
             "ollama": None,  # No API key needed
+            "tei": None,  # No API key needed
         }
 
         key_name = key_mapping.get(provider)
@@ -467,7 +472,7 @@ class CredentialService:
             return await self.get_credential(key_name)
 
         # Return provider name for providers that don't need API keys
-        if provider in ["ollama", "local"]:
+        if provider in ["ollama", "local", "tei"]:
             return provider
         return None
 
@@ -485,12 +490,6 @@ class CredentialService:
         if custom_url:
             return custom_url
 
-        # Fallback to LLM_BASE_URL for backward compatibility
-        if url_key != "LLM_BASE_URL":
-            legacy_url = rag_settings.get("LLM_BASE_URL")
-            if legacy_url:
-                return legacy_url
-
         # Provider-specific defaults
         if provider == "ollama":
             return "http://localhost:11434/v1"
@@ -502,8 +501,122 @@ class CredentialService:
             return "https://api-inference.huggingface.co/models"
         elif provider == "local":
             return "http://localhost:8080"
+        elif provider == "tei":
+            return "http://archon-embeddings:80"
+        elif provider == "openai":
+            # OpenAI should never use custom base URLs - always use default
+            return None
 
-        return None  # Use default for OpenAI
+        # Fallback to LLM_BASE_URL for backward compatibility (only for providers that support custom URLs)
+        if url_key != "LLM_BASE_URL" and provider in ["ollama", "openrouter", "huggingface", "local", "tei"]:
+            legacy_url = rag_settings.get("LLM_BASE_URL")
+            if legacy_url:
+                return legacy_url
+
+        return None  # Use default for providers without custom base URLs
+
+    async def _get_fallback_providers(self, service_type: str, rag_settings: dict) -> list[dict[str, Any]]:
+        """
+        Get fallback provider configuration for the specified service type.
+
+        Args:
+            service_type: Either 'llm'/'chat' or 'embedding'
+            rag_settings: RAG configuration settings
+
+        Returns:
+            List of fallback provider configurations in priority order
+        """
+        fallback_providers = []
+
+        if service_type == "embedding":
+            # Get configured fallback providers for embeddings
+            fallback_config = rag_settings.get("EMBEDDING_FALLBACK_PROVIDERS", "")
+
+            # Default fallback chain for embeddings: openai -> ollama -> tei -> local
+            default_fallbacks = ["openai", "ollama", "tei", "local"]
+
+            if fallback_config:
+                # Parse configured fallbacks (comma-separated)
+                configured_fallbacks = [p.strip() for p in fallback_config.split(",") if p.strip()]
+            else:
+                configured_fallbacks = default_fallbacks
+
+            # Build fallback provider configurations
+            for provider_name in configured_fallbacks:
+                try:
+                    api_key = await self._get_provider_api_key(provider_name)
+                    base_url = self._get_provider_base_url(provider_name, rag_settings, "EMBEDDING_BASE_URL")
+
+                    fallback_providers.append({
+                        "provider": provider_name,
+                        "api_key": api_key,
+                        "base_url": base_url,
+                        "model": await self._get_fallback_model(provider_name, "embedding", rag_settings)
+                    })
+                except Exception as e:
+                    logger.warning(f"Failed to configure fallback provider {provider_name}: {e}")
+                    continue
+
+        else:  # llm/chat
+            # Get configured fallback providers for chat
+            fallback_config = rag_settings.get("CHAT_FALLBACK_PROVIDERS", "")
+
+            # Default fallback chain for chat: openai -> google -> ollama
+            default_fallbacks = ["openai", "google", "ollama"]
+
+            if fallback_config:
+                configured_fallbacks = [p.strip() for p in fallback_config.split(",") if p.strip()]
+            else:
+                configured_fallbacks = default_fallbacks
+
+            # Build fallback provider configurations
+            for provider_name in configured_fallbacks:
+                try:
+                    api_key = await self._get_provider_api_key(provider_name)
+                    base_url = self._get_provider_base_url(provider_name, rag_settings, "CHAT_BASE_URL")
+
+                    fallback_providers.append({
+                        "provider": provider_name,
+                        "api_key": api_key,
+                        "base_url": base_url,
+                        "model": await self._get_fallback_model(provider_name, "chat", rag_settings)
+                    })
+                except Exception as e:
+                    logger.warning(f"Failed to configure fallback provider {provider_name}: {e}")
+                    continue
+
+        return fallback_providers
+
+    async def _get_fallback_model(self, provider: str, service_type: str, rag_settings: dict) -> str:
+        """Get appropriate model for fallback provider."""
+        if service_type == "embedding":
+            # Use provider-specific embedding defaults
+            if provider == "openai":
+                return "text-embedding-3-small"
+            elif provider == "ollama":
+                return "nomic-embed-text"
+            elif provider == "google":
+                return "text-embedding-004"
+            elif provider == "huggingface":
+                return "sentence-transformers/all-MiniLM-L6-v2"
+            elif provider == "local":
+                return "all-MiniLM-L6-v2"
+            elif provider == "tei":
+                return "sentence-transformers/all-MiniLM-L6-v2"
+            else:
+                return "text-embedding-3-small"
+        else:  # chat
+            # Use provider-specific chat defaults
+            if provider == "openai":
+                return "gpt-4o-mini"
+            elif provider == "google":
+                return "gemini-1.5-flash"
+            elif provider == "openrouter":
+                return "anthropic/claude-3.5-sonnet"
+            elif provider == "ollama":
+                return "llama3.2:3b"
+            else:
+                return "gpt-4o-mini"
 
     async def set_active_provider(self, provider: str, service_type: str = "llm") -> bool:
         """Set the active provider for a specific service type."""

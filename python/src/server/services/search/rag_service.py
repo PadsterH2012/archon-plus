@@ -17,7 +17,7 @@ from typing import Any
 
 from ...config.logfire_config import get_logger, safe_span
 from ...utils import get_supabase_client
-from ..embeddings.embedding_service import create_embedding
+from ..embeddings.embedding_service import create_embedding_with_fallback
 from .agentic_rag_strategy import AgenticRAGStrategy
 
 # Import all strategies
@@ -112,8 +112,9 @@ class RAGService:
             hybrid_enabled=use_hybrid_search,
         ) as span:
             try:
-                # Create embedding for the query
-                query_embedding = await create_embedding(query)
+                # Create embedding for the query with fallback support
+                query_embedding, provider_used = await create_embedding_with_fallback(query)
+                logger.info(f"Query embedding created using provider: {provider_used}")
 
                 if not query_embedding:
                     logger.error("Failed to create embedding for query")

@@ -1,0 +1,251 @@
+{
+  "version": "2",
+  "templates": [
+    {
+      "type": 3,
+      "title": "Archon with SaaS Supabase",
+      "description": "Deploy Archon AI coding assistant with external Supabase (supabase.com). Includes all core services: server, MCP, agents, and web UI.",
+      "note": "Requires a Supabase project at supabase.com. Get your SUPABASE_URL and SUPABASE_SERVICE_KEY from your project settings.",
+      "categories": ["AI", "Development", "Productivity"],
+      "platform": "linux",
+      "logo": "https://raw.githubusercontent.com/PadsterH2012/Archon/main/archon-ui-main/public/archon-logo.png",
+      "repository": {
+        "url": "https://github.com/PadsterH2012/Archon",
+        "stackfile": "portainer-templates/archon-saas-supabase.yml"
+      },
+      "env": [
+        {
+          "name": "SUPABASE_URL",
+          "label": "Supabase URL",
+          "description": "Your Supabase project URL (e.g., https://your-project.supabase.co)",
+          "default": ""
+        },
+        {
+          "name": "SUPABASE_SERVICE_KEY",
+          "label": "Supabase Service Key",
+          "description": "Your Supabase service role secret key from project settings",
+          "default": ""
+        },
+        {
+          "name": "HOST",
+          "label": "Host Domain",
+          "description": "Your domain name or IP address (default: localhost)",
+          "default": "localhost"
+        },
+        {
+          "name": "ARCHON_SERVER_PORT",
+          "label": "Server Port",
+          "description": "Port for the main API server",
+          "default": "8181"
+        },
+        {
+          "name": "ARCHON_MCP_PORT",
+          "label": "MCP Port",
+          "description": "Port for the Model Context Protocol server",
+          "default": "8051"
+        },
+        {
+          "name": "ARCHON_AGENTS_PORT",
+          "label": "Agents Port",
+          "description": "Port for the AI agents service",
+          "default": "8052"
+        },
+        {
+          "name": "ARCHON_UI_PORT",
+          "label": "UI Port",
+          "description": "Port for the web interface",
+          "default": "3737"
+        },
+        {
+          "name": "LOG_LEVEL",
+          "label": "Log Level",
+          "description": "Application log level",
+          "default": "INFO",
+          "select": [
+            {
+              "text": "DEBUG",
+              "value": "DEBUG"
+            },
+            {
+              "text": "INFO",
+              "value": "INFO"
+            },
+            {
+              "text": "WARNING",
+              "value": "WARNING"
+            },
+            {
+              "text": "ERROR",
+              "value": "ERROR"
+            }
+          ]
+        },
+        {
+          "name": "LOGFIRE_TOKEN",
+          "label": "Logfire Token (Optional)",
+          "description": "Logfire token for enhanced logging and monitoring",
+          "default": ""
+        },
+        {
+          "name": "ARCHON_EMBEDDINGS_PORT",
+          "label": "TEI Embeddings Port",
+          "description": "Port for the Text Embeddings Inference server",
+          "default": "8080"
+        },
+        {
+          "name": "EMBEDDING_MODEL_ID",
+          "label": "TEI Model ID",
+          "description": "Hugging Face model ID for local embeddings",
+          "default": "sentence-transformers/all-MiniLM-L6-v2"
+        },
+        {
+          "name": "TEI_MEMORY_LIMIT",
+          "label": "TEI Memory Limit",
+          "description": "Memory limit for TEI container",
+          "default": "2G"
+        },
+        {
+          "name": "TEI_CPU_LIMIT",
+          "label": "TEI CPU Limit",
+          "description": "CPU limit for TEI container",
+          "default": "2"
+        }
+      ]
+    },
+    {
+      "type": 3,
+      "title": "Archon Self-Hosted (Full Stack)",
+      "description": "Deploy Archon with a complete self-hosted Supabase stack. Includes PostgreSQL, Auth, REST API, Realtime, and all Archon services. Perfect for complete data privacy.",
+      "note": "This is a complete self-contained deployment. No external dependencies required. Includes PostgreSQL with pgvector extension.",
+      "categories": ["AI", "Development", "Productivity", "Self-Hosted"],
+      "platform": "linux",
+      "logo": "https://raw.githubusercontent.com/PadsterH2012/Archon/main/archon-ui-main/public/archon-logo.png",
+      "repository": {
+        "url": "https://github.com/PadsterH2012/Archon",
+        "stackfile": "portainer-templates/archon-self-hosted.yml"
+      },
+      "env": [
+        {
+          "name": "POSTGRES_PASSWORD",
+          "label": "PostgreSQL Password",
+          "description": "Secure password for PostgreSQL database",
+          "default": ""
+        },
+        {
+          "name": "JWT_SECRET",
+          "label": "JWT Secret",
+          "description": "Secret key for JWT tokens (minimum 32 characters)",
+          "default": "your-super-secret-jwt-token-with-at-least-32-characters-long"
+        },
+        {
+          "name": "SERVICE_ROLE_KEY",
+          "label": "Service Role Key",
+          "description": "JWT token for service role access",
+          "default": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU"
+        },
+        {
+          "name": "POSTGRES_DB",
+          "label": "Database Name",
+          "description": "PostgreSQL database name",
+          "default": "archon"
+        },
+        {
+          "name": "POSTGRES_USER",
+          "label": "Database User",
+          "description": "PostgreSQL username",
+          "default": "postgres"
+        },
+        {
+          "name": "HOST",
+          "label": "Host Domain",
+          "description": "Your domain name or IP address",
+          "default": "localhost"
+        },
+        {
+          "name": "ARCHON_SERVER_PORT",
+          "label": "Server Port",
+          "description": "Port for the main API server",
+          "default": "8181"
+        },
+        {
+          "name": "ARCHON_MCP_PORT",
+          "label": "MCP Port",
+          "description": "Port for the Model Context Protocol server",
+          "default": "8051"
+        },
+        {
+          "name": "ARCHON_AGENTS_PORT",
+          "label": "Agents Port",
+          "description": "Port for the AI agents service",
+          "default": "8052"
+        },
+        {
+          "name": "ARCHON_UI_PORT",
+          "label": "UI Port",
+          "description": "Port for the web interface",
+          "default": "3737"
+        },
+        {
+          "name": "API_EXTERNAL_URL",
+          "label": "External API URL",
+          "description": "External URL for API access",
+          "default": "http://localhost:8000"
+        },
+        {
+          "name": "SITE_URL",
+          "label": "Site URL",
+          "description": "External URL for the web interface",
+          "default": "http://localhost:3737"
+        },
+        {
+          "name": "LOG_LEVEL",
+          "label": "Log Level",
+          "description": "Application log level",
+          "default": "INFO",
+          "select": [
+            {
+              "text": "DEBUG",
+              "value": "DEBUG"
+            },
+            {
+              "text": "INFO",
+              "value": "INFO"
+            },
+            {
+              "text": "WARNING",
+              "value": "WARNING"
+            },
+            {
+              "text": "ERROR",
+              "value": "ERROR"
+            }
+          ]
+        },
+        {
+          "name": "ARCHON_EMBEDDINGS_PORT",
+          "label": "TEI Embeddings Port",
+          "description": "Port for the Text Embeddings Inference server",
+          "default": "8080"
+        },
+        {
+          "name": "EMBEDDING_MODEL_ID",
+          "label": "TEI Model ID",
+          "description": "Hugging Face model ID for local embeddings",
+          "default": "sentence-transformers/all-MiniLM-L6-v2"
+        },
+        {
+          "name": "TEI_MEMORY_LIMIT",
+          "label": "TEI Memory Limit",
+          "description": "Memory limit for TEI container",
+          "default": "2G"
+        },
+        {
+          "name": "TEI_CPU_LIMIT",
+          "label": "TEI CPU Limit",
+          "description": "CPU limit for TEI container",
+          "default": "2"
+        }
+      ]
+    }
+  ]
+}

@@ -114,6 +114,17 @@ INSERT INTO archon_settings (key, value, is_encrypted, category, description) VA
 ('EMBEDDING_BASE_URL', NULL, false, 'rag_strategy', 'Custom base URL for embedding provider (overrides provider defaults)')
 ON CONFLICT (key) DO NOTHING;
 
+-- Fallback Provider Configuration (New in v2.1)
+-- Enables automatic failover when primary providers fail
+INSERT INTO archon_settings (key, value, is_encrypted, category, description) VALUES
+('EMBEDDING_FALLBACK_PROVIDERS', 'openai,ollama,tei,local', false, 'rag_strategy', 'Comma-separated list of fallback embedding providers in priority order'),
+('CHAT_FALLBACK_PROVIDERS', 'openai,google,ollama', false, 'rag_strategy', 'Comma-separated list of fallback chat providers in priority order'),
+('ENABLE_PROVIDER_FALLBACK', 'true', false, 'rag_strategy', 'Enable automatic fallback to alternative providers when primary fails'),
+('PROVIDER_HEALTH_CHECK_INTERVAL', '300', false, 'rag_strategy', 'Interval in seconds between provider health checks'),
+('PROVIDER_FAILURE_THRESHOLD', '3', false, 'rag_strategy', 'Number of consecutive failures before marking provider as unhealthy'),
+('PROVIDER_COOLDOWN_PERIOD', '300', false, 'rag_strategy', 'Cooldown period in seconds before retrying unhealthy provider')
+ON CONFLICT (key) DO NOTHING;
+
 -- Code Extraction Settings Migration
 -- Adds configurable settings for the code extraction service
 

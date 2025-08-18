@@ -17,7 +17,7 @@ from typing import Any
 from supabase import Client
 
 from ...config.logfire_config import get_logger, safe_span
-from ..embeddings.embedding_service import create_embedding
+from ..embeddings.embedding_service import create_embedding_with_fallback
 
 logger = get_logger(__name__)
 
@@ -88,8 +88,9 @@ class AgenticRAGStrategy:
             "agentic_code_search", query_length=len(query), match_count=match_count
         ) as span:
             try:
-                # Create embedding for the query (no enhancement)
-                query_embedding = await create_embedding(query)
+                # Create embedding for the query with fallback support (no enhancement)
+                query_embedding, provider_used = await create_embedding_with_fallback(query)
+                logger.info(f"Agentic code search embedding created using provider: {provider_used}")
 
                 if not query_embedding:
                     logger.error("Failed to create embedding for code example query")

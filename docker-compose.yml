@@ -121,6 +121,37 @@ services:
     depends_on:
       - archon-server
 
+  # Text Embeddings Inference (TEI) - Local Embedding Server
+  archon-embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
+    container_name: Archon-Embeddings
+    ports:
+      - "${ARCHON_EMBEDDINGS_PORT:-8080}:80"
+    environment:
+      - MODEL_ID=${EMBEDDING_MODEL_ID:-sentence-transformers/all-MiniLM-L6-v2}
+      - MAX_CONCURRENT_REQUESTS=${TEI_MAX_CONCURRENT:-512}
+      - MAX_BATCH_TOKENS=${TEI_MAX_BATCH_TOKENS:-16384}
+      - MAX_BATCH_REQUESTS=${TEI_MAX_BATCH_REQUESTS:-32}
+      - HOSTNAME=0.0.0.0
+      - PORT=80
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: ${TEI_MEMORY_LIMIT:-2G}
+          cpus: ${TEI_CPU_LIMIT:-2}
+        reservations:
+          memory: ${TEI_MEMORY_RESERVATION:-1G}
+          cpus: ${TEI_CPU_RESERVATION:-1}
+    restart: unless-stopped
+
 networks:
   app-network:
     driver: bridge
