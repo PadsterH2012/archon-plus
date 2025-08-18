@@ -17,6 +17,7 @@ from .mcp_api import router as mcp_router
 from .projects_api import router as projects_router
 from .settings_api import router as settings_router
 from .tests_api import router as tests_router
+from .workflow_api import router as workflow_router
 
 __all__ = [
     "settings_router",
@@ -26,4 +27,5 @@ __all__ = [
     "tests_router",
     "agent_chat_router",
     "internal_router",
+    "workflow_router",
 ]

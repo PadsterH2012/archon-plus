@@ -4,6 +4,7 @@ import { KnowledgeBasePage } from './pages/KnowledgeBasePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { MCPPage } from './pages/MCPPage';
 import { OnboardingPage } from './pages/OnboardingPage';
+import { WorkflowPage } from './pages/WorkflowPage';
 import { MainLayout } from './components/layouts/MainLayout';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
@@ -15,13 +16,15 @@ import { serverHealthService } from './services/serverHealthService';
 
 const AppRoutes = () => {
   const { projectsEnabled } = useSettings();
-  
+
   return (
     <Routes>
       <Route path="/" element={<KnowledgeBasePage />} />
       <Route path="/onboarding" element={<OnboardingPage />} />
       <Route path="/settings" element={<SettingsPage />} />
       <Route path="/mcp" element={<MCPPage />} />
+      <Route path="/workflows" element={<WorkflowPage />} />
+      <Route path="/workflows/*" element={<WorkflowPage />} />
       {projectsEnabled ? (
         <Route path="/projects" element={<ProjectPage />} />
       ) : (

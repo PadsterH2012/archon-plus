@@ -116,3 +116,6 @@ export const EdgeLitEffect: React.FC<{
   };
   return <div className={`absolute top-0 left-0 w-full h-[2px] ${colorMap[color]} ${className}`}></div>;
 };
+
+// Export LoadingSpinner as an alias for ArchonLoadingSpinner for compatibility
+export const LoadingSpinner = ArchonLoadingSpinner;
