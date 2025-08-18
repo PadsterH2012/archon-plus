@@ -188,6 +188,93 @@ async def create_workflow(request: CreateWorkflowTemplateRequest):
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
+@router.get("/categories")
+async def get_workflow_categories():
+    """
+    Get all available workflow categories.
+
+    Returns a list of all categories used by workflow templates,
+    useful for filtering and organization.
+    """
+    try:
+        logfire.info("Getting workflow categories")
+
+        # Use repository to get all workflows and extract categories
+        repository = WorkflowRepository(get_supabase_client())
+        success, result = repository.list_workflow_templates(limit=1000, offset=0)
+
+        if not success:
+            logfire.error(f"Failed to get workflows for categories | error={result.get('error')}")
+            raise HTTPException(status_code=500, detail=result)
+
+        workflows = result["templates"]
+
+        # Extract unique categories
+        categories = set()
+        for workflow in workflows:
+            if workflow.get("category"):
+                categories.add(workflow["category"])
+
+        categories_list = sorted(list(categories))
+
+        logfire.info(f"Found {len(categories_list)} workflow categories")
+
+        return {
+            "categories": categories_list,
+            "total_count": len(categories_list)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logfire.error(f"Error getting workflow categories | error={str(e)}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+@router.get("/tools")
+async def get_available_mcp_tools():
+    """
+    Get all available MCP tools for workflow integration.
+
+    Returns comprehensive information about all MCP tools that can be
+    used in workflow steps, including their parameters and examples.
+    """
+    try:
+        logfire.info("Getting available MCP tools")
+
+        tools = []
+        for tool_name, tool_info in MCPToolRegistry.AVAILABLE_TOOLS.items():
+            tools.append({
+                "name": tool_name,
+                "category": tool_info.get("category"),
+                "description": tool_info.get("description"),
+                "parameters": tool_info.get("parameters", {}),
+                "returns": tool_info.get("returns"),
+                "example": tool_info.get("example", {})
+            })
+
+        # Group by category
+        tools_by_category = {}
+        for tool in tools:
+            category = tool["category"] or "unknown"
+            if category not in tools_by_category:
+                tools_by_category[category] = []
+            tools_by_category[category].append(tool)
+
+        logfire.info(f"Retrieved {len(tools)} MCP tools across {len(tools_by_category)} categories")
+
+        return {
+            "tools": tools,
+            "tools_by_category": tools_by_category,
+            "total_count": len(tools),
+            "categories": list(tools_by_category.keys())
+        }
+
+    except Exception as e:
+        logfire.error(f"Error getting MCP tools | error={str(e)}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
 @router.get("/{workflow_id}", response_model=WorkflowDetailResponse)
 async def get_workflow(workflow_id: str):
     """
@@ -464,47 +551,7 @@ async def search_workflows(request: WorkflowSearchRequest):
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
-@router.get("/categories")
-async def get_workflow_categories():
-    """
-    Get all available workflow categories.
-    
-    Returns a list of all categories used by workflow templates,
-    useful for filtering and organization.
-    """
-    try:
-        logfire.info("Getting workflow categories")
-        
-        # Use repository to get all workflows and extract categories
-        repository = WorkflowRepository(get_supabase_client())
-        success, result = repository.list_workflow_templates(limit=1000, offset=0)
-        
-        if not success:
-            logfire.error(f"Failed to get workflows for categories | error={result.get('error')}")
-            raise HTTPException(status_code=500, detail=result)
-        
-        workflows = result["templates"]
-        
-        # Extract unique categories
-        categories = set()
-        for workflow in workflows:
-            if workflow.get("category"):
-                categories.add(workflow["category"])
-        
-        categories_list = sorted(list(categories))
-        
-        logfire.info(f"Found {len(categories_list)} workflow categories")
-        
-        return {
-            "categories": categories_list,
-            "total_count": len(categories_list)
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logfire.error(f"Error getting workflow categories | error={str(e)}")
-        raise HTTPException(status_code=500, detail={"error": str(e)})
+
 
 
 # =====================================================
@@ -622,48 +669,7 @@ async def get_workflow_example(example_name: str):
 # MCP TOOL INTEGRATION ENDPOINTS
 # =====================================================
 
-@router.get("/tools")
-async def get_available_mcp_tools():
-    """
-    Get all available MCP tools for workflow integration.
 
-    Returns comprehensive information about all MCP tools that can be
-    used in workflow steps, including their parameters and examples.
-    """
-    try:
-        logfire.info("Getting available MCP tools")
-
-        tools = []
-        for tool_name, tool_info in MCPToolRegistry.AVAILABLE_TOOLS.items():
-            tools.append({
-                "name": tool_name,
-                "category": tool_info.get("category"),
-                "description": tool_info.get("description"),
-                "parameters": tool_info.get("parameters", {}),
-                "returns": tool_info.get("returns"),
-                "example": tool_info.get("example", {})
-            })
-
-        # Group by category
-        tools_by_category = {}
-        for tool in tools:
-            category = tool["category"] or "unknown"
-            if category not in tools_by_category:
-                tools_by_category[category] = []
-            tools_by_category[category].append(tool)
-
-        logfire.info(f"Retrieved {len(tools)} MCP tools across {len(tools_by_category)} categories")
-
-        return {
-            "tools": tools,
-            "tools_by_category": tools_by_category,
-            "total_count": len(tools),
-            "categories": list(tools_by_category.keys())
-        }
-
-    except Exception as e:
-        logfire.error(f"Error getting MCP tools | error={str(e)}")
-        raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
 @router.get("/tools/{tool_name}")

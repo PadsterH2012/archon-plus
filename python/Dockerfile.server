@@ -1,5 +1,9 @@
 # Server Service - Web crawling and document processing microservice
 
+# Build arguments for CI/CD
+ARG BUILD_NUMBER
+ARG GIT_COMMIT
+
 # Build stage
 FROM python:3.11 AS builder
 

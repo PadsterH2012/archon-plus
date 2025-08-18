@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { Workflow, Activity, Plus } from 'lucide-react';
+import { Workflow, Activity, Plus, History, GitBranch, Users, Clock, BarChart3 } from 'lucide-react';
 import { WorkflowBuilder } from '../components/workflow/WorkflowBuilder';
 import { WorkflowExecutionDashboard } from '../components/workflow/WorkflowExecutionDashboard';
+import { WorkflowAnalytics } from '../components/workflow/WorkflowAnalytics';
+import { WorkflowScheduler } from '../components/workflow/WorkflowScheduler';
 
 // Enhanced workflow dashboard with navigation to advanced features
 const SimpleWorkflowDashboard: React.FC = () => {
@@ -122,7 +124,7 @@ const SimpleWorkflowDashboard: React.FC = () => {
             <p className="text-gray-600 dark:text-gray-400">
               Found {workflows.length} workflows
             </p>
-            <div className="flex gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
               <button
                 onClick={() => navigate('/workflows/builder')}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
@@ -143,6 +145,20 @@ const SimpleWorkflowDashboard: React.FC = () => {
               >
                 <Plus className="h-4 w-4" />
                 MCP Workflow
+              </button>
+              <button
+                onClick={() => navigate('/workflows/scheduler')}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                <Clock className="h-4 w-4" />
+                Scheduler
+              </button>
+              <button
+                onClick={() => navigate('/workflows/analytics')}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
+              >
+                <BarChart3 className="h-4 w-4" />
+                Analytics
               </button>
               <button
                 onClick={() => setShowCreateForm(true)}
@@ -191,6 +207,20 @@ const SimpleWorkflowDashboard: React.FC = () => {
                           Execute
                         </>
                       )}
+                    </button>
+                    <button
+                      onClick={() => alert(`Version History for ${workflow.title}\n\nComing soon: View workflow versions, compare changes, and rollback to previous versions.`)}
+                      className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+                    >
+                      <History className="h-3 w-3" />
+                      Versions
+                    </button>
+                    <button
+                      onClick={() => alert(`Collaboration for ${workflow.title}\n\nComing soon: Share workflows, add comments, and collaborate with team members.`)}
+                      className="flex items-center gap-1 px-3 py-1 bg-purple-500 text-white text-sm rounded hover:bg-purple-600 transition-colors"
+                    >
+                      <Users className="h-3 w-3" />
+                      Share
                     </button>
                   </div>
                 </div>
@@ -409,6 +439,8 @@ export const WorkflowPage: React.FC = () => {
         <Route index element={<SimpleWorkflowDashboard />} />
         <Route path="builder" element={<WorkflowBuilder />} />
         <Route path="executions" element={<WorkflowExecutionDashboard />} />
+        <Route path="analytics" element={<WorkflowAnalytics />} />
+        <Route path="scheduler" element={<WorkflowScheduler />} />
         <Route path="catalog" element={<SimpleWorkflowDashboard />} />
         <Route path="*" element={<Navigate to="/workflows" replace />} />
       </Routes>

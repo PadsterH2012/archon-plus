@@ -1,4 +1,9 @@
-# MCP Service - Lightweight HTTP-based microservice  
+# MCP Service - Lightweight HTTP-based microservice
+
+# Build arguments for CI/CD
+ARG BUILD_NUMBER
+ARG GIT_COMMIT
+
 FROM python:3.11-slim
 
 WORKDIR /app
