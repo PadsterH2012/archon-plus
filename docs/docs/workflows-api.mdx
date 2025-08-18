@@ -1,0 +1,726 @@
+---
+title: Workflow API Reference
+description: Complete API reference for programmatic workflow management
+sidebar_position: 29
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Workflow API Reference
+
+Archon provides a comprehensive REST API for programmatic workflow management, execution, and monitoring.
+
+## 🔗 Base URL
+
+All workflow API endpoints are available at:
+```
+http://localhost:8181/api/workflows
+```
+
+## 🛠️ Workflow Management
+
+### List Workflows
+
+**GET** `/api/workflows`
+
+Retrieve all available workflows with optional filtering.
+
+**Query Parameters**:
+- `status` (string, optional): Filter by workflow status
+- `limit` (integer, optional): Maximum results to return
+- `offset` (integer, optional): Pagination offset
+
+**Example Request**:
+```bash
+curl -X GET "http://localhost:8181/api/workflows?limit=10" \
+  -H "Content-Type: application/json"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "workflows": [
+    {
+      "id": "workflow-123",
+      "name": "project_setup",
+      "title": "Project Setup Automation",
+      "description": "Automated project initialization",
+      "status": "active",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z",
+      "step_count": 5
+    }
+  ],
+  "total": 1,
+  "limit": 10,
+  "offset": 0
+}
+```
+
+---
+
+### Get Workflow
+
+**GET** `/api/workflows/{workflow_id}`
+
+Retrieve detailed information about a specific workflow.
+
+**Path Parameters**:
+- `workflow_id` (string, required): Workflow UUID
+
+**Example Request**:
+```bash
+curl -X GET "http://localhost:8181/api/workflows/workflow-123" \
+  -H "Content-Type: application/json"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "workflow": {
+    "id": "workflow-123",
+    "name": "project_setup",
+    "title": "Project Setup Automation",
+    "description": "Automated project initialization",
+    "status": "active",
+    "steps": [
+      {
+        "name": "create_project",
+        "title": "Create Project",
+        "type": "action",
+        "tool_name": "manage_project_archon",
+        "parameters": {
+          "action": "create",
+          "title": "{{workflow.parameters.project_name}}"
+        }
+      }
+    ],
+    "parameters": {
+      "project_name": {
+        "type": "string",
+        "required": true,
+        "description": "Name of the project to create"
+      }
+    },
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+---
+
+### Create Workflow
+
+**POST** `/api/workflows`
+
+Create a new workflow with steps and parameters.
+
+**Request Body**:
+```json
+{
+  "name": "knowledge_search",
+  "title": "Knowledge Search Workflow",
+  "description": "Search knowledge base and create summary",
+  "steps": [
+    {
+      "name": "search_knowledge",
+      "title": "Search Knowledge Base",
+      "type": "action",
+      "tool_name": "perform_rag_query_archon",
+      "parameters": {
+        "query": "{{workflow.parameters.search_query}}",
+        "match_count": 5
+      },
+      "next_step": "create_summary"
+    },
+    {
+      "name": "create_summary",
+      "title": "Create Summary Task",
+      "type": "action",
+      "tool_name": "manage_task_archon",
+      "parameters": {
+        "action": "create",
+        "title": "Knowledge Summary: {{workflow.parameters.search_query}}",
+        "description": "Summary based on search results"
+      }
+    }
+  ],
+  "parameters": {
+    "search_query": {
+      "type": "string",
+      "required": true,
+      "description": "Query to search for in knowledge base"
+    }
+  }
+}
+```
+
+**Example Request**:
+```bash
+curl -X POST "http://localhost:8181/api/workflows" \
+  -H "Content-Type: application/json" \
+  -d @workflow.json
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "workflow": {
+    "id": "workflow-456",
+    "name": "knowledge_search",
+    "title": "Knowledge Search Workflow",
+    "status": "active",
+    "created_at": "2024-01-15T10:30:00Z"
+  },
+  "message": "Workflow created successfully"
+}
+```
+
+---
+
+### Update Workflow
+
+**PUT** `/api/workflows/{workflow_id}`
+
+Update an existing workflow's configuration.
+
+**Path Parameters**:
+- `workflow_id` (string, required): Workflow UUID
+
+**Request Body**: Same format as create workflow
+
+**Example Request**:
+```bash
+curl -X PUT "http://localhost:8181/api/workflows/workflow-456" \
+  -H "Content-Type: application/json" \
+  -d @updated_workflow.json
+```
+
+---
+
+### Delete Workflow
+
+**DELETE** `/api/workflows/{workflow_id}`
+
+Delete a workflow (soft delete - preserves execution history).
+
+**Path Parameters**:
+- `workflow_id` (string, required): Workflow UUID
+
+**Example Request**:
+```bash
+curl -X DELETE "http://localhost:8181/api/workflows/workflow-456" \
+  -H "Content-Type: application/json"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Workflow deleted successfully"
+}
+```
+
+---
+
+### Validate Workflow
+
+**POST** `/api/workflows/{workflow_id}/validate`
+
+Validate workflow configuration without executing.
+
+**Path Parameters**:
+- `workflow_id` (string, required): Workflow UUID
+
+**Example Request**:
+```bash
+curl -X POST "http://localhost:8181/api/workflows/workflow-456/validate" \
+  -H "Content-Type: application/json"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "validation": {
+    "is_valid": true,
+    "errors": [],
+    "warnings": [
+      {
+        "step": "search_knowledge",
+        "message": "Consider adding timeout for long-running searches",
+        "code": "MISSING_TIMEOUT"
+      }
+    ]
+  }
+}
+```
+
+## ▶️ Workflow Execution
+
+### Execute Workflow
+
+**POST** `/api/workflows/{workflow_id}/execute`
+
+Start workflow execution with input parameters.
+
+**Path Parameters**:
+- `workflow_id` (string, required): Workflow UUID
+
+**Request Body**:
+```json
+{
+  "input_parameters": {
+    "search_query": "OAuth2 authentication patterns",
+    "project_name": "Auth Research Project"
+  },
+  "execution_mode": "background",
+  "triggered_by": "api_user"
+}
+```
+
+**Query Parameters**:
+- `background` (boolean, optional): Execute in background (default: true)
+
+**Example Request**:
+```bash
+curl -X POST "http://localhost:8181/api/workflows/workflow-456/execute" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input_parameters": {
+      "search_query": "OAuth2 authentication"
+    },
+    "execution_mode": "background"
+  }'
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "execution": {
+    "execution_id": "exec-789",
+    "workflow_id": "workflow-456",
+    "status": "pending",
+    "started_at": "2024-01-15T10:30:00Z",
+    "input_parameters": {
+      "search_query": "OAuth2 authentication"
+    }
+  },
+  "message": "Workflow execution started"
+}
+```
+
+---
+
+### Get Execution Status
+
+**GET** `/api/workflows/executions/{execution_id}`
+
+Get detailed status and results of a workflow execution.
+
+**Path Parameters**:
+- `execution_id` (string, required): Execution UUID
+
+**Example Request**:
+```bash
+curl -X GET "http://localhost:8181/api/workflows/executions/exec-789" \
+  -H "Content-Type: application/json"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "execution": {
+    "execution_id": "exec-789",
+    "workflow_id": "workflow-456",
+    "status": "completed",
+    "progress_percentage": 100.0,
+    "started_at": "2024-01-15T10:30:00Z",
+    "completed_at": "2024-01-15T10:32:00Z",
+    "duration_seconds": 120,
+    "input_parameters": {
+      "search_query": "OAuth2 authentication"
+    },
+    "output_data": {
+      "search_results_count": 5,
+      "task_created": true,
+      "task_id": "task-abc123"
+    },
+    "current_step_index": 2,
+    "total_steps": 2
+  },
+  "step_executions": [
+    {
+      "step_name": "search_knowledge",
+      "status": "completed",
+      "started_at": "2024-01-15T10:30:00Z",
+      "completed_at": "2024-01-15T10:31:00Z",
+      "result": {
+        "success": true,
+        "matches": 5,
+        "summary": "Found relevant OAuth2 documentation"
+      }
+    },
+    {
+      "step_name": "create_summary",
+      "status": "completed",
+      "started_at": "2024-01-15T10:31:00Z",
+      "completed_at": "2024-01-15T10:32:00Z",
+      "result": {
+        "success": true,
+        "task_id": "task-abc123"
+      }
+    }
+  ]
+}
+```
+
+---
+
+### List Executions
+
+**GET** `/api/workflows/executions`
+
+List workflow executions with filtering and pagination.
+
+**Query Parameters**:
+- `workflow_id` (string, optional): Filter by workflow
+- `status` (string, optional): Filter by execution status
+- `limit` (integer, optional): Maximum results to return
+- `offset` (integer, optional): Pagination offset
+
+**Example Request**:
+```bash
+curl -X GET "http://localhost:8181/api/workflows/executions?status=completed&limit=10" \
+  -H "Content-Type: application/json"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "executions": [
+    {
+      "execution_id": "exec-789",
+      "workflow_id": "workflow-456",
+      "workflow_name": "knowledge_search",
+      "status": "completed",
+      "progress_percentage": 100.0,
+      "started_at": "2024-01-15T10:30:00Z",
+      "completed_at": "2024-01-15T10:32:00Z",
+      "duration_seconds": 120
+    }
+  ],
+  "total": 1,
+  "limit": 10,
+  "offset": 0
+}
+```
+
+---
+
+### Control Execution
+
+<Tabs>
+<TabItem value="pause" label="Pause Execution" default>
+
+**POST** `/api/workflows/executions/{execution_id}/pause`
+
+Pause a running workflow execution.
+
+```bash
+curl -X POST "http://localhost:8181/api/workflows/executions/exec-789/pause" \
+  -H "Content-Type: application/json"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Workflow execution paused"
+}
+```
+
+</TabItem>
+<TabItem value="resume" label="Resume Execution">
+
+**POST** `/api/workflows/executions/{execution_id}/resume`
+
+Resume a paused workflow execution.
+
+```bash
+curl -X POST "http://localhost:8181/api/workflows/executions/exec-789/resume" \
+  -H "Content-Type: application/json"
+```
+
+</TabItem>
+<TabItem value="cancel" label="Cancel Execution">
+
+**POST** `/api/workflows/executions/{execution_id}/cancel`
+
+Cancel a running or paused workflow execution.
+
+```bash
+curl -X POST "http://localhost:8181/api/workflows/executions/exec-789/cancel" \
+  -H "Content-Type: application/json"
+```
+
+</TabItem>
+</Tabs>
+
+## 🔌 Real-time Monitoring
+
+### WebSocket Connection
+
+Connect to real-time execution monitoring via WebSocket.
+
+**Endpoint**: `ws://localhost:8181/api/workflows/executions/{execution_id}/stream`
+
+**JavaScript Example**:
+```javascript
+const ws = new WebSocket('ws://localhost:8181/api/workflows/executions/exec-789/stream');
+
+ws.onopen = () => {
+  console.log('Connected to workflow execution stream');
+};
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  
+  switch(message.type) {
+    case 'execution_update':
+      console.log('Execution status:', message.data.status);
+      break;
+    case 'step_completed':
+      console.log('Step completed:', message.data.step_name);
+      break;
+    case 'progress_update':
+      console.log('Progress:', message.data.progress_percentage + '%');
+      break;
+    case 'execution_completed':
+      console.log('Execution finished:', message.data.status);
+      break;
+    case 'error':
+      console.error('Execution error:', message.data.message);
+      break;
+  }
+};
+
+ws.onerror = (error) => {
+  console.error('WebSocket error:', error);
+};
+
+ws.onclose = () => {
+  console.log('WebSocket connection closed');
+};
+```
+
+### Global Monitoring
+
+Monitor all workflow executions globally.
+
+**Endpoint**: `ws://localhost:8181/api/workflows/executions/stream`
+
+**Usage**: Same as execution-specific monitoring, but receives updates for all executions.
+
+### Message Types
+
+#### execution_update
+```json
+{
+  "type": "execution_update",
+  "data": {
+    "status": "running",
+    "progress_percentage": 50.0,
+    "current_step": "search_knowledge"
+  },
+  "execution_id": "exec-789",
+  "timestamp": "2024-01-15T10:31:00Z"
+}
+```
+
+#### step_completed
+```json
+{
+  "type": "step_completed",
+  "data": {
+    "step_name": "search_knowledge",
+    "step_index": 0,
+    "success": true,
+    "result": {
+      "matches": 5,
+      "summary": "Found relevant documentation"
+    }
+  },
+  "execution_id": "exec-789",
+  "timestamp": "2024-01-15T10:31:00Z"
+}
+```
+
+#### progress_update
+```json
+{
+  "type": "progress_update",
+  "data": {
+    "progress_percentage": 75.0,
+    "message": "Processing step 2 of 2"
+  },
+  "execution_id": "exec-789",
+  "timestamp": "2024-01-15T10:31:30Z"
+}
+```
+
+## 🛠️ Utility Endpoints
+
+### Get Available Tools
+
+**GET** `/api/workflows/tools`
+
+Get list of available MCP tools for workflow steps.
+
+**Example Request**:
+```bash
+curl -X GET "http://localhost:8181/api/workflows/tools" \
+  -H "Content-Type: application/json"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "tools": [
+    {
+      "name": "perform_rag_query_archon",
+      "category": "rag",
+      "description": "Perform semantic search across knowledge base",
+      "parameters": {
+        "query": {"type": "string", "required": true},
+        "match_count": {"type": "integer", "required": false}
+      }
+    }
+  ]
+}
+```
+
+---
+
+### Get Workflow Examples
+
+**GET** `/api/workflows/examples`
+
+Get pre-built workflow examples and templates.
+
+**Example Request**:
+```bash
+curl -X GET "http://localhost:8181/api/workflows/examples" \
+  -H "Content-Type: application/json"
+```
+
+## 🔒 Authentication & Security
+
+### API Authentication
+
+Currently, the workflow API uses basic authentication. In production environments, implement proper authentication:
+
+```bash
+curl -X GET "http://localhost:8181/api/workflows" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+### Rate Limiting
+
+API endpoints implement rate limiting:
+- **Workflow Management**: 100 requests per minute
+- **Execution**: 50 executions per minute
+- **WebSocket**: 10 connections per user
+
+### Security Best Practices
+
+1. **Validate Input Parameters**: Always validate workflow parameters
+2. **Sanitize User Data**: Clean user input before execution
+3. **Use HTTPS**: Enable HTTPS in production
+4. **Implement Authentication**: Use proper API authentication
+5. **Monitor Usage**: Track API usage and execution patterns
+
+## 📚 SDK Examples
+
+### Python SDK Example
+
+```python
+import requests
+import json
+
+class ArchonWorkflowClient:
+    def __init__(self, base_url="http://localhost:8181"):
+        self.base_url = base_url
+    
+    def execute_workflow(self, workflow_id, parameters):
+        url = f"{self.base_url}/api/workflows/{workflow_id}/execute"
+        payload = {
+            "input_parameters": parameters,
+            "execution_mode": "background"
+        }
+        response = requests.post(url, json=payload)
+        return response.json()
+    
+    def get_execution_status(self, execution_id):
+        url = f"{self.base_url}/api/workflows/executions/{execution_id}"
+        response = requests.get(url)
+        return response.json()
+
+# Usage
+client = ArchonWorkflowClient()
+result = client.execute_workflow("workflow-456", {
+    "search_query": "OAuth2 authentication"
+})
+print(f"Execution started: {result['execution']['execution_id']}")
+```
+
+### Node.js SDK Example
+
+```javascript
+class ArchonWorkflowClient {
+  constructor(baseUrl = 'http://localhost:8181') {
+    this.baseUrl = baseUrl;
+  }
+  
+  async executeWorkflow(workflowId, parameters) {
+    const response = await fetch(`${this.baseUrl}/api/workflows/${workflowId}/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input_parameters: parameters,
+        execution_mode: 'background'
+      })
+    });
+    return response.json();
+  }
+  
+  async getExecutionStatus(executionId) {
+    const response = await fetch(`${this.baseUrl}/api/workflows/executions/${executionId}`);
+    return response.json();
+  }
+}
+
+// Usage
+const client = new ArchonWorkflowClient();
+const result = await client.executeWorkflow('workflow-456', {
+  search_query: 'OAuth2 authentication'
+});
+console.log(`Execution started: ${result.execution.execution_id}`);
+```
+
+## 📚 Next Steps
+
+- **[Advanced Workflows](workflows-advanced)** - Complex workflow patterns
+- **[Best Practices](workflows-best-practices)** - Production workflow guidelines
+- **[Troubleshooting](workflows-troubleshooting)** - API issues and solutions
+- **[WebSocket Guide](workflows-websocket)** - Real-time monitoring integration

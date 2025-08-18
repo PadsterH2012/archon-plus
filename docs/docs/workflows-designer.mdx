@@ -1,0 +1,391 @@
+---
+title: Visual Workflow Designer
+description: Master Archon's drag-and-drop workflow designer interface
+sidebar_position: 27
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Visual Workflow Designer
+
+Archon's visual workflow designer provides an intuitive drag-and-drop interface for creating complex workflows without writing code.
+
+## 🎨 Interface Overview
+
+### Main Components
+
+1. **Tool Palette** (Left Panel)
+   - Action Steps
+   - Condition Steps
+   - Parallel Steps
+   - Loop Steps
+   - Workflow Link Steps
+
+2. **Canvas** (Center)
+   - Drag and drop area
+   - Visual step connections
+   - Real-time validation
+   - Zoom and pan controls
+
+3. **Properties Panel** (Right)
+   - Step configuration
+   - Parameter settings
+   - Validation messages
+   - Help documentation
+
+4. **Toolbar** (Top)
+   - Save/Load workflows
+   - Validation tools
+   - Execution controls
+   - View options
+
+## 🛠️ Creating Workflow Steps
+
+### Adding Steps to Canvas
+
+1. **Drag from Palette**: Drag any step type from the left palette to the canvas
+2. **Double-click**: Double-click on the canvas to open the "Add Step" dialog
+3. **Right-click Menu**: Right-click on canvas for context menu options
+4. **Keyboard Shortcut**: Press `A` to add an action step quickly
+
+### Step Configuration
+
+When you select a step, the properties panel shows:
+
+#### Basic Properties
+- **Name**: Unique identifier for the step
+- **Title**: Human-readable display name
+- **Description**: Optional step documentation
+- **Type**: Step type (action, condition, parallel, loop, workflow_link)
+
+#### Tool Selection (Action Steps)
+- **Tool Name**: Choose from available MCP tools
+- **Tool Description**: Automatic description of selected tool
+- **Parameter Schema**: Shows required and optional parameters
+
+#### Parameters Configuration
+- **Static Values**: Enter fixed values directly
+- **Dynamic Values**: Use template syntax `{{variable.name}}`
+- **Parameter Validation**: Real-time validation with error highlighting
+- **Auto-completion**: Suggestions for available variables
+
+## 🔗 Connecting Steps
+
+### Creating Connections
+
+1. **Drag from Output Port**: Drag from the output port (right side) of a step
+2. **Drop on Input Port**: Drop on the input port (left side) of the target step
+3. **Auto-connect**: Steps automatically connect when placed sequentially
+4. **Connection Validation**: Invalid connections are highlighted in red
+
+### Connection Types
+
+#### Sequential Connections
+- **Next Step**: Normal flow from one step to the next
+- **Visual Indicator**: Solid arrow line
+- **Configuration**: Set via `next_step` property
+
+#### Conditional Connections
+- **True Branch**: Green arrow for condition true path
+- **False Branch**: Red arrow for condition false path
+- **Configuration**: Set via `on_true` and `on_false` properties
+
+#### Parallel Connections
+- **Parallel Branches**: Multiple arrows from parallel step
+- **Synchronization**: All branches must complete before continuing
+- **Configuration**: Set via `parallel_steps` array
+
+### Connection Management
+
+- **Delete Connection**: Click connection line and press `Delete`
+- **Redirect Connection**: Drag connection endpoint to new target
+- **Connection Labels**: Hover to see connection type and conditions
+
+## 📝 Parameter Mapping
+
+### Template Syntax
+
+Use double curly braces for dynamic values:
+
+```json
+{
+  "title": "{{workflow.parameters.task_title}}",
+  "description": "Created at {{execution.started_at}}",
+  "result": "{{previous_step.result.value}}"
+}
+```
+
+### Available Variables
+
+#### Workflow Variables
+- `{{workflow.id}}` - Workflow identifier
+- `{{workflow.name}}` - Workflow name
+- `{{workflow.title}}` - Workflow title
+- `{{workflow.parameters.param_name}}` - Input parameters
+
+#### Execution Variables
+- `{{execution.id}}` - Execution identifier
+- `{{execution.started_at}}` - Start timestamp
+- `{{execution.triggered_by}}` - User who started execution
+
+#### Step Results
+- `{{step_name.result.field}}` - Access step output data
+- `{{step_name.success}}` - Boolean success status
+- `{{step_name.error}}` - Error message if failed
+
+#### Loop Variables (in loop steps)
+- `{{loop.item}}` - Current iteration item
+- `{{loop.index}}` - Current iteration index (0-based)
+- `{{loop.count}}` - Total number of iterations
+
+### Parameter Helpers
+
+The designer provides helpers for parameter mapping:
+
+1. **Variable Browser**: Click the variable icon to browse available variables
+2. **Auto-completion**: Type `{{` to see available variables
+3. **Validation**: Real-time validation of parameter syntax
+4. **Type Checking**: Ensures parameter types match tool requirements
+
+## 🎯 Step Types in Detail
+
+### Action Steps
+
+Execute MCP tools with specific parameters:
+
+**Configuration:**
+- **Tool Selection**: Choose from available MCP tools
+- **Parameter Mapping**: Map workflow variables to tool parameters
+- **Error Handling**: Configure retry and timeout settings
+- **Output Mapping**: Define how to use step results
+
+**Visual Indicators:**
+- **Blue Border**: Action steps have blue borders
+- **Tool Icon**: Shows the selected MCP tool icon
+- **Status Indicator**: Shows validation status (green check, red X)
+
+### Condition Steps
+
+Make decisions based on data evaluation:
+
+**Configuration:**
+- **Condition Expression**: JavaScript-like expression evaluation
+- **True Branch**: Step to execute if condition is true
+- **False Branch**: Step to execute if condition is false
+- **Comparison Operators**: `==`, `!=`, `>`, `<`, `>=`, `<=`, `&&`, `||`
+
+**Visual Indicators:**
+- **Diamond Shape**: Condition steps are diamond-shaped
+- **Green Arrow**: True branch connection
+- **Red Arrow**: False branch connection
+
+### Parallel Steps
+
+Execute multiple steps simultaneously:
+
+**Configuration:**
+- **Parallel Steps**: List of steps to execute in parallel
+- **Synchronization**: Wait for all steps to complete
+- **Error Handling**: Behavior when one parallel step fails
+
+**Visual Indicators:**
+- **Parallel Icon**: Shows parallel processing symbol
+- **Multiple Arrows**: Multiple outgoing connections
+- **Synchronization Point**: Visual merge point after parallel execution
+
+### Loop Steps
+
+Iterate through collections of data:
+
+**Configuration:**
+- **Loop Collection**: Data array to iterate over
+- **Loop Steps**: Steps to execute for each item
+- **Item Variable**: Variable name for current item
+- **Index Variable**: Variable name for current index
+
+**Visual Indicators:**
+- **Loop Icon**: Shows circular arrow symbol
+- **Nested Steps**: Visual indication of steps inside loop
+- **Iteration Counter**: Shows expected number of iterations
+
+### Workflow Link Steps
+
+Call other workflows as sub-processes:
+
+**Configuration:**
+- **Target Workflow**: Select workflow to call
+- **Input Mapping**: Map current workflow data to sub-workflow parameters
+- **Output Mapping**: Map sub-workflow results back to current workflow
+- **Execution Mode**: Synchronous or asynchronous execution
+
+**Visual Indicators:**
+- **Workflow Icon**: Shows linked workflow symbol
+- **External Reference**: Visual indication of external workflow call
+- **Data Flow**: Shows input/output data mapping
+
+## ✅ Validation and Testing
+
+### Real-time Validation
+
+The designer continuously validates your workflow:
+
+1. **Syntax Validation**: Checks parameter syntax and references
+2. **Connection Validation**: Ensures all connections are valid
+3. **Tool Validation**: Verifies tool availability and parameters
+4. **Logic Validation**: Checks for circular references and dead ends
+
+### Validation Indicators
+
+- **Green Check**: Step is valid and ready
+- **Yellow Warning**: Step has warnings but will execute
+- **Red X**: Step has errors and won't execute
+- **Blue Info**: Step has informational messages
+
+### Testing Features
+
+1. **Dry Run**: Test workflow logic without executing tools
+2. **Step Testing**: Test individual steps in isolation
+3. **Parameter Preview**: See resolved parameter values before execution
+4. **Validation Report**: Detailed report of all validation issues
+
+## 🎨 Visual Customization
+
+### Canvas Controls
+
+- **Zoom**: Mouse wheel or zoom controls
+- **Pan**: Click and drag on empty canvas area
+- **Fit to Screen**: Auto-zoom to fit entire workflow
+- **Grid Snap**: Align steps to grid for clean layout
+
+### Step Appearance
+
+- **Custom Colors**: Color-code steps by category or priority
+- **Step Icons**: Visual icons for different tool types
+- **Size Options**: Compact or detailed step views
+- **Labels**: Show/hide step names and descriptions
+
+### Layout Options
+
+- **Auto Layout**: Automatically arrange steps for optimal flow
+- **Manual Layout**: Precise control over step positioning
+- **Alignment Tools**: Align and distribute steps evenly
+- **Connection Routing**: Smart routing to avoid overlaps
+
+## 🚀 Advanced Features
+
+### Templates and Patterns
+
+1. **Step Templates**: Save commonly used step configurations
+2. **Workflow Templates**: Save entire workflow patterns
+3. **Pattern Library**: Browse pre-built workflow patterns
+4. **Custom Templates**: Create organization-specific templates
+
+### Collaboration Features
+
+1. **Comments**: Add comments to steps and connections
+2. **Version History**: Track changes over time
+3. **Sharing**: Share workflows with team members
+4. **Review Mode**: Review and approve workflow changes
+
+### Import/Export
+
+1. **JSON Export**: Export workflow as JSON for version control
+2. **Visual Export**: Export workflow diagram as image
+3. **Template Export**: Export as reusable template
+4. **Bulk Operations**: Import/export multiple workflows
+
+## 🛠️ Keyboard Shortcuts
+
+### Navigation
+- **Arrow Keys**: Navigate between steps
+- **Tab**: Move to next step
+- **Shift+Tab**: Move to previous step
+- **Space**: Select/deselect step
+
+### Editing
+- **A**: Add action step
+- **C**: Add condition step
+- **P**: Add parallel step
+- **L**: Add loop step
+- **Delete**: Delete selected step/connection
+- **Ctrl+C**: Copy step
+- **Ctrl+V**: Paste step
+- **Ctrl+Z**: Undo
+- **Ctrl+Y**: Redo
+
+### View
+- **Ctrl++**: Zoom in
+- **Ctrl+-**: Zoom out
+- **Ctrl+0**: Fit to screen
+- **F**: Focus on selected step
+
+## 🎯 Best Practices
+
+### Workflow Design
+
+1. **Start Simple**: Begin with linear workflows, add complexity gradually
+2. **Use Descriptive Names**: Clear step names improve readability
+3. **Group Related Steps**: Use visual grouping for related operations
+4. **Document Complex Logic**: Add comments for complex conditions
+5. **Test Incrementally**: Test each step before adding the next
+
+### Visual Organization
+
+1. **Consistent Layout**: Use consistent spacing and alignment
+2. **Logical Flow**: Arrange steps in logical reading order (left to right, top to bottom)
+3. **Color Coding**: Use colors to indicate step categories or priorities
+4. **Minimize Crossings**: Avoid crossing connection lines when possible
+5. **Use Whitespace**: Don't overcrowd the canvas
+
+### Parameter Management
+
+1. **Validate Early**: Use validation features to catch errors early
+2. **Use Variables**: Leverage workflow variables for reusability
+3. **Document Parameters**: Add descriptions for complex parameters
+4. **Test with Real Data**: Test with realistic parameter values
+5. **Handle Errors**: Plan for error conditions and edge cases
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+**Steps won't connect:**
+- Check that connection types are compatible
+- Ensure target step accepts incoming connections
+- Verify step names are unique and valid
+
+**Parameters not resolving:**
+- Check template syntax: `{{variable.name}}`
+- Ensure referenced variables exist
+- Verify parameter types match tool requirements
+
+**Validation errors:**
+- Review error messages in properties panel
+- Check for circular references
+- Ensure all required parameters are provided
+
+**Performance issues:**
+- Simplify complex workflows
+- Use parallel steps for independent operations
+- Optimize parameter expressions
+
+### Getting Help
+
+1. **Hover Help**: Hover over elements for contextual help
+2. **Properties Panel**: Check validation messages and help text
+3. **Tool Documentation**: Click tool names for detailed documentation
+4. **Community Examples**: Browse example workflows for patterns
+5. **Support Resources**: Check troubleshooting guides and forums
+
+## 📚 Next Steps
+
+Now that you've mastered the visual designer:
+
+- **[MCP Tools Reference](workflows-mcp-tools)** - Learn about all available tools
+- **[Advanced Workflows](workflows-advanced)** - Complex patterns and techniques
+- **[API Integration](workflows-api)** - Programmatic workflow management
+- **[Best Practices](workflows-best-practices)** - Production workflow guidelines
+- **[Troubleshooting](workflows-troubleshooting)** - Common issues and solutions
+
+Ready to create powerful visual workflows? Start with our **[Template Gallery](workflows-templates)** for inspiration!

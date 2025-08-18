@@ -1,0 +1,316 @@
+---
+title: Workflow Orchestration Overview
+description: Complete guide to Archon's workflow orchestration system with real-time monitoring
+sidebar_position: 25
+---
+
+# Workflow Orchestration Overview
+
+Archon's workflow orchestration system provides a powerful, visual way to automate complex tasks and processes using MCP tools and real-time monitoring.
+
+## 🎯 What are Workflows?
+
+Workflows in Archon are automated sequences of steps that can:
+- Execute MCP tools in a specific order
+- Make decisions based on conditions
+- Run steps in parallel for efficiency
+- Loop through data collections
+- Call other workflows as sub-processes
+- Monitor execution in real-time
+
+## 🚀 Key Features
+
+### Visual Workflow Designer
+- **Drag-and-drop interface** for creating workflows
+- **Real-time validation** with error highlighting
+- **Step library** with all available MCP tools
+- **Connection management** with visual flow indicators
+- **Template gallery** with pre-built workflow patterns
+
+### Real-time Execution Monitoring
+- **Live progress tracking** with WebSocket updates
+- **Step-by-step execution** with detailed results
+- **Error notifications** with instant alerts
+- **Performance metrics** and execution analytics
+- **Execution history** with complete audit trails
+
+### MCP Tool Integration
+- **10+ integrated tools** across 3 categories
+- **Intelligent parameter mapping** between steps
+- **Tool validation** with parameter checking
+- **Custom tool support** for extensibility
+
+## 🛠️ Workflow Step Types
+
+### 1. Action Steps
+Execute MCP tools with specific parameters:
+
+```json
+{
+  "name": "create_task",
+  "type": "action",
+  "tool_name": "manage_task_archon",
+  "parameters": {
+    "action": "create",
+    "title": "{{workflow.parameters.task_title}}",
+    "description": "Created by workflow"
+  }
+}
+```
+
+### 2. Condition Steps
+Make decisions based on data or results:
+
+```json
+{
+  "name": "check_result",
+  "type": "condition",
+  "condition": "{{create_task.result.success}} == true",
+  "on_true": "success_step",
+  "on_false": "error_step"
+}
+```
+
+### 3. Parallel Steps
+Execute multiple steps simultaneously:
+
+```json
+{
+  "name": "parallel_tasks",
+  "type": "parallel",
+  "parallel_steps": ["task1", "task2", "task3"]
+}
+```
+
+### 4. Loop Steps
+Iterate through collections of data:
+
+```json
+{
+  "name": "process_items",
+  "type": "loop",
+  "loop_over": "{{workflow.parameters.items}}",
+  "loop_steps": ["process_item"]
+}
+```
+
+### 5. Workflow Link Steps
+Call other workflows as sub-processes:
+
+```json
+{
+  "name": "call_subworkflow",
+  "type": "workflow_link",
+  "workflow_id": "sub-workflow-123",
+  "input_mapping": {
+    "param1": "{{previous_step.result.value}}"
+  }
+}
+```
+
+## 📊 MCP Tools Available
+
+### RAG & Knowledge Tools
+- **perform_rag_query_archon** - Semantic search across knowledge base
+- **search_code_examples_archon** - Find relevant code examples
+- **get_available_sources_archon** - List knowledge sources
+
+### Project & Task Management
+- **manage_project_archon** - Complete project lifecycle management
+- **manage_task_archon** - Task creation and tracking
+- **manage_document_archon** - Document management with versioning
+- **manage_versions_archon** - Version control operations
+- **get_project_features_archon** - Feature enumeration
+
+### System & Monitoring
+- **health_check_archon** - System health monitoring
+- **session_info_archon** - Session information tracking
+
+## 🔄 Parameter Flow & Variables
+
+Workflows support dynamic parameter passing between steps:
+
+### Workflow Variables
+- `{{workflow.id}}` - Workflow identifier
+- `{{workflow.name}}` - Workflow name
+- `{{workflow.parameters.param_name}}` - Input parameters
+
+### Execution Variables
+- `{{execution.id}}` - Execution identifier
+- `{{execution.started_at}}` - Execution start time
+- `{{execution.triggered_by}}` - User who started execution
+
+### Step Results
+- `{{step_name.result.field}}` - Access step results
+- `{{step_name.success}}` - Step success status
+- `{{step_name.error}}` - Step error information
+
+### Loop Variables
+- `{{loop.item}}` - Current loop item
+- `{{loop.index}}` - Current loop index
+- `{{loop.count}}` - Total loop iterations
+
+## 🎨 Getting Started
+
+### 1. Access Workflow Designer
+Navigate to **Workflows** in the Archon interface at:
+```
+http://localhost:3737/workflows
+```
+
+### 2. Create Your First Workflow
+1. Click **"Create Workflow"**
+2. Choose **"Visual Designer"** or **"Template"**
+3. Drag steps from the tool palette
+4. Connect steps with flow arrows
+5. Configure step parameters
+6. Validate and save
+
+### 3. Execute and Monitor
+1. Click **"Execute Workflow"**
+2. Provide input parameters
+3. Monitor real-time progress
+4. View step results and logs
+5. Analyze performance metrics
+
+## 📈 Common Workflow Patterns
+
+### 1. Data Processing Pipeline
+```
+Input → Validate → Transform → Process → Output → Notify
+```
+
+### 2. Conditional Workflow
+```
+Input → Check Condition → [True: Process A] / [False: Process B] → Merge → Output
+```
+
+### 3. Parallel Processing
+```
+Input → Split → [Process A | Process B | Process C] → Merge → Output
+```
+
+### 4. Loop Processing
+```
+Input → For Each Item → Process Item → Collect Results → Output
+```
+
+### 5. Error Handling
+```
+Try: Main Process → On Success: Continue → On Error: Handle Error → Retry/Fail
+```
+
+## 🔍 Real-time Monitoring
+
+### WebSocket Connection
+Workflows provide real-time updates via WebSocket:
+
+```javascript
+const ws = new WebSocket('ws://localhost:8181/api/workflows/executions/{id}/stream');
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  
+  switch(message.type) {
+    case 'execution_update':
+      console.log('Status:', message.data.status);
+      break;
+    case 'step_completed':
+      console.log('Step completed:', message.data.step_name);
+      break;
+    case 'progress_update':
+      console.log('Progress:', message.data.progress_percentage + '%');
+      break;
+  }
+};
+```
+
+### Message Types
+- **execution_update** - Execution status changes
+- **step_completed** - Individual step completion
+- **progress_update** - Progress percentage updates
+- **execution_completed** - Final execution completion
+- **error** - Error notifications
+
+## 🛡️ Security & Best Practices
+
+### Parameter Security
+- **Validate all inputs** before execution
+- **Sanitize user data** in parameters
+- **Use environment variables** for sensitive data
+- **Implement access controls** for workflow execution
+
+### Performance Optimization
+- **Use parallel steps** for independent operations
+- **Implement timeouts** for long-running steps
+- **Cache results** where appropriate
+- **Monitor resource usage** during execution
+
+### Error Handling
+- **Implement retry logic** for transient failures
+- **Use condition steps** for error branching
+- **Log detailed error information** for debugging
+- **Provide meaningful error messages** to users
+
+## 📚 Next Steps
+
+- **[Workflow Creation Guide](workflows-creation)** - Step-by-step workflow building
+- **[Visual Designer Tutorial](workflows-designer)** - Master the visual interface
+- **[MCP Tools Reference](workflows-mcp-tools)** - Complete tool documentation
+- **[API Integration Guide](workflows-api)** - Programmatic workflow management
+- **[Troubleshooting Guide](workflows-troubleshooting)** - Common issues and solutions
+
+## 🎯 Quick Examples
+
+### Simple Task Creation Workflow
+```json
+{
+  "name": "create_project_task",
+  "title": "Create Project Task",
+  "steps": [
+    {
+      "name": "create_task",
+      "type": "action",
+      "tool_name": "manage_task_archon",
+      "parameters": {
+        "action": "create",
+        "title": "{{workflow.parameters.task_title}}",
+        "description": "{{workflow.parameters.task_description}}"
+      }
+    }
+  ],
+  "parameters": {
+    "task_title": {"type": "string", "required": true},
+    "task_description": {"type": "string", "required": false}
+  }
+}
+```
+
+### Knowledge Search Workflow
+```json
+{
+  "name": "knowledge_search",
+  "title": "Knowledge Search and Analysis",
+  "steps": [
+    {
+      "name": "search_knowledge",
+      "type": "action",
+      "tool_name": "perform_rag_query_archon",
+      "parameters": {
+        "query": "{{workflow.parameters.search_query}}",
+        "match_count": 5
+      },
+      "next_step": "analyze_results"
+    },
+    {
+      "name": "analyze_results",
+      "type": "condition",
+      "condition": "{{search_knowledge.result.matches}} > 0",
+      "on_true": "create_summary",
+      "on_false": "no_results"
+    }
+  ]
+}
+```
+
+Ready to start building powerful workflows? Check out our **[Getting Started Guide](workflows-getting-started)** for hands-on tutorials!

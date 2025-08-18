@@ -1,0 +1,396 @@
+---
+title: Getting Started with Workflows
+description: Step-by-step guide to creating and executing your first workflow in Archon
+sidebar_position: 26
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Getting Started with Workflows
+
+This guide will walk you through creating, executing, and monitoring your first workflow in Archon's orchestration system.
+
+## 🎯 Prerequisites
+
+Before starting, ensure you have:
+- ✅ Archon running at `http://localhost:3737`
+- ✅ Access to the workflow interface
+- ✅ Basic understanding of the MCP tools available
+- ✅ A project created in Archon (optional but recommended)
+
+## 🚀 Step 1: Access the Workflow Interface
+
+1. **Open Archon** in your browser: `http://localhost:3737`
+2. **Navigate to Workflows** using the sidebar menu
+3. **Explore the interface**:
+   - **Workflow List** - View existing workflows
+   - **Create Workflow** - Start building new workflows
+   - **Templates** - Pre-built workflow patterns
+   - **Execution History** - Monitor past executions
+
+## 📝 Step 2: Create Your First Workflow
+
+Let's create a simple workflow that creates a task and then updates it.
+
+### Option A: Using the Visual Designer
+
+<Tabs>
+<TabItem value="visual" label="Visual Designer" default>
+
+1. **Click "Create Workflow"** → **"Visual Designer"**
+2. **Set workflow details**:
+   - **Name**: `my_first_workflow`
+   - **Title**: `My First Workflow`
+   - **Description**: `Creates and updates a task`
+
+3. **Add the first step**:
+   - Drag **"Action Step"** from the palette
+   - **Name**: `create_task`
+   - **Tool**: `manage_task_archon`
+   - **Parameters**:
+     ```json
+     {
+       "action": "create",
+       "title": "{{workflow.parameters.task_title}}",
+       "description": "Created by my first workflow"
+     }
+     ```
+
+4. **Add the second step**:
+   - Drag another **"Action Step"**
+   - **Name**: `update_task`
+   - **Tool**: `manage_task_archon`
+   - **Parameters**:
+     ```json
+     {
+       "action": "update",
+       "task_id": "{{create_task.result.task_id}}",
+       "status": "in_progress"
+     }
+     ```
+
+5. **Connect the steps**: Draw an arrow from `create_task` to `update_task`
+
+6. **Configure workflow parameters**:
+   ```json
+   {
+     "task_title": {
+       "type": "string",
+       "required": true,
+       "description": "Title for the new task"
+     }
+   }
+   ```
+
+</TabItem>
+<TabItem value="json" label="JSON Editor">
+
+1. **Click "Create Workflow"** → **"JSON Editor"**
+2. **Paste this workflow definition**:
+
+```json
+{
+  "name": "my_first_workflow",
+  "title": "My First Workflow",
+  "description": "Creates and updates a task",
+  "steps": [
+    {
+      "name": "create_task",
+      "title": "Create Task",
+      "type": "action",
+      "tool_name": "manage_task_archon",
+      "parameters": {
+        "action": "create",
+        "title": "{{workflow.parameters.task_title}}",
+        "description": "Created by my first workflow"
+      },
+      "next_step": "update_task"
+    },
+    {
+      "name": "update_task",
+      "title": "Update Task",
+      "type": "action",
+      "tool_name": "manage_task_archon",
+      "parameters": {
+        "action": "update",
+        "task_id": "{{create_task.result.task_id}}",
+        "status": "in_progress"
+      }
+    }
+  ],
+  "parameters": {
+    "task_title": {
+      "type": "string",
+      "required": true,
+      "description": "Title for the new task"
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+### Validate and Save
+
+1. **Click "Validate"** to check for errors
+2. **Fix any validation issues** highlighted in red
+3. **Click "Save Workflow"** to store your workflow
+
+## ▶️ Step 3: Execute Your Workflow
+
+1. **Click "Execute"** on your saved workflow
+2. **Provide input parameters**:
+   - **task_title**: `"My First Automated Task"`
+3. **Choose execution mode**:
+   - **Foreground**: Watch execution in real-time
+   - **Background**: Execute and check results later
+4. **Click "Start Execution"**
+
+## 📊 Step 4: Monitor Execution
+
+### Real-time Monitoring
+
+Watch your workflow execute with live updates:
+
+1. **Progress Bar** - Overall execution progress
+2. **Step Status** - Individual step completion
+3. **Live Logs** - Detailed execution information
+4. **Results Panel** - Step outputs and data
+
+### Execution Details
+
+Monitor key information:
+- **Execution ID** - Unique identifier for this run
+- **Status** - Current execution state (running, completed, failed)
+- **Duration** - Time elapsed since start
+- **Steps Completed** - Progress through workflow steps
+
+### WebSocket Updates
+
+The interface receives real-time updates via WebSocket:
+- ✅ **Step Started** - When each step begins
+- ⏳ **Step Progress** - Progress within long-running steps
+- ✅ **Step Completed** - When each step finishes
+- ❌ **Step Failed** - If a step encounters an error
+- 🏁 **Execution Complete** - When the entire workflow finishes
+
+## 🔍 Step 5: Review Results
+
+After execution completes:
+
+1. **Check Execution Status**:
+   - ✅ **Completed** - All steps executed successfully
+   - ❌ **Failed** - One or more steps failed
+   - ⏸️ **Paused** - Execution paused (can be resumed)
+   - 🚫 **Cancelled** - Execution was cancelled
+
+2. **Review Step Results**:
+   - Click on each step to see detailed results
+   - Check output data and any error messages
+   - Verify that tasks were created and updated correctly
+
+3. **Analyze Performance**:
+   - Total execution time
+   - Time per step
+   - Resource usage (if available)
+
+## 🎯 Step 6: Try Advanced Features
+
+### Add a Condition Step
+
+Enhance your workflow with conditional logic:
+
+```json
+{
+  "name": "check_task_created",
+  "title": "Check Task Creation",
+  "type": "condition",
+  "condition": "{{create_task.result.success}} == true",
+  "on_true": "update_task",
+  "on_false": "handle_error"
+}
+```
+
+### Add Error Handling
+
+Create an error handling step:
+
+```json
+{
+  "name": "handle_error",
+  "title": "Handle Error",
+  "type": "action",
+  "tool_name": "manage_task_archon",
+  "parameters": {
+    "action": "create",
+    "title": "Error: Failed to create task",
+    "description": "{{create_task.error}}"
+  }
+}
+```
+
+### Add Parallel Processing
+
+Process multiple items simultaneously:
+
+```json
+{
+  "name": "parallel_tasks",
+  "title": "Create Multiple Tasks",
+  "type": "parallel",
+  "parallel_steps": ["create_task1", "create_task2", "create_task3"]
+}
+```
+
+## 🛠️ Common Patterns
+
+### 1. Data Validation Workflow
+
+```json
+{
+  "steps": [
+    {
+      "name": "validate_input",
+      "type": "condition",
+      "condition": "{{workflow.parameters.data}} != null",
+      "on_true": "process_data",
+      "on_false": "invalid_input"
+    }
+  ]
+}
+```
+
+### 2. Loop Processing Workflow
+
+```json
+{
+  "steps": [
+    {
+      "name": "process_items",
+      "type": "loop",
+      "loop_over": "{{workflow.parameters.items}}",
+      "loop_steps": ["process_single_item"]
+    }
+  ]
+}
+```
+
+### 3. Knowledge Search Workflow
+
+```json
+{
+  "steps": [
+    {
+      "name": "search_knowledge",
+      "type": "action",
+      "tool_name": "perform_rag_query_archon",
+      "parameters": {
+        "query": "{{workflow.parameters.search_query}}",
+        "match_count": 5
+      }
+    }
+  ]
+}
+```
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+**Workflow won't validate:**
+- Check parameter syntax: `{{variable.name}}`
+- Ensure all required fields are filled
+- Verify step names are unique
+- Check that referenced steps exist
+
+**Execution fails:**
+- Review step parameters for typos
+- Check that MCP tools are available
+- Verify input parameters are provided
+- Look at error messages in execution logs
+
+**Steps don't connect properly:**
+- Ensure `next_step` references exist
+- Check condition step `on_true`/`on_false` targets
+- Verify parallel step references are valid
+
+### Getting Help
+
+1. **Check the logs** in the execution monitor
+2. **Review parameter mapping** for syntax errors
+3. **Test individual steps** before combining
+4. **Use the validation tool** to catch errors early
+5. **Check the troubleshooting guide** for specific issues
+
+## 🎉 Next Steps
+
+Congratulations! You've created and executed your first workflow. Now explore:
+
+- **[Visual Designer Tutorial](workflows-designer)** - Master the drag-and-drop interface
+- **[MCP Tools Reference](workflows-mcp-tools)** - Learn about all available tools
+- **[Advanced Workflows](workflows-advanced)** - Complex patterns and techniques
+- **[API Integration](workflows-api)** - Programmatic workflow management
+- **[Best Practices](workflows-best-practices)** - Tips for production workflows
+
+## 📚 Example Workflows
+
+### Project Setup Workflow
+Automatically set up a new project with tasks and documentation:
+
+```json
+{
+  "name": "project_setup",
+  "title": "Project Setup Automation",
+  "steps": [
+    {
+      "name": "create_project",
+      "type": "action",
+      "tool_name": "manage_project_archon",
+      "parameters": {
+        "action": "create",
+        "title": "{{workflow.parameters.project_name}}"
+      }
+    },
+    {
+      "name": "create_initial_tasks",
+      "type": "loop",
+      "loop_over": "{{workflow.parameters.initial_tasks}}",
+      "loop_steps": ["create_task"]
+    }
+  ]
+}
+```
+
+### Knowledge Analysis Workflow
+Search knowledge base and create summary tasks:
+
+```json
+{
+  "name": "knowledge_analysis",
+  "title": "Knowledge Analysis and Task Creation",
+  "steps": [
+    {
+      "name": "search_knowledge",
+      "type": "action",
+      "tool_name": "perform_rag_query_archon",
+      "parameters": {
+        "query": "{{workflow.parameters.research_topic}}"
+      }
+    },
+    {
+      "name": "create_analysis_task",
+      "type": "action",
+      "tool_name": "manage_task_archon",
+      "parameters": {
+        "action": "create",
+        "title": "Analysis: {{workflow.parameters.research_topic}}",
+        "description": "Based on search results: {{search_knowledge.result.summary}}"
+      }
+    }
+  ]
+}
+```
+
+Ready to build more complex workflows? Dive into our **[Advanced Workflows Guide](workflows-advanced)**!

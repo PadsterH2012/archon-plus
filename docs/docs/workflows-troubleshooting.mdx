@@ -1,0 +1,599 @@
+---
+title: Workflow Troubleshooting
+description: Common issues and solutions for Archon workflow system
+sidebar_position: 30
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Workflow Troubleshooting
+
+This guide covers common issues and solutions when working with Archon's workflow orchestration system.
+
+## 🚨 Common Issues
+
+### Workflow Creation Issues
+
+#### Validation Errors
+
+**Problem**: Workflow fails validation with error messages.
+
+<Tabs>
+<TabItem value="circular" label="Circular Reference" default>
+
+**Error**: `Circular reference detected in workflow steps`
+
+**Cause**: Steps reference each other in a loop.
+
+**Solution**:
+```json
+// ❌ Bad: Circular reference
+{
+  "steps": [
+    {"name": "step1", "next_step": "step2"},
+    {"name": "step2", "next_step": "step1"}  // Creates loop
+  ]
+}
+
+// ✅ Good: Linear flow
+{
+  "steps": [
+    {"name": "step1", "next_step": "step2"},
+    {"name": "step2", "next_step": "step3"},
+    {"name": "step3"}  // End step
+  ]
+}
+```
+
+</TabItem>
+<TabItem value="missing-step" label="Missing Step Reference">
+
+**Error**: `Referenced step 'step_name' does not exist`
+
+**Cause**: Step references a non-existent step.
+
+**Solution**:
+```json
+// ❌ Bad: References non-existent step
+{
+  "steps": [
+    {"name": "step1", "next_step": "nonexistent_step"}
+  ]
+}
+
+// ✅ Good: Valid step reference
+{
+  "steps": [
+    {"name": "step1", "next_step": "step2"},
+    {"name": "step2"}
+  ]
+}
+```
+
+</TabItem>
+<TabItem value="parameter-syntax" label="Parameter Syntax Error">
+
+**Error**: `Invalid parameter template syntax`
+
+**Cause**: Incorrect template variable syntax.
+
+**Solution**:
+```json
+// ❌ Bad: Invalid syntax
+{
+  "parameters": {
+    "title": "{workflow.parameters.name}",  // Missing second brace
+    "value": "{{invalid.variable}}"        // Non-existent variable
+  }
+}
+
+// ✅ Good: Correct syntax
+{
+  "parameters": {
+    "title": "{{workflow.parameters.name}}",
+    "value": "{{workflow.parameters.value}}"
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+#### Tool Configuration Issues
+
+**Problem**: MCP tool parameters are invalid or missing.
+
+**Common Errors**:
+- `Required parameter 'action' missing for manage_task_archon`
+- `Invalid tool name 'nonexistent_tool'`
+- `Parameter type mismatch: expected string, got integer`
+
+**Solutions**:
+
+1. **Check Tool Documentation**:
+   ```bash
+   curl -X GET "http://localhost:8181/api/workflows/tools" | jq '.tools[] | select(.name == "manage_task_archon")'
+   ```
+
+2. **Validate Required Parameters**:
+   ```json
+   {
+     "tool_name": "manage_task_archon",
+     "parameters": {
+       "action": "create",           // Required
+       "title": "Task Title",        // Required for create action
+       "description": "Optional"     // Optional
+     }
+   }
+   ```
+
+3. **Use Correct Parameter Types**:
+   ```json
+   {
+     "tool_name": "perform_rag_query_archon",
+     "parameters": {
+       "query": "search text",       // String
+       "match_count": 5              // Integer, not "5"
+     }
+   }
+   ```
+
+### Workflow Execution Issues
+
+#### Execution Fails to Start
+
+**Problem**: Workflow execution returns error immediately.
+
+**Common Causes**:
+
+1. **Missing Input Parameters**:
+   ```json
+   // ❌ Bad: Missing required parameter
+   {
+     "input_parameters": {}
+   }
+   
+   // ✅ Good: All required parameters provided
+   {
+     "input_parameters": {
+       "task_title": "Required parameter value"
+     }
+   }
+   ```
+
+2. **Invalid Parameter Values**:
+   ```json
+   // ❌ Bad: Wrong parameter type
+   {
+     "input_parameters": {
+       "match_count": "five"  // Should be integer
+     }
+   }
+   
+   // ✅ Good: Correct parameter type
+   {
+     "input_parameters": {
+       "match_count": 5
+     }
+   }
+   ```
+
+#### Step Execution Failures
+
+**Problem**: Individual steps fail during execution.
+
+**Debugging Steps**:
+
+1. **Check Execution Logs**:
+   ```bash
+   curl -X GET "http://localhost:8181/api/workflows/executions/exec-123" | jq '.step_executions'
+   ```
+
+2. **Review Step Results**:
+   ```json
+   {
+     "step_executions": [
+       {
+         "step_name": "failed_step",
+         "status": "failed",
+         "error": "Tool execution failed: Invalid action parameter",
+         "result": null
+       }
+     ]
+   }
+   ```
+
+3. **Common Step Failures**:
+
+<Tabs>
+<TabItem value="tool-error" label="Tool Execution Error" default>
+
+**Error**: `Tool execution failed: [specific error]`
+
+**Solutions**:
+- Verify tool parameters are correct
+- Check if referenced variables exist
+- Ensure tool is available and healthy
+
+```bash
+# Check tool availability
+curl -X GET "http://localhost:8181/api/workflows/tools"
+
+# Check system health
+curl -X GET "http://localhost:8181/api/health"
+```
+
+</TabItem>
+<TabItem value="timeout" label="Step Timeout">
+
+**Error**: `Step execution timed out after 300 seconds`
+
+**Solutions**:
+- Increase step timeout in workflow definition
+- Optimize tool parameters for better performance
+- Use parallel steps for independent operations
+
+```json
+{
+  "name": "long_running_step",
+  "timeout_seconds": 600,  // Increase timeout
+  "tool_name": "perform_rag_query_archon",
+  "parameters": {
+    "query": "{{workflow.parameters.query}}",
+    "match_count": 10  // Reduce result count for faster execution
+  }
+}
+```
+
+</TabItem>
+<TabItem value="parameter-resolution" label="Parameter Resolution Error">
+
+**Error**: `Failed to resolve parameter: {{undefined.variable}}`
+
+**Solutions**:
+- Check variable names for typos
+- Ensure referenced steps have completed
+- Verify step results contain expected fields
+
+```json
+// ❌ Bad: Undefined variable
+{
+  "parameters": {
+    "task_id": "{{create_task.result.id}}"  // Should be 'task_id'
+  }
+}
+
+// ✅ Good: Correct variable reference
+{
+  "parameters": {
+    "task_id": "{{create_task.result.task_id}}"
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+### Real-time Monitoring Issues
+
+#### WebSocket Connection Problems
+
+**Problem**: WebSocket connection fails or disconnects frequently.
+
+**Common Issues**:
+
+1. **Connection Refused**:
+   ```javascript
+   // Check if server is running
+   fetch('http://localhost:8181/api/health')
+     .then(response => response.json())
+     .then(data => console.log('Server status:', data.status))
+     .catch(error => console.error('Server not available:', error));
+   ```
+
+2. **Authentication Issues**:
+   ```javascript
+   // Ensure proper authentication if required
+   const ws = new WebSocket('ws://localhost:8181/api/workflows/executions/exec-123/stream', {
+     headers: {
+       'Authorization': 'Bearer YOUR_TOKEN'
+     }
+   });
+   ```
+
+3. **Connection Drops**:
+   ```javascript
+   // Implement reconnection logic
+   function connectWebSocket(executionId) {
+     const ws = new WebSocket(`ws://localhost:8181/api/workflows/executions/${executionId}/stream`);
+     
+     ws.onclose = (event) => {
+       console.log('WebSocket closed, attempting reconnection...');
+       setTimeout(() => connectWebSocket(executionId), 5000);
+     };
+     
+     ws.onerror = (error) => {
+       console.error('WebSocket error:', error);
+     };
+     
+     return ws;
+   }
+   ```
+
+#### Missing Real-time Updates
+
+**Problem**: WebSocket connected but not receiving updates.
+
+**Solutions**:
+
+1. **Verify Execution ID**:
+   ```javascript
+   // Ensure execution ID is correct
+   const executionId = 'exec-123';  // Get from execution response
+   const ws = new WebSocket(`ws://localhost:8181/api/workflows/executions/${executionId}/stream`);
+   ```
+
+2. **Check Message Handling**:
+   ```javascript
+   ws.onmessage = (event) => {
+     try {
+       const message = JSON.parse(event.data);
+       console.log('Received message:', message);
+       
+       // Handle different message types
+       switch(message.type) {
+         case 'execution_update':
+         case 'step_completed':
+         case 'progress_update':
+         case 'execution_completed':
+         case 'error':
+           // Process message
+           break;
+         default:
+           console.warn('Unknown message type:', message.type);
+       }
+     } catch (error) {
+       console.error('Failed to parse WebSocket message:', error);
+     }
+   };
+   ```
+
+### Performance Issues
+
+#### Slow Workflow Execution
+
+**Problem**: Workflows take longer than expected to complete.
+
+**Optimization Strategies**:
+
+1. **Use Parallel Steps**:
+   ```json
+   {
+     "name": "parallel_processing",
+     "type": "parallel",
+     "parallel_steps": ["task1", "task2", "task3"]  // Execute simultaneously
+   }
+   ```
+
+2. **Optimize Tool Parameters**:
+   ```json
+   {
+     "tool_name": "perform_rag_query_archon",
+     "parameters": {
+       "query": "{{workflow.parameters.query}}",
+       "match_count": 5  // Reduce for faster results
+     }
+   }
+   ```
+
+3. **Add Timeouts**:
+   ```json
+   {
+     "name": "time_limited_step",
+     "timeout_seconds": 60,  // Prevent hanging
+     "tool_name": "manage_task_archon",
+     "parameters": { ... }
+   }
+   ```
+
+#### Memory Issues
+
+**Problem**: Workflows consume excessive memory or cause system slowdown.
+
+**Solutions**:
+
+1. **Limit Loop Iterations**:
+   ```json
+   {
+     "name": "controlled_loop",
+     "type": "loop",
+     "loop_over": "{{workflow.parameters.items}}",
+     "max_iterations": 100,  // Prevent runaway loops
+     "loop_steps": ["process_item"]
+   }
+   ```
+
+2. **Use Streaming for Large Data**:
+   ```json
+   {
+     "tool_name": "perform_rag_query_archon",
+     "parameters": {
+       "query": "{{workflow.parameters.query}}",
+       "match_count": 10,  // Process in smaller batches
+       "stream_results": true
+     }
+   }
+   ```
+
+## 🔧 Debugging Tools
+
+### API Debugging
+
+1. **Check API Health**:
+   ```bash
+   curl -X GET "http://localhost:8181/api/health"
+   ```
+
+2. **Validate Workflow**:
+   ```bash
+   curl -X POST "http://localhost:8181/api/workflows/workflow-123/validate"
+   ```
+
+3. **Get Detailed Execution Info**:
+   ```bash
+   curl -X GET "http://localhost:8181/api/workflows/executions/exec-123" | jq '.'
+   ```
+
+### Log Analysis
+
+1. **Server Logs**:
+   ```bash
+   docker logs Archon-Server --tail 50
+   ```
+
+2. **MCP Service Logs**:
+   ```bash
+   docker logs Archon-MCP --tail 50
+   ```
+
+3. **Execution Logs**:
+   ```bash
+   curl -X GET "http://localhost:8181/api/workflows/executions/exec-123" | jq '.execution.execution_log'
+   ```
+
+### Testing Tools
+
+1. **Test Individual Tools**:
+   ```bash
+   curl -X POST "http://localhost:8181/api/mcp/execute" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "tool_name": "manage_task_archon",
+       "parameters": {
+         "action": "list"
+       }
+     }'
+   ```
+
+2. **Dry Run Workflows**:
+   ```bash
+   curl -X POST "http://localhost:8181/api/workflows/workflow-123/dry-run" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "input_parameters": {
+         "test_param": "test_value"
+       }
+     }'
+   ```
+
+## 📊 Monitoring and Alerts
+
+### Health Monitoring
+
+1. **System Health Check**:
+   ```bash
+   #!/bin/bash
+   # health_check.sh
+   
+   HEALTH_URL="http://localhost:8181/api/health"
+   RESPONSE=$(curl -s $HEALTH_URL)
+   STATUS=$(echo $RESPONSE | jq -r '.status')
+   
+   if [ "$STATUS" != "healthy" ]; then
+     echo "ALERT: Archon system unhealthy - $RESPONSE"
+     # Send alert notification
+   fi
+   ```
+
+2. **Workflow Execution Monitoring**:
+   ```bash
+   #!/bin/bash
+   # monitor_executions.sh
+   
+   EXECUTIONS_URL="http://localhost:8181/api/workflows/executions"
+   FAILED_EXECUTIONS=$(curl -s "$EXECUTIONS_URL?status=failed" | jq '.executions | length')
+   
+   if [ "$FAILED_EXECUTIONS" -gt 0 ]; then
+     echo "ALERT: $FAILED_EXECUTIONS failed workflow executions detected"
+   fi
+   ```
+
+### Performance Monitoring
+
+1. **Execution Time Tracking**:
+   ```javascript
+   // Monitor execution times
+   async function monitorExecutionPerformance(executionId) {
+     const startTime = Date.now();
+     
+     const ws = new WebSocket(`ws://localhost:8181/api/workflows/executions/${executionId}/stream`);
+     
+     ws.onmessage = (event) => {
+       const message = JSON.parse(event.data);
+       
+       if (message.type === 'execution_completed') {
+         const duration = Date.now() - startTime;
+         console.log(`Execution ${executionId} completed in ${duration}ms`);
+         
+         if (duration > 300000) {  // 5 minutes
+           console.warn(`Slow execution detected: ${duration}ms`);
+         }
+       }
+     };
+   }
+   ```
+
+## 🆘 Getting Help
+
+### Self-Service Resources
+
+1. **Documentation**: Check the complete workflow documentation
+2. **API Reference**: Review API endpoints and parameters
+3. **Examples**: Browse workflow examples and templates
+4. **Logs**: Analyze server and execution logs
+
+### Community Support
+
+1. **GitHub Issues**: Report bugs and feature requests
+2. **Community Forum**: Ask questions and share solutions
+3. **Discord/Slack**: Real-time community support
+
+### Professional Support
+
+1. **Enterprise Support**: For production deployments
+2. **Custom Development**: For specialized workflow requirements
+3. **Training**: Workflow development training and best practices
+
+## 📚 Prevention Best Practices
+
+### Development Best Practices
+
+1. **Start Simple**: Begin with basic workflows, add complexity gradually
+2. **Test Incrementally**: Test each step before adding the next
+3. **Use Validation**: Always validate workflows before deployment
+4. **Document Workflows**: Add clear descriptions and comments
+5. **Version Control**: Track workflow changes over time
+
+### Production Best Practices
+
+1. **Monitor Health**: Implement comprehensive health monitoring
+2. **Set Alerts**: Configure alerts for failures and performance issues
+3. **Backup Workflows**: Regularly backup workflow definitions
+4. **Capacity Planning**: Monitor resource usage and plan for growth
+5. **Security**: Implement proper authentication and authorization
+
+### Error Handling Best Practices
+
+1. **Graceful Degradation**: Handle failures gracefully
+2. **Retry Logic**: Implement appropriate retry mechanisms
+3. **Error Logging**: Log detailed error information
+4. **User Feedback**: Provide meaningful error messages
+5. **Recovery Procedures**: Document recovery procedures for common issues
+
+## 📚 Next Steps
+
+- **[Best Practices](workflows-best-practices)** - Production workflow guidelines
+- **[Advanced Workflows](workflows-advanced)** - Complex workflow patterns
+- **[API Reference](workflows-api)** - Complete API documentation
+- **[Performance Tuning](workflows-performance)** - Optimization techniques

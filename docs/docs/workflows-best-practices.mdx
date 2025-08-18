@@ -1,0 +1,716 @@
+---
+title: Workflow Best Practices
+description: Production-ready guidelines for building robust and maintainable workflows
+sidebar_position: 31
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Workflow Best Practices
+
+This guide provides comprehensive best practices for building production-ready workflows in Archon's orchestration system.
+
+## 🏗️ Design Principles
+
+### 1. Single Responsibility Principle
+
+Each workflow should have a clear, single purpose.
+
+<Tabs>
+<TabItem value="good" label="✅ Good Practice" default>
+
+```json
+{
+  "name": "create_project_task",
+  "title": "Create Project Task",
+  "description": "Creates a single task within a project",
+  "steps": [
+    {
+      "name": "create_task",
+      "tool_name": "manage_task_archon",
+      "parameters": {
+        "action": "create",
+        "project_id": "{{workflow.parameters.project_id}}",
+        "title": "{{workflow.parameters.task_title}}"
+      }
+    }
+  ]
+}
+```
+
+</TabItem>
+<TabItem value="bad" label="❌ Bad Practice">
+
+```json
+{
+  "name": "do_everything",
+  "title": "Do Everything Workflow",
+  "description": "Creates project, tasks, documents, and sends notifications",
+  "steps": [
+    // 20+ steps doing unrelated things
+  ]
+}
+```
+
+**Problems**: Hard to maintain, debug, and reuse. Failures affect unrelated functionality.
+
+</TabItem>
+</Tabs>
+
+### 2. Composability
+
+Build workflows that can be combined and reused.
+
+```json
+{
+  "name": "project_setup_orchestrator",
+  "title": "Project Setup Orchestrator",
+  "steps": [
+    {
+      "name": "create_project",
+      "type": "workflow_link",
+      "workflow_id": "create_project_workflow"
+    },
+    {
+      "name": "setup_tasks",
+      "type": "workflow_link",
+      "workflow_id": "create_initial_tasks_workflow"
+    },
+    {
+      "name": "setup_documentation",
+      "type": "workflow_link",
+      "workflow_id": "create_project_docs_workflow"
+    }
+  ]
+}
+```
+
+### 3. Idempotency
+
+Workflows should produce the same result when run multiple times.
+
+```json
+{
+  "name": "ensure_project_exists",
+  "steps": [
+    {
+      "name": "check_project_exists",
+      "tool_name": "manage_project_archon",
+      "parameters": {
+        "action": "get",
+        "project_id": "{{workflow.parameters.project_id}}"
+      }
+    },
+    {
+      "name": "create_if_missing",
+      "type": "condition",
+      "condition": "{{check_project_exists.success}} == false",
+      "on_true": "create_project",
+      "on_false": "project_exists"
+    }
+  ]
+}
+```
+
+## 📝 Naming Conventions
+
+### Workflow Names
+
+Use clear, descriptive names with consistent patterns:
+
+```json
+// ✅ Good naming patterns
+{
+  "name": "create_project_task",           // action_resource_target
+  "name": "analyze_knowledge_base",        // action_resource
+  "name": "setup_oauth_authentication",   // action_feature
+  "name": "process_user_registration"     // action_business_process
+}
+
+// ❌ Bad naming patterns
+{
+  "name": "workflow1",                     // Non-descriptive
+  "name": "doStuff",                       // Vague
+  "name": "CreateProjectTaskWorkflow"      // Redundant suffix
+}
+```
+
+### Step Names
+
+Use consistent, hierarchical naming:
+
+```json
+{
+  "steps": [
+    {
+      "name": "validate_input",           // verb_object
+      "name": "create_project",           // action_resource
+      "name": "setup_project_structure",  // action_resource_detail
+      "name": "notify_team_members"       // action_target
+    }
+  ]
+}
+```
+
+### Parameter Names
+
+Use clear, typed parameter names:
+
+```json
+{
+  "parameters": {
+    "project_name": {                     // Clear, specific
+      "type": "string",
+      "required": true,
+      "description": "Name of the project to create"
+    },
+    "team_members": {                     // Plural for arrays
+      "type": "array",
+      "required": false,
+      "description": "List of team member emails"
+    },
+    "enable_notifications": {             // Boolean with clear intent
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to send notification emails"
+    }
+  }
+}
+```
+
+## 🔧 Error Handling
+
+### Comprehensive Error Handling
+
+Implement error handling at multiple levels:
+
+```json
+{
+  "name": "robust_task_creation",
+  "steps": [
+    {
+      "name": "validate_project_exists",
+      "tool_name": "manage_project_archon",
+      "parameters": {
+        "action": "get",
+        "project_id": "{{workflow.parameters.project_id}}"
+      },
+      "on_failure": "handle_missing_project"
+    },
+    {
+      "name": "create_task",
+      "tool_name": "manage_task_archon",
+      "parameters": {
+        "action": "create",
+        "project_id": "{{workflow.parameters.project_id}}",
+        "title": "{{workflow.parameters.task_title}}"
+      },
+      "retry_count": 3,
+      "retry_delay": 5,
+      "on_failure": "handle_task_creation_failure"
+    },
+    {
+      "name": "handle_missing_project",
+      "type": "condition",
+      "condition": "{{workflow.parameters.auto_create_project}} == true",
+      "on_true": "create_project_then_task",
+      "on_false": "fail_with_missing_project_error"
+    }
+  ]
+}
+```
+
+### Graceful Degradation
+
+Design workflows to continue functioning when non-critical steps fail:
+
+```json
+{
+  "name": "project_setup_with_degradation",
+  "steps": [
+    {
+      "name": "create_project",
+      "tool_name": "manage_project_archon",
+      "parameters": { ... },
+      "critical": true  // Workflow fails if this fails
+    },
+    {
+      "name": "send_notification",
+      "tool_name": "send_email_notification",
+      "parameters": { ... },
+      "critical": false,  // Workflow continues if this fails
+      "on_failure": "log_notification_failure"
+    }
+  ]
+}
+```
+
+## ⚡ Performance Optimization
+
+### Use Parallel Processing
+
+Execute independent steps simultaneously:
+
+```json
+{
+  "name": "parallel_project_setup",
+  "steps": [
+    {
+      "name": "create_project",
+      "tool_name": "manage_project_archon",
+      "parameters": { ... },
+      "next_step": "parallel_setup"
+    },
+    {
+      "name": "parallel_setup",
+      "type": "parallel",
+      "parallel_steps": [
+        "create_initial_tasks",
+        "setup_documentation",
+        "configure_permissions",
+        "send_notifications"
+      ]
+    }
+  ]
+}
+```
+
+### Optimize Tool Parameters
+
+Use efficient parameter configurations:
+
+```json
+{
+  "name": "optimized_knowledge_search",
+  "steps": [
+    {
+      "name": "search_knowledge",
+      "tool_name": "perform_rag_query_archon",
+      "parameters": {
+        "query": "{{workflow.parameters.search_query}}",
+        "match_count": 5,        // Limit results for speed
+        "source": "{{workflow.parameters.preferred_source}}"  // Filter for relevance
+      },
+      "timeout_seconds": 30      // Prevent hanging
+    }
+  ]
+}
+```
+
+### Batch Processing
+
+Process multiple items efficiently:
+
+```json
+{
+  "name": "batch_task_creation",
+  "steps": [
+    {
+      "name": "create_tasks_batch",
+      "type": "loop",
+      "loop_over": "{{workflow.parameters.task_list}}",
+      "loop_steps": ["create_single_task"],
+      "batch_size": 10,          // Process in batches
+      "parallel_execution": true // Execute batches in parallel
+    }
+  ]
+}
+```
+
+## 🔒 Security Best Practices
+
+### Input Validation
+
+Always validate and sanitize inputs:
+
+```json
+{
+  "name": "secure_task_creation",
+  "steps": [
+    {
+      "name": "validate_input",
+      "type": "condition",
+      "condition": "{{workflow.parameters.task_title}} != null && {{workflow.parameters.task_title}} != ''",
+      "on_true": "validate_project_access",
+      "on_false": "invalid_input_error"
+    },
+    {
+      "name": "validate_project_access",
+      "tool_name": "check_project_permissions",
+      "parameters": {
+        "project_id": "{{workflow.parameters.project_id}}",
+        "user_id": "{{execution.triggered_by}}"
+      }
+    }
+  ]
+}
+```
+
+### Sensitive Data Handling
+
+Protect sensitive information:
+
+```json
+{
+  "name": "secure_api_integration",
+  "steps": [
+    {
+      "name": "call_external_api",
+      "tool_name": "http_request",
+      "parameters": {
+        "url": "{{workflow.parameters.api_endpoint}}",
+        "headers": {
+          "Authorization": "Bearer {{env.API_TOKEN}}"  // Use environment variables
+        },
+        "data": {
+          "public_field": "{{workflow.parameters.public_data}}",
+          // Don't log sensitive data
+          "sensitive_field": "{{workflow.parameters.sensitive_data}}"
+        }
+      },
+      "log_parameters": false  // Prevent logging sensitive data
+    }
+  ]
+}
+```
+
+### Access Control
+
+Implement proper access controls:
+
+```json
+{
+  "name": "access_controlled_workflow",
+  "metadata": {
+    "required_permissions": ["project.create", "task.manage"],
+    "allowed_roles": ["admin", "project_manager"],
+    "restricted_parameters": ["admin_settings"]
+  },
+  "steps": [ ... ]
+}
+```
+
+## 📊 Monitoring and Observability
+
+### Comprehensive Logging
+
+Add meaningful log messages:
+
+```json
+{
+  "name": "well_logged_workflow",
+  "steps": [
+    {
+      "name": "start_processing",
+      "tool_name": "log_message",
+      "parameters": {
+        "level": "info",
+        "message": "Starting project setup for: {{workflow.parameters.project_name}}"
+      }
+    },
+    {
+      "name": "create_project",
+      "tool_name": "manage_project_archon",
+      "parameters": { ... },
+      "on_success": "log_project_created",
+      "on_failure": "log_project_creation_failed"
+    }
+  ]
+}
+```
+
+### Performance Metrics
+
+Track execution metrics:
+
+```json
+{
+  "name": "monitored_workflow",
+  "steps": [
+    {
+      "name": "record_start_time",
+      "tool_name": "record_metric",
+      "parameters": {
+        "metric": "workflow.start",
+        "workflow_name": "{{workflow.name}}",
+        "timestamp": "{{execution.started_at}}"
+      }
+    },
+    // ... workflow steps ...
+    {
+      "name": "record_completion",
+      "tool_name": "record_metric",
+      "parameters": {
+        "metric": "workflow.complete",
+        "workflow_name": "{{workflow.name}}",
+        "duration": "{{execution.duration}}",
+        "success": "{{execution.success}}"
+      }
+    }
+  ]
+}
+```
+
+### Health Checks
+
+Include health validation steps:
+
+```json
+{
+  "name": "health_aware_workflow",
+  "steps": [
+    {
+      "name": "check_system_health",
+      "tool_name": "health_check_archon",
+      "parameters": {},
+      "critical": false  // Don't fail workflow if health check fails
+    },
+    {
+      "name": "proceed_if_healthy",
+      "type": "condition",
+      "condition": "{{check_system_health.result.status}} == 'healthy'",
+      "on_true": "main_processing",
+      "on_false": "degraded_mode_processing"
+    }
+  ]
+}
+```
+
+## 🧪 Testing Strategies
+
+### Unit Testing Workflows
+
+Test individual workflow components:
+
+```json
+{
+  "name": "test_task_creation_step",
+  "description": "Unit test for task creation step",
+  "test_mode": true,
+  "steps": [
+    {
+      "name": "mock_project_exists",
+      "tool_name": "mock_response",
+      "parameters": {
+        "tool": "manage_project_archon",
+        "response": {"success": true, "project": {"id": "test-project"}}
+      }
+    },
+    {
+      "name": "test_create_task",
+      "tool_name": "manage_task_archon",
+      "parameters": {
+        "action": "create",
+        "project_id": "test-project",
+        "title": "Test Task"
+      }
+    },
+    {
+      "name": "assert_task_created",
+      "tool_name": "assert",
+      "parameters": {
+        "condition": "{{test_create_task.success}} == true",
+        "message": "Task creation should succeed"
+      }
+    }
+  ]
+}
+```
+
+### Integration Testing
+
+Test complete workflow flows:
+
+```json
+{
+  "name": "integration_test_project_setup",
+  "description": "Integration test for complete project setup",
+  "test_environment": "staging",
+  "cleanup_after": true,
+  "steps": [
+    {
+      "name": "setup_test_data",
+      "tool_name": "create_test_data",
+      "parameters": {
+        "test_case": "project_setup_integration"
+      }
+    },
+    {
+      "name": "run_project_setup",
+      "type": "workflow_link",
+      "workflow_id": "project_setup_workflow",
+      "input_mapping": {
+        "project_name": "{{setup_test_data.result.test_project_name}}"
+      }
+    },
+    {
+      "name": "verify_results",
+      "tool_name": "verify_project_setup",
+      "parameters": {
+        "project_id": "{{run_project_setup.result.project_id}}"
+      }
+    },
+    {
+      "name": "cleanup_test_data",
+      "tool_name": "cleanup_test_data",
+      "parameters": {
+        "test_case": "project_setup_integration"
+      }
+    }
+  ]
+}
+```
+
+## 📚 Documentation Standards
+
+### Workflow Documentation
+
+Document workflows comprehensively:
+
+```json
+{
+  "name": "well_documented_workflow",
+  "title": "Project Task Creation Workflow",
+  "description": "Creates a new task within an existing project with proper validation and error handling",
+  "version": "1.2.0",
+  "author": "Development Team",
+  "tags": ["project-management", "task-creation", "automation"],
+  "documentation": {
+    "purpose": "Automate the creation of project tasks with validation",
+    "prerequisites": [
+      "Project must exist",
+      "User must have task creation permissions"
+    ],
+    "inputs": {
+      "project_id": "UUID of the target project",
+      "task_title": "Title for the new task",
+      "task_description": "Optional description for the task"
+    },
+    "outputs": {
+      "task_id": "UUID of the created task",
+      "task_url": "Direct link to the created task"
+    },
+    "error_conditions": [
+      "Project not found",
+      "Insufficient permissions",
+      "Invalid task title"
+    ],
+    "examples": [
+      {
+        "name": "Basic task creation",
+        "input": {
+          "project_id": "proj-123",
+          "task_title": "Implement user authentication"
+        }
+      }
+    ]
+  },
+  "steps": [ ... ]
+}
+```
+
+### Step Documentation
+
+Document complex steps:
+
+```json
+{
+  "name": "complex_data_processing",
+  "title": "Process User Data",
+  "description": "Validates and processes user registration data with multiple validation steps",
+  "tool_name": "process_user_data",
+  "parameters": {
+    "user_data": "{{workflow.parameters.user_data}}",
+    "validation_rules": "{{workflow.parameters.validation_rules}}"
+  },
+  "documentation": {
+    "purpose": "Ensure user data meets all validation requirements before processing",
+    "validation_rules": [
+      "Email format validation",
+      "Password strength requirements",
+      "Username uniqueness check"
+    ],
+    "side_effects": [
+      "Creates user record in database",
+      "Sends welcome email",
+      "Logs registration event"
+    ],
+    "rollback_procedure": "Use cleanup_failed_registration workflow if this step fails"
+  }
+}
+```
+
+## 🔄 Version Control
+
+### Workflow Versioning
+
+Implement proper versioning:
+
+```json
+{
+  "name": "versioned_workflow",
+  "version": "2.1.0",
+  "changelog": [
+    {
+      "version": "2.1.0",
+      "date": "2024-01-15",
+      "changes": [
+        "Added parallel processing for task creation",
+        "Improved error handling for missing projects"
+      ]
+    },
+    {
+      "version": "2.0.0",
+      "date": "2024-01-01",
+      "changes": [
+        "Breaking: Changed parameter structure",
+        "Added support for batch operations"
+      ]
+    }
+  ],
+  "compatibility": {
+    "min_archon_version": "1.5.0",
+    "deprecated_features": [
+      "old_parameter_format (use new_parameter_format instead)"
+    ]
+  }
+}
+```
+
+### Migration Strategies
+
+Plan for workflow evolution:
+
+```json
+{
+  "name": "migration_aware_workflow",
+  "version": "3.0.0",
+  "migration": {
+    "from_version": "2.x",
+    "migration_steps": [
+      {
+        "step": "Update parameter names",
+        "old": "task_name",
+        "new": "task_title"
+      },
+      {
+        "step": "Add required parameter",
+        "parameter": "project_id",
+        "default_value": "default-project"
+      }
+    ],
+    "backward_compatibility": false,
+    "migration_workflow": "migrate_v2_to_v3_workflow"
+  }
+}
+```
+
+## 📚 Next Steps
+
+Now that you understand workflow best practices:
+
+- **[Advanced Workflows](workflows-advanced)** - Complex patterns and techniques
+- **[Performance Tuning](workflows-performance)** - Optimization strategies
+- **[Security Guide](workflows-security)** - Advanced security practices
+- **[Production Deployment](workflows-production)** - Enterprise deployment guidelines

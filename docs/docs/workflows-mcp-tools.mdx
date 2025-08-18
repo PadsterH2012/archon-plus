@@ -1,0 +1,542 @@
+---
+title: MCP Tools Reference
+description: Complete reference for all MCP tools available in Archon workflows
+sidebar_position: 28
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# MCP Tools Reference
+
+Archon workflows integrate with 10+ MCP (Model Context Protocol) tools across 3 categories, providing comprehensive automation capabilities.
+
+## 🛠️ Tool Categories
+
+### 📚 RAG & Knowledge Tools
+Tools for searching and retrieving information from the knowledge base.
+
+### 📋 Project & Task Management Tools  
+Tools for managing projects, tasks, documents, and version control.
+
+### 🔧 System & Monitoring Tools
+Tools for system health monitoring and session management.
+
+## 📚 RAG & Knowledge Tools
+
+### perform_rag_query_archon
+
+Perform semantic search across the knowledge base using RAG (Retrieval Augmented Generation).
+
+**Purpose**: Find relevant information from crawled websites, uploaded documents, and knowledge sources.
+
+**Parameters**:
+- `query` (string, required): Search query text
+- `source` (string, optional): Filter by specific source domain
+- `match_count` (integer, optional): Maximum results to return (default: 5)
+
+**Example Usage**:
+```json
+{
+  "tool_name": "perform_rag_query_archon",
+  "parameters": {
+    "query": "{{workflow.parameters.search_term}}",
+    "match_count": 10
+  }
+}
+```
+
+**Response Format**:
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "content": "Relevant text content...",
+      "source": "example.com",
+      "title": "Page Title",
+      "url": "https://example.com/page",
+      "similarity_score": 0.85
+    }
+  ],
+  "total_matches": 5
+}
+```
+
+**Common Use Cases**:
+- Research automation workflows
+- Knowledge discovery and analysis
+- Content recommendation systems
+- Documentation search and retrieval
+
+---
+
+### search_code_examples_archon
+
+Search for relevant code examples from the knowledge base.
+
+**Purpose**: Find code snippets, functions, and implementation examples.
+
+**Parameters**:
+- `query` (string, required): Search query for code examples
+- `source_id` (string, optional): Filter by specific source
+- `match_count` (integer, optional): Maximum results to return (default: 5)
+
+**Example Usage**:
+```json
+{
+  "tool_name": "search_code_examples_archon",
+  "parameters": {
+    "query": "authentication middleware",
+    "match_count": 3
+  }
+}
+```
+
+**Response Format**:
+```json
+{
+  "success": true,
+  "examples": [
+    {
+      "code": "function authenticate(req, res, next) { ... }",
+      "language": "javascript",
+      "file_path": "src/middleware/auth.js",
+      "description": "Authentication middleware example",
+      "source": "github.com/example/repo"
+    }
+  ]
+}
+```
+
+**Common Use Cases**:
+- Code generation workflows
+- Development assistance automation
+- Pattern discovery and reuse
+- Technical documentation workflows
+
+---
+
+### get_available_sources_archon
+
+Get list of available knowledge sources in the system.
+
+**Purpose**: Enumerate all knowledge sources for filtering and selection.
+
+**Parameters**: None
+
+**Example Usage**:
+```json
+{
+  "tool_name": "get_available_sources_archon",
+  "parameters": {}
+}
+```
+
+**Response Format**:
+```json
+{
+  "success": true,
+  "sources": [
+    {
+      "id": "example.com",
+      "name": "Example Documentation",
+      "type": "website",
+      "url": "https://example.com",
+      "last_updated": "2024-01-15T10:30:00Z",
+      "document_count": 150
+    }
+  ]
+}
+```
+
+**Common Use Cases**:
+- Source discovery workflows
+- Knowledge base management
+- Data inventory and cataloging
+- Source validation workflows
+
+## 📋 Project & Task Management Tools
+
+### manage_project_archon
+
+Comprehensive project lifecycle management with PRP (Product Requirement Prompt) support.
+
+**Purpose**: Create, read, update, and delete projects with automatic version control.
+
+**Parameters**:
+- `action` (string, required): Operation - "create", "list", "get", "delete"
+- `project_id` (string, optional): Project UUID (required for get/delete)
+- `title` (string, optional): Project title (required for create)
+- `prd` (object, optional): Product Requirements Document
+- `github_repo` (string, optional): GitHub repository URL
+
+**Example Usage**:
+
+<Tabs>
+<TabItem value="create" label="Create Project" default>
+
+```json
+{
+  "tool_name": "manage_project_archon",
+  "parameters": {
+    "action": "create",
+    "title": "OAuth2 Authentication System",
+    "prd": {
+      "product_vision": "Secure authentication system",
+      "target_users": ["Web users", "API developers"],
+      "key_features": ["Google OAuth2", "GitHub OAuth2"],
+      "success_metrics": ["< 3 clicks for auth", "99.9% success rate"]
+    },
+    "github_repo": "https://github.com/company/auth-service"
+  }
+}
+```
+
+</TabItem>
+<TabItem value="list" label="List Projects">
+
+```json
+{
+  "tool_name": "manage_project_archon",
+  "parameters": {
+    "action": "list"
+  }
+}
+```
+
+</TabItem>
+<TabItem value="get" label="Get Project">
+
+```json
+{
+  "tool_name": "manage_project_archon",
+  "parameters": {
+    "action": "get",
+    "project_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+**Response Format**:
+```json
+{
+  "success": true,
+  "project": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "title": "OAuth2 Authentication System",
+    "prd": { ... },
+    "github_repo": "https://github.com/company/auth-service",
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+---
+
+### manage_task_archon
+
+Task creation, tracking, and lifecycle management with PRP integration.
+
+**Purpose**: Manage tasks within projects following PRP methodology.
+
+**Parameters**:
+- `action` (string, required): Operation - "create", "list", "get", "update", "delete"
+- `task_id` (string, optional): Task UUID (required for get/update/delete)
+- `project_id` (string, optional): Project UUID (required for create)
+- `title` (string, optional): Task title (required for create)
+- `description` (string, optional): Task description
+- `assignee` (string, optional): Task assignee
+- `status` (string, optional): Task status
+- `update_fields` (object, optional): Fields to update
+
+**Example Usage**:
+
+<Tabs>
+<TabItem value="create" label="Create Task" default>
+
+```json
+{
+  "tool_name": "manage_task_archon",
+  "parameters": {
+    "action": "create",
+    "project_id": "550e8400-e29b-41d4-a716-446655440000",
+    "title": "Implement OAuth2 Google provider",
+    "description": "Create GoogleOAuthProvider class with proper endpoints",
+    "assignee": "AI IDE Agent",
+    "status": "todo"
+  }
+}
+```
+
+</TabItem>
+<TabItem value="update" label="Update Task">
+
+```json
+{
+  "tool_name": "manage_task_archon",
+  "parameters": {
+    "action": "update",
+    "task_id": "task-123e4567-e89b-12d3-a456-426614174000",
+    "update_fields": {
+      "status": "doing",
+      "assignee": "prp-executor"
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="list" label="List Tasks">
+
+```json
+{
+  "tool_name": "manage_task_archon",
+  "parameters": {
+    "action": "list",
+    "filter_by": "status",
+    "filter_value": "todo",
+    "project_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+### manage_document_archon
+
+Document management with automatic version control and PRP support.
+
+**Purpose**: Create and manage documents within projects with complete version history.
+
+**Parameters**:
+- `action` (string, required): Operation - "add", "list", "get", "update", "delete"
+- `project_id` (string, required): Project UUID
+- `doc_id` (string, optional): Document UUID (required for get/update/delete)
+- `document_type` (string, optional): Document type (required for add)
+- `title` (string, optional): Document title
+- `content` (object, optional): Document content as structured JSON
+- `metadata` (object, optional): Document metadata
+
+**Example Usage**:
+```json
+{
+  "tool_name": "manage_document_archon",
+  "parameters": {
+    "action": "add",
+    "project_id": "550e8400-e29b-41d4-a716-446655440000",
+    "document_type": "spec",
+    "title": "API Specification",
+    "content": {
+      "sections": {
+        "overview": "API overview content...",
+        "endpoints": "Endpoint documentation..."
+      }
+    }
+  }
+}
+```
+
+---
+
+### manage_versions_archon
+
+Immutable version management for complete change history.
+
+**Purpose**: Create, list, get, and restore versions of project content.
+
+**Parameters**:
+- `action` (string, required): Operation - "create", "list", "get", "restore"
+- `project_id` (string, required): Project UUID
+- `field_name` (string, required): JSONB field name ("docs", "features", "data", "prd")
+- `version_number` (integer, optional): Version number (required for get/restore)
+- `content` (object, optional): Content to version (required for create)
+- `change_summary` (string, optional): Description of changes
+- `created_by` (string, optional): User who created the version
+
+**Example Usage**:
+```json
+{
+  "tool_name": "manage_versions_archon",
+  "parameters": {
+    "action": "create",
+    "project_id": "550e8400-e29b-41d4-a716-446655440000",
+    "field_name": "docs",
+    "content": { "complete_document_content": "..." },
+    "change_summary": "Added validation gates for OAuth implementation",
+    "created_by": "prp-creator"
+  }
+}
+```
+
+---
+
+### get_project_features_archon
+
+Get features from a project's features JSONB field.
+
+**Purpose**: Retrieve project features for analysis and management.
+
+**Parameters**:
+- `project_id` (string, required): Project UUID
+
+**Example Usage**:
+```json
+{
+  "tool_name": "get_project_features_archon",
+  "parameters": {
+    "project_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+## 🔧 System & Monitoring Tools
+
+### health_check_archon
+
+Perform health check on the MCP server and its dependencies.
+
+**Purpose**: Monitor system health and service availability.
+
+**Parameters**: None
+
+**Example Usage**:
+```json
+{
+  "tool_name": "health_check_archon",
+  "parameters": {}
+}
+```
+
+**Response Format**:
+```json
+{
+  "success": true,
+  "status": "healthy",
+  "services": {
+    "database": "healthy",
+    "api": "healthy",
+    "mcp": "healthy"
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+---
+
+### session_info_archon
+
+Get information about the current session and all active sessions.
+
+**Purpose**: Monitor session information and user activity.
+
+**Parameters**: None
+
+**Example Usage**:
+```json
+{
+  "tool_name": "session_info_archon",
+  "parameters": {}
+}
+```
+
+**Response Format**:
+```json
+{
+  "success": true,
+  "current_session": {
+    "id": "session-123",
+    "user": "default_user",
+    "started_at": "2024-01-15T10:30:00Z"
+  },
+  "active_sessions": 3
+}
+```
+
+## 🎯 Tool Usage Patterns
+
+### Sequential Processing
+```json
+{
+  "steps": [
+    {
+      "name": "search_knowledge",
+      "tool_name": "perform_rag_query_archon",
+      "parameters": { "query": "{{workflow.parameters.topic}}" }
+    },
+    {
+      "name": "create_project",
+      "tool_name": "manage_project_archon",
+      "parameters": {
+        "action": "create",
+        "title": "Research: {{workflow.parameters.topic}}"
+      }
+    },
+    {
+      "name": "create_task",
+      "tool_name": "manage_task_archon",
+      "parameters": {
+        "action": "create",
+        "project_id": "{{create_project.result.project.id}}",
+        "title": "Analyze findings",
+        "description": "Based on: {{search_knowledge.result.summary}}"
+      }
+    }
+  ]
+}
+```
+
+### Conditional Processing
+```json
+{
+  "steps": [
+    {
+      "name": "check_health",
+      "tool_name": "health_check_archon"
+    },
+    {
+      "name": "health_condition",
+      "type": "condition",
+      "condition": "{{check_health.result.status}} == 'healthy'",
+      "on_true": "proceed_with_task",
+      "on_false": "create_alert_task"
+    }
+  ]
+}
+```
+
+### Loop Processing
+```json
+{
+  "steps": [
+    {
+      "name": "process_sources",
+      "type": "loop",
+      "loop_over": "{{get_sources.result.sources}}",
+      "loop_steps": ["search_source"]
+    },
+    {
+      "name": "search_source",
+      "tool_name": "perform_rag_query_archon",
+      "parameters": {
+        "query": "{{workflow.parameters.query}}",
+        "source": "{{loop.item.id}}"
+      }
+    }
+  ]
+}
+```
+
+## 📚 Next Steps
+
+- **[Advanced Workflows](workflows-advanced)** - Complex patterns using multiple tools
+- **[API Integration](workflows-api)** - Programmatic tool usage
+- **[Best Practices](workflows-best-practices)** - Optimal tool usage patterns
+- **[Troubleshooting](workflows-troubleshooting)** - Common tool issues and solutions

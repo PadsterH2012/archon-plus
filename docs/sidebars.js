@@ -26,6 +26,21 @@ module.exports = {
         'code-extraction-rules',
       ],
     },
+
+    // WORKFLOW ORCHESTRATION
+    {
+      type: 'category',
+      label: 'Workflow Orchestration',
+      items: [
+        'workflows-overview',
+        'workflows-getting-started',
+        'workflows-designer',
+        'workflows-mcp-tools',
+        'workflows-api',
+        'workflows-best-practices',
+        'workflows-troubleshooting',
+      ],
+    },
     
     // REFERENCE SECTION
     {
