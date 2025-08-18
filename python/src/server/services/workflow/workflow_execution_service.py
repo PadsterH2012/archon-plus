@@ -37,7 +37,21 @@ class WorkflowExecutionService:
         
         # Track execution tasks
         self.execution_tasks: Dict[str, str] = {}  # execution_id -> task_id mapping
-    
+
+        # WebSocket manager for real-time updates (lazy loaded to avoid circular imports)
+        self._websocket_manager = None
+
+    @property
+    def websocket_manager(self):
+        """Get WebSocket manager instance (lazy loaded)."""
+        if self._websocket_manager is None:
+            try:
+                from ...api_routes.workflow_websocket import get_workflow_websocket_manager
+                self._websocket_manager = get_workflow_websocket_manager()
+            except ImportError:
+                # WebSocket manager not available
+                self._websocket_manager = None
+        return self._websocket_manager
     async def start_workflow_execution(
         self,
         workflow_template_id: str,
@@ -228,7 +242,28 @@ class WorkflowExecutionService:
     def _execution_progress_callback(self, progress: float, message: str = ""):
         """Callback for execution progress updates"""
         logfire.info(f"Workflow execution progress | progress={progress}% | message={message}")
-    
+
+        # Broadcast progress update via WebSocket if available
+        if self.websocket_manager:
+            # Extract execution_id from message if available
+            execution_id = None
+            if "execution_id=" in message:
+                try:
+                    execution_id = message.split("execution_id=")[1].split(" ")[0]
+                except:
+                    pass
+
+            if execution_id:
+                asyncio.create_task(self.websocket_manager.broadcast_to_execution(
+                    execution_id,
+                    {
+                        "type": "progress_update",
+                        "data": {
+                            "progress_percentage": progress,
+                            "message": message
+                        }
+                    }
+                ))
     async def cancel_workflow_execution(self, execution_id: str) -> Tuple[bool, Dict[str, Any]]:
         """Cancel a workflow execution"""
         try:
@@ -246,6 +281,16 @@ class WorkflowExecutionService:
                 except Exception as e:
                     logfire.warning(f"Failed to cancel background task | task_id={task_id} | error={str(e)}")
             
+            # Broadcast cancellation via WebSocket if successful
+            if success and self.websocket_manager:
+                asyncio.create_task(self.websocket_manager.broadcast_to_execution(
+                    execution_id,
+                    {
+                        "type": "execution_update",
+                        "data": {"status": "cancelled", "message": "Execution cancelled"}
+                    }
+                ))
+
             return success, result
             
         except Exception as e:
@@ -262,7 +307,17 @@ class WorkflowExecutionService:
             
             # Note: Background task manager doesn't support pause/resume,
             # but the executor handles pausing the workflow logic
-            
+
+            # Broadcast pause via WebSocket if successful
+            if success and self.websocket_manager:
+                asyncio.create_task(self.websocket_manager.broadcast_to_execution(
+                    execution_id,
+                    {
+                        "type": "execution_update",
+                        "data": {"status": "paused", "message": "Execution paused"}
+                    }
+                ))
+
             return success, result
             
         except Exception as e:
@@ -277,6 +332,16 @@ class WorkflowExecutionService:
             # Resume through executor
             success, result = await self.executor.resume_execution(execution_id)
             
+            # Broadcast resume via WebSocket if successful
+            if success and self.websocket_manager:
+                asyncio.create_task(self.websocket_manager.broadcast_to_execution(
+                    execution_id,
+                    {
+                        "type": "execution_update",
+                        "data": {"status": "running", "message": "Execution resumed"}
+                    }
+                ))
+
             return success, result
             
         except Exception as e:

@@ -1,0 +1,53 @@
+# Portainer Environment Variables for Archon Stack
+# Copy these into Portainer when creating/updating the stack
+
+# =============================================================================
+# REQUIRED: SUPABASE CONFIGURATION
+# =============================================================================
+SUPABASE_URL=https://aaoewgjxxeiyfpnlkkao.supabase.co
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhb2V3Z2p4eGVpeWZwbmxra2FvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTUxOTA4NywiZXhwIjoyMDcxMDk1MDg3fQ.VjTlpr6V6eT7tpMxadGc90-yoZtL3LOK-MBpiqKyEwI
+
+# =============================================================================
+# OPTIONAL: ADDITIONAL SERVICES
+# =============================================================================
+OPENAI_API_KEY=
+LOGFIRE_TOKEN=
+
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+LOG_LEVEL=INFO
+
+# =============================================================================
+# PORTAINER STACK CREATION INSTRUCTIONS
+# =============================================================================
+# 1. Go to Portainer: http://10.202.70.20:9000
+# 2. Navigate to: Stacks → Add Stack
+# 3. Stack Name: archon-showcase
+# 4. Build Method: Web editor
+# 5. Copy the content from docker-compose.portainer.yml
+# 6. Environment Variables: Copy the variables above
+# 7. Click "Deploy the stack"
+#
+# =============================================================================
+# WEBHOOK CONFIGURATION (if needed)
+# =============================================================================
+# After creating the stack:
+# 1. Go to Stack → archon-showcase
+# 2. Click "Webhooks" tab
+# 3. Create webhook (if not exists)
+# 4. Copy webhook URL
+# 5. Update Jenkinsfile with new webhook URL if different
+#
+# Current webhook in Jenkinsfile:
+# http://10.202.70.20:9000/api/stacks/webhooks/33fc8bc2-1582-4ad5-97b7-d1bb9f4289f8
+#
+# =============================================================================
+# ACCESS URLS (after deployment)
+# =============================================================================
+# Archon UI: http://your-server-ip:3737
+# Archon API: http://your-server-ip:8181
+# API Docs: http://your-server-ip:8181/docs
+# MCP Server: http://your-server-ip:8051
+# Agents Service: http://your-server-ip:8052
+# Embeddings: http://your-server-ip:8080

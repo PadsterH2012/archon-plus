@@ -103,8 +103,8 @@ def create_project_research_workflow() -> WorkflowTemplate:
                 title="Check Research Depth Level",
                 type=WorkflowStepType.CONDITION,
                 condition="{{workflow.parameters.depth_level}} == 'deep'",
-                on_success="deep_research",
-                on_failure="create_research_tasks",
+                on_true="deep_research",
+                on_false="create_research_tasks",
                 description="Determine if deep research is needed"
             ),
             ParallelStep(
@@ -299,8 +299,8 @@ def create_task_automation_workflow() -> WorkflowTemplate:
                         title="Check if Task Already Exists",
                         type=WorkflowStepType.CONDITION,
                         condition="{{task_template.title}} not in {{steps.list_existing_tasks.result.parsed_result.tasks}}",
-                        on_success="create_task",
-                        on_failure="skip_task",
+                        on_true="create_task",
+                        on_false="skip_task",
                         description="Check if task with same title already exists"
                     ),
                     ActionStep(
@@ -404,7 +404,7 @@ def create_health_monitoring_workflow() -> WorkflowTemplate:
                 type=WorkflowStepType.LOOP,
                 collection="[1, 2, 3, 4, 5]",  # Simple array for iteration count
                 item_variable="check_number",
-                max_iterations="{{workflow.parameters.check_interval}}",
+                max_iterations=5,
                 steps=[
                     ActionStep(
                         name="perform_health_check",
@@ -430,8 +430,8 @@ def create_health_monitoring_workflow() -> WorkflowTemplate:
                 title="Evaluate Health Status",
                 type=WorkflowStepType.CONDITION,
                 condition="{{steps.health_check_loop.results}} contains 'healthy'",
-                on_success="create_success_report",
-                on_failure="create_alert_task",
+                on_true="create_success_report",
+                on_false="create_alert_task",
                 description="Evaluate overall health based on check results"
             ),
             ActionStep(

@@ -136,6 +136,21 @@ class WorkflowExecutor:
         self.repository = repository or WorkflowRepository(get_supabase_client())
         self.active_executions: Dict[str, WorkflowExecutionContext] = {}
         self._execution_tasks: Dict[str, asyncio.Task] = {}
+
+        # WebSocket manager for real-time updates (lazy loaded to avoid circular imports)
+        self._websocket_manager = None
+
+    @property
+    def websocket_manager(self):
+        """Get WebSocket manager instance (lazy loaded)."""
+        if self._websocket_manager is None:
+            try:
+                from ...api_routes.workflow_websocket import get_workflow_websocket_manager
+                self._websocket_manager = get_workflow_websocket_manager()
+            except ImportError:
+                # WebSocket manager not available
+                self._websocket_manager = None
+        return self._websocket_manager
     
     async def start_execution(
         self, 
@@ -250,6 +265,22 @@ class WorkflowExecutor:
                         "execution_log": context.execution_log
                     }
                 )
+
+                # Broadcast step progress via WebSocket
+                if self.websocket_manager:
+                    asyncio.create_task(self.websocket_manager.broadcast_to_execution(
+                        context.execution_id,
+                        {
+                            "type": "step_completed",
+                            "data": {
+                                "step_name": step.name,
+                                "step_index": context.current_step_index,
+                                "progress_percentage": progress,
+                                "success": step_success,
+                                "result": step_result
+                            }
+                        }
+                    ))
                 
                 # Determine next step
                 if step_success:
@@ -602,6 +633,21 @@ class WorkflowExecutor:
                 del self._execution_tasks[context.execution_id]
             
             logfire.info(f"Workflow execution completed | execution_id={context.execution_id} | status={status.value}")
+
+            # Broadcast completion via WebSocket
+            if self.websocket_manager:
+                asyncio.create_task(self.websocket_manager.broadcast_to_execution(
+                    context.execution_id,
+                    {
+                        "type": "execution_completed",
+                        "data": {
+                            "status": status.value,
+                            "progress_percentage": completion_data["progress_percentage"],
+                            "completed_at": completion_data["completed_at"],
+                            "error_message": error_message
+                        }
+                    }
+                ))
             
         except Exception as e:
             logfire.error(f"Error completing workflow execution | execution_id={context.execution_id} | error={str(e)}")

@@ -295,12 +295,13 @@ def register_project_tools(mcp: FastMCP):
         - 'archon-task-manager': Workflow orchestration
 
         Args:
-            action: Task operation - "create" | "list" | "get" | "update" | "delete" | "archive"
+            action: Task operation - "create" | "list" | "get" | "update" | "delete" | "archive" | "detect_workflows"
                    - create: Generate new task from PRP implementation plan
                    - list: Retrieve tasks with filtering (by status, project, assignee)
                    - get: Fetch complete task details including sources and code examples
                    - update: Modify task properties (primarily status transitions)
                    - delete/archive: Remove completed or obsolete tasks
+                   - detect_workflows: Suggest relevant workflows for task description
 
             task_id: UUID of the task (required for get/update/delete/archive)
 
@@ -410,6 +411,15 @@ def register_project_tools(mcp: FastMCP):
                 action="archive",
                 task_id="task-123e4567-e89b-12d3-a456-426614174000"
             )
+
+        Detect Workflows for Task:
+            manage_task(
+                action="detect_workflows",
+                title="Implement OAuth2 authentication system",
+                description="Create secure OAuth2 flow with Google and GitHub providers",
+                project_id="550e8400-e29b-41d4-a716-446655440000"
+            )
+            # Returns: Workflow suggestions with confidence scores and binding recommendations
         """
         try:
             api_url = get_api_url()
@@ -426,6 +436,24 @@ def register_project_tools(mcp: FastMCP):
                         "success": False,
                         "error": "title is required for create action",
                     })
+
+                # Detect workflows for the task before creation
+                workflow_suggestions = None
+                try:
+                    # Import workflow detection service
+                    from ..server.services.workflow import get_workflow_detection_service
+
+                    detection_service = get_workflow_detection_service()
+                    workflow_detection = await detection_service.detect_workflows_for_task(
+                        task_title=title,
+                        task_description=description,
+                        project_id=project_id,
+                        max_suggestions=3
+                    )
+                    workflow_suggestions = workflow_detection
+                except Exception as e:
+                    # Don't fail task creation if workflow detection fails
+                    print(f"Workflow detection failed: {e}")
 
                 # Call Server API to create task
                 async with httpx.AsyncClient(timeout=timeout) as client:
@@ -445,11 +473,28 @@ def register_project_tools(mcp: FastMCP):
 
                     if response.status_code == 200:
                         result = response.json()
-                        return json.dumps({
+
+                        # Include workflow suggestions in the response
+                        response_data = {
                             "success": True,
                             "task": result.get("task"),
                             "message": result.get("message"),
-                        })
+                        }
+
+                        if workflow_suggestions:
+                            response_data["workflow_suggestions"] = workflow_suggestions
+
+                            # Add workflow detection summary to message
+                            suggestions_count = len(workflow_suggestions.get("workflow_suggestions", []))
+                            if suggestions_count > 0:
+                                original_message = response_data.get("message", "")
+                                workflow_message = (
+                                    f"\n\n🔄 Workflow Detection: Found {suggestions_count} "
+                                    "relevant workflow suggestions for this task."
+                                )
+                                response_data["message"] = original_message + workflow_message
+
+                        return json.dumps(response_data)
                     else:
                         error_detail = response.text
                         return json.dumps({"success": False, "error": error_detail})
@@ -582,10 +627,44 @@ def register_project_tools(mcp: FastMCP):
                     else:
                         return json.dumps({"success": False, "error": "Failed to archive task"})
 
+            elif action == "detect_workflows":
+                if not title:
+                    return json.dumps({
+                        "success": False,
+                        "error": "title is required for detect_workflows action",
+                    })
+
+                try:
+                    # Import workflow detection service
+                    from ..server.services.workflow import get_workflow_detection_service
+
+                    detection_service = get_workflow_detection_service()
+                    workflow_detection = await detection_service.detect_workflows_for_task(
+                        task_title=title,
+                        task_description=description or "",
+                        project_id=project_id,
+                        max_suggestions=5
+                    )
+
+                    suggestions_count = len(workflow_detection.get('workflow_suggestions', []))
+                    return json.dumps({
+                        "success": True,
+                        "workflow_detection": workflow_detection,
+                        "message": f"Found {suggestions_count} workflow suggestions"
+                    })
+
+                except Exception as e:
+                    logger.error(f"Error in workflow detection: {e}")
+                    return json.dumps({
+                        "success": False,
+                        "error": f"Workflow detection failed: {str(e)}"
+                    })
+
             else:
+                valid_actions = "create, list, get, update, delete, archive, detect_workflows"
                 return json.dumps({
                     "success": False,
-                    "error": f"Invalid action '{action}'. Must be one of: create, list, get, update, delete, archive",
+                    "error": f"Invalid action '{action}'. Must be one of: {valid_actions}",
                 })
 
         except Exception as e:
