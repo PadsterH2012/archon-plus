@@ -401,12 +401,13 @@ class MCPClientService {
     // Get MCP configuration from environment variables
     const mcpHost = import.meta.env.VITE_MCP_HOST || window.location.hostname;
     const mcpPort = import.meta.env.VITE_MCP_PORT || import.meta.env.ARCHON_MCP_PORT || '8051';
+    const mcpName = import.meta.env.VITE_MCP_NAME || 'Archon';
 
     // Construct MCP URL using environment-specific configuration
     const mcpUrl = `http://${mcpHost}:${mcpPort}/mcp`;
 
     const archonConfig: MCPClientConfig = {
-      name: 'Archon',
+      name: mcpName,
       transport_type: 'http',
       connection_config: {
         url: mcpUrl
@@ -423,8 +424,9 @@ class MCPClientService {
    * Get the default Archon client (or create if doesn't exist)
    */
   async getOrCreateArchonClient(): Promise<MCPClient> {
+    const mcpName = import.meta.env.VITE_MCP_NAME || 'Archon';
     const clients = await this.getClients();
-    const archonClient = clients.find(client => client.is_default || client.name === 'Archon');
+    const archonClient = clients.find(client => client.is_default || client.name === mcpName || client.name === 'Archon');
 
     if (archonClient) {
       return archonClient;

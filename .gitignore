@@ -3,3 +3,5 @@ __pycache__
 .serena
 .claude/settings.local.json
 PRPs/local
+portainer-templates/.env.dev
+portainer-templates/.env.prod

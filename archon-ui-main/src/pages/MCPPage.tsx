@@ -221,48 +221,49 @@ export const MCPPage = () => {
     if (!config || !config.host || !config.port) {
       return '// Configuration not available. Please ensure the server is running.';
     }
-    
+
     const mcpUrl = `http://${config.host}:${config.port}/mcp`;
-    
+    const mcpName = import.meta.env.VITE_MCP_NAME || 'archon';
+
     switch(ide) {
       case 'claudecode':
         return JSON.stringify({
-          name: "archon",
+          name: mcpName,
           transport: "http",
           url: mcpUrl
         }, null, 2);
-        
+
       case 'cline':
       case 'kiro':
         // Cline and Kiro use stdio transport with mcp-remote
         return JSON.stringify({
           mcpServers: {
-            archon: {
+            [mcpName]: {
               command: "npx",
               args: ["mcp-remote", mcpUrl]
             }
           }
         }, null, 2);
-        
+
       case 'windsurf':
         return JSON.stringify({
           mcpServers: {
-            archon: {
+            [mcpName]: {
               serverUrl: mcpUrl
             }
           }
         }, null, 2);
-        
+
       case 'cursor':
       case 'augment':
         return JSON.stringify({
           mcpServers: {
-            archon: {
+            [mcpName]: {
               url: mcpUrl
             }
           }
         }, null, 2);
-        
+
       default:
         return '';
     }
