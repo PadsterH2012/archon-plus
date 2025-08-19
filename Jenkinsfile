@@ -224,8 +224,9 @@ pipeline {
                         webhookId = "2bcf99e2-495b-412e-b50f-d2bf672cc99d"  // Dev webhook
                         environment = "development"
                     } else if (env.BRANCH_NAME == 'main') {
-                        webhookId = "33fc8bc2-1582-4ad5-97b7-d1bb9f4289f8"  // Prod webhook (if you have one)
-                        environment = "production"
+                        // For now, use dev webhook for main branch too until prod webhook is created
+                        webhookId = "2bcf99e2-495b-412e-b50f-d2bf672cc99d"  // Dev webhook (temporary)
+                        environment = "development (main branch)"
                     } else {
                         webhookId = "2bcf99e2-495b-412e-b50f-d2bf672cc99d"  // Default to dev
                         environment = "development"
