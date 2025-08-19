@@ -575,8 +575,10 @@ class MCPServerManager:
                                     self._add_log("DEBUG", f"Service ID: {self.service.id}, Service name: {self.service.name}")
 
                                     # Use polling approach for service logs since streaming isn't supported
-                                    last_timestamp = None
+                                    # Instead of timestamp filtering, we'll show recent logs on first poll, then only new ones
+                                    first_poll = True
                                     poll_interval = 2  # Poll every 2 seconds
+                                    processed_log_hashes = set()  # Track processed logs by hash to avoid duplicates
 
                                     while True:
                                         try:
@@ -605,7 +607,9 @@ class MCPServerManager:
 
                                                     # Process the log lines
                                                     try:
-                                                        last_timestamp = self._process_service_log_lines(log_lines, last_timestamp)
+                                                        new_hashes = self._process_service_log_lines_v2(log_lines, first_poll, processed_log_hashes)
+                                                        processed_log_hashes.update(new_hashes)
+                                                        first_poll = False  # After first poll, only show new logs
                                                     except Exception as process_error:
                                                         self._add_log("ERROR", f"Error processing log lines: {str(process_error)}")
                                                         # Show first few lines for debugging even if processing fails
@@ -729,6 +733,63 @@ class MCPServerManager:
 
         self._add_log("DEBUG", f"Added {new_logs_added} new log entries this poll (last_timestamp: {last_timestamp})")
         return last_timestamp
+
+    def _process_service_log_lines_v2(self, log_lines, first_poll, processed_log_hashes):
+        """Process log lines from Docker service logs using hash-based deduplication."""
+        import hashlib
+
+        new_logs_added = 0
+        new_hashes = set()
+
+        self._add_log("DEBUG", f"Processing {len(log_lines)} log lines (first_poll: {first_poll})")
+
+        for i, log_line in enumerate(log_lines):
+            if log_line.strip():
+                # Create hash of log line for deduplication
+                log_hash = hashlib.md5(log_line.encode()).hexdigest()
+
+                # Debug first few log lines to understand format
+                if i < 3:
+                    self._add_log("DEBUG", f"Sample log line {i}: {log_line[:100]}...")
+
+                # On first poll, show recent logs. On subsequent polls, only show new logs
+                if first_poll:
+                    # Show all logs on first poll, but track them
+                    processed_log_hashes.add(log_hash)
+                    new_hashes.add(log_hash)
+
+                    # Extract message from timestamped log
+                    if log_line.startswith('20') and 'T' in log_line[:20]:
+                        parts = log_line.split(' ', 1)
+                        if len(parts) >= 2:
+                            message = parts[1]
+                            level, parsed_message = self._parse_log_line(message)
+                            self._add_log(level, parsed_message)
+                            new_logs_added += 1
+                    else:
+                        level, parsed_message = self._parse_log_line(log_line)
+                        self._add_log(level, parsed_message)
+                        new_logs_added += 1
+                else:
+                    # Only show logs we haven't seen before
+                    if log_hash not in processed_log_hashes:
+                        new_hashes.add(log_hash)
+
+                        # Extract message from timestamped log
+                        if log_line.startswith('20') and 'T' in log_line[:20]:
+                            parts = log_line.split(' ', 1)
+                            if len(parts) >= 2:
+                                message = parts[1]
+                                level, parsed_message = self._parse_log_line(message)
+                                self._add_log(level, parsed_message)
+                                new_logs_added += 1
+                        else:
+                            level, parsed_message = self._parse_log_line(log_line)
+                            self._add_log(level, parsed_message)
+                            new_logs_added += 1
+
+        self._add_log("DEBUG", f"Added {new_logs_added} new log entries this poll")
+        return new_hashes
 
     def _parse_log_line(self, line: str) -> tuple[str, str]:
         """Parse a log line to extract level and message."""
