@@ -374,20 +374,23 @@ export const GroupedKnowledgeItemCard = ({
       <div className="flex items-end justify-between mt-auto card-3d-layer-1">
         {/* Left side - refresh button and updated stacked */}
         <div className="flex flex-col">
-          {item.metadata.source_type === 'url' && (
-            <button
-              onClick={handleRefresh}
-              className={`flex items-center gap-1 mb-1 px-2 py-1 transition-colors ${
-                item.metadata.knowledge_type === 'technical' 
-                  ? 'text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300'
-                  : 'text-cyan-500 hover:text-cyan-600 dark:text-cyan-400 dark:hover:text-cyan-300'
-              }`}
-              title={`Refresh from: ${item.metadata.original_url || item.url || 'URL not available'}`}
-            >
-              <RefreshCw className="w-3 h-3" />
-              <span className="text-sm font-medium">Recrawl</span>
-            </button>
-          )}
+          {/* Show refresh button for both URL and file sources */}
+          <button
+            onClick={handleRefresh}
+            className={`flex items-center gap-1 mb-1 px-2 py-1 transition-colors ${
+              item.metadata.knowledge_type === 'technical'
+                ? 'text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300'
+                : 'text-cyan-500 hover:text-cyan-600 dark:text-cyan-400 dark:hover:text-cyan-300'
+            }`}
+            title={
+              item.metadata.source_type === 'url'
+                ? `Refresh from: ${item.metadata.original_url || item.url || 'URL not available'}`
+                : `Recrawl uploaded file: ${item.source_id}`
+            }
+          >
+            <RefreshCw className="w-3 h-3" />
+            <span className="text-sm font-medium">Recrawl</span>
+          </button>
           <span className="text-xs text-gray-500 dark:text-zinc-500">
             Updated: {new Date(groupedItem.updated_at).toLocaleDateString()}
           </span>
