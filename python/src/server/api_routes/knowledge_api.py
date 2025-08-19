@@ -279,7 +279,45 @@ async def refresh_knowledge_item(source_id: str):
         # Extract the URL from the existing item
         # First try to get the original URL from metadata, fallback to url field
         url = metadata.get("original_url") or existing_item.get("url")
-        if not url:
+
+        # Handle file sources that don't have a valid URL to recrawl
+        if not url or url.startswith("source://"):
+            # This is a file source - we need to reconstruct the content from the database
+            safe_logfire_info(f"Detected file source for refresh | source_id={source_id}")
+
+            try:
+                # Get all the content chunks for this source from the database
+                supabase_client = get_supabase_client()
+                pages_response = (
+                    supabase_client.from_("archon_crawled_pages")
+                    .select("content, title, url")
+                    .eq("source_id", source_id)
+                    .order("chunk_number")
+                    .execute()
+                )
+
+                if not pages_response.data:
+                    raise HTTPException(
+                        status_code=400,
+                        detail={"error": f"No content found for file source {source_id} to refresh"}
+                    )
+
+                # Reconstruct the original file content
+                file_title = pages_response.data[0].get("title", source_id)
+                combined_content = "\n\n".join([page["content"] for page in pages_response.data])
+
+                # Use raw: prefix so crawl4ai can handle it as raw content
+                url = f"raw:{combined_content}"
+                safe_logfire_info(f"Reconstructed file content for refresh | source_id={source_id} | content_length={len(combined_content)}")
+
+            except Exception as e:
+                safe_logfire_error(f"Failed to reconstruct file content | source_id={source_id} | error={str(e)}")
+                raise HTTPException(
+                    status_code=500,
+                    detail={"error": f"Failed to retrieve file content for refresh: {str(e)}"}
+                )
+
+        elif not url:
             raise HTTPException(
                 status_code=400, detail={"error": "Knowledge item does not have a URL to refresh"}
             )
