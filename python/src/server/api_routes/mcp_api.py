@@ -572,16 +572,23 @@ class MCPServerManager:
                                     while True:
                                         try:
                                             # Get recent logs from service
-                                            logs = await asyncio.get_event_loop().run_in_executor(
+                                            logs_generator = await asyncio.get_event_loop().run_in_executor(
                                                 None, lambda: self.service.logs(tail=50, timestamps=True, stdout=True, stderr=True)
                                             )
 
-                                            if logs:
-                                                # Process logs line by line
-                                                if isinstance(logs, bytes):
-                                                    logs = logs.decode("utf-8")
-
-                                                log_lines = logs.strip().split('\n') if logs.strip() else []
+                                            if logs_generator:
+                                                # Process logs from generator
+                                                log_lines = []
+                                                try:
+                                                    # Convert generator to list of log lines
+                                                    for log_entry in logs_generator:
+                                                        if isinstance(log_entry, bytes):
+                                                            log_entry = log_entry.decode("utf-8")
+                                                        if log_entry.strip():
+                                                            log_lines.append(log_entry.strip())
+                                                except Exception as gen_error:
+                                                    self._add_log("ERROR", f"Error processing log generator: {str(gen_error)}")
+                                                    continue
 
                                                 for log_line in log_lines:
                                                     if log_line.strip():
