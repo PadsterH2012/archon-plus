@@ -42,6 +42,7 @@ services:
 
       # MCP Host Configuration (for client connections)
       - MCP_HOST=${HOST:-localhost}
+      - MCP_EXTERNAL_PORT=${ARCHON_MCP_PORT:-8051}
 
       # Optional: Logging
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
