@@ -280,10 +280,13 @@ async def refresh_knowledge_item(source_id: str):
         # First try to get the original URL from metadata, fallback to url field
         url = metadata.get("original_url") or existing_item.get("url")
 
+        # Debug logging to understand what we're getting
+        safe_logfire_info(f"Refresh URL analysis | source_id={source_id} | url={repr(url)} | metadata_original_url={repr(metadata.get('original_url'))} | item_url={repr(existing_item.get('url'))}")
+
         # Handle file sources that don't have a valid URL to recrawl
         if not url or url.startswith("source://"):
             # This is a file source - we need to reconstruct the content from the database
-            safe_logfire_info(f"Detected file source for refresh | source_id={source_id}")
+            safe_logfire_info(f"Detected file source for refresh | source_id={source_id} | url={repr(url)}")
 
             try:
                 # Get all the content chunks for this source from the database
@@ -309,7 +312,7 @@ async def refresh_knowledge_item(source_id: str):
 
                 # Use raw: prefix so crawl4ai can handle it as raw content
                 url = f"raw:{combined_content}"
-                safe_logfire_info(f"Reconstructed file content for refresh | source_id={source_id} | content_length={len(combined_content)}")
+                safe_logfire_info(f"Reconstructed file content for refresh | source_id={source_id} | content_length={len(combined_content)} | new_url={repr(url[:100])}...")
 
             except Exception as e:
                 safe_logfire_error(f"Failed to reconstruct file content | source_id={source_id} | error={str(e)}")
@@ -370,6 +373,9 @@ async def refresh_knowledge_item(source_id: str):
             "extract_code_examples": True,
             "generate_summary": True,
         }
+
+        # Debug logging to see what URL is being passed to crawl service
+        safe_logfire_info(f"Refresh request_dict created | source_id={source_id} | url={repr(url)} | url_type={'raw' if url.startswith('raw:') else 'regular'}")
 
         # Create a wrapped task that acquires the semaphore
         async def _perform_refresh_with_semaphore():
