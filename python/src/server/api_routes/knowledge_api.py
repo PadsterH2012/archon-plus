@@ -292,7 +292,7 @@ async def refresh_knowledge_item(source_id: str):
                     supabase_client.from_("archon_crawled_pages")
                     .select("content, title, url")
                     .eq("source_id", source_id)
-                    .order("chunk_number")
+                    .order("id")  # Use id instead of chunk_number for ordering
                     .execute()
                 )
 
