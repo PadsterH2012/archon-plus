@@ -118,11 +118,84 @@ deploy_selfhosted() {
     echo "  PostgreSQL: ${HOST}:${POSTGRES_PORT}"
 }
 
+# Deploy SaaS Supabase - Development
+deploy_saas_dev() {
+    print_status "Deploying Archon Development stack with SaaS Supabase..."
+
+    # Check required environment variables
+    if [[ -z "${SUPABASE_URL:-}" ]]; then
+        print_error "SUPABASE_URL environment variable is required"
+        exit 1
+    fi
+
+    if [[ -z "${SUPABASE_SERVICE_KEY:-}" ]]; then
+        print_error "SUPABASE_SERVICE_KEY environment variable is required"
+        exit 1
+    fi
+
+    # Set default values for development
+    export ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-9181}
+    export ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-9051}
+    export ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-9052}
+    export ARCHON_UI_PORT=${ARCHON_UI_PORT:-4737}
+    export ARCHON_EMBEDDINGS_PORT=${ARCHON_EMBEDDINGS_PORT:-9080}
+    export HOST=${HOST:-localhost}
+    export LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+
+    # Deploy the stack
+    docker stack deploy -c archon-saas-supabase-dev.yml archon-dev
+
+    print_success "Archon Development stack deployed successfully!"
+    print_status "Services will be available at:"
+    echo "  Web UI: http://${HOST}:${ARCHON_UI_PORT}"
+    echo "  API Server: http://${HOST}:${ARCHON_SERVER_PORT}"
+    echo "  MCP Server: http://${HOST}:${ARCHON_MCP_PORT}"
+    echo "  Agents Service: http://${HOST}:${ARCHON_AGENTS_PORT}"
+    echo "  Embeddings Service: http://${HOST}:${ARCHON_EMBEDDINGS_PORT}"
+}
+
+# Deploy SaaS Supabase - Production
+deploy_saas_prod() {
+    print_status "Deploying Archon Production stack with SaaS Supabase..."
+
+    # Check required environment variables
+    if [[ -z "${SUPABASE_URL:-}" ]]; then
+        print_error "SUPABASE_URL environment variable is required"
+        exit 1
+    fi
+
+    if [[ -z "${SUPABASE_SERVICE_KEY:-}" ]]; then
+        print_error "SUPABASE_SERVICE_KEY environment variable is required"
+        exit 1
+    fi
+
+    # Set default values for production
+    export ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
+    export ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-8051}
+    export ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
+    export ARCHON_UI_PORT=${ARCHON_UI_PORT:-3737}
+    export ARCHON_EMBEDDINGS_PORT=${ARCHON_EMBEDDINGS_PORT:-8080}
+    export HOST=${HOST:-localhost}
+    export LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+    # Deploy the stack
+    docker stack deploy -c archon-saas-supabase-prod.yml archon-prod
+
+    print_success "Archon Production stack deployed successfully!"
+    print_status "Services will be available at:"
+    echo "  Web UI: http://${HOST}:${ARCHON_UI_PORT}"
+    echo "  API Server: http://${HOST}:${ARCHON_SERVER_PORT}"
+    echo "  MCP Server: http://${HOST}:${ARCHON_MCP_PORT}"
+    echo "  Agents Service: http://${HOST}:${ARCHON_AGENTS_PORT}"
+    echo "  Embeddings Service: http://${HOST}:${ARCHON_EMBEDDINGS_PORT}"
+}
+
 # Remove the stack
 remove_stack() {
-    print_status "Removing Archon stack..."
-    docker stack rm archon
-    print_success "Archon stack removed"
+    local stack_name=${1:-archon}
+    print_status "Removing ${stack_name} stack..."
+    docker stack rm "${stack_name}"
+    print_success "${stack_name} stack removed"
 }
 
 # Show stack status
@@ -158,12 +231,26 @@ main() {
             check_swarm
             deploy_saas
             ;;
+        "saas-dev")
+            check_swarm
+            deploy_saas_dev
+            ;;
+        "saas-prod")
+            check_swarm
+            deploy_saas_prod
+            ;;
         "selfhosted")
             check_swarm
             deploy_selfhosted
             ;;
         "remove")
-            remove_stack
+            remove_stack "${2:-archon}"
+            ;;
+        "remove-dev")
+            remove_stack "archon-dev"
+            ;;
+        "remove-prod")
+            remove_stack "archon-prod"
             ;;
         "status")
             show_status
@@ -172,24 +259,34 @@ main() {
             show_logs "$2"
             ;;
         *)
-            echo "Usage: $0 {saas|selfhosted|remove|status|logs}"
+            echo "Usage: $0 {saas|saas-dev|saas-prod|selfhosted|remove|remove-dev|remove-prod|status|logs}"
             echo ""
             echo "Commands:"
-            echo "  saas        Deploy Archon with SaaS Supabase"
+            echo "  saas        Deploy Archon with SaaS Supabase (legacy)"
+            echo "  saas-dev    Deploy Archon DEVELOPMENT with SaaS Supabase (ports 9xxx)"
+            echo "  saas-prod   Deploy Archon PRODUCTION with SaaS Supabase (ports 8xxx)"
             echo "  selfhosted  Deploy Archon with self-hosted Supabase"
-            echo "  remove      Remove the Archon stack"
+            echo "  remove      Remove the default Archon stack"
+            echo "  remove-dev  Remove the Archon development stack"
+            echo "  remove-prod Remove the Archon production stack"
             echo "  status      Show stack status"
             echo "  logs        Show logs for a service"
             echo ""
             echo "Examples:"
-            echo "  # Deploy with SaaS Supabase"
-            echo "  SUPABASE_URL=https://xxx.supabase.co SUPABASE_SERVICE_KEY=xxx $0 saas"
+            echo "  # Deploy development environment"
+            echo "  SUPABASE_URL=https://xxx.supabase.co SUPABASE_SERVICE_KEY=xxx $0 saas-dev"
+            echo ""
+            echo "  # Deploy production environment"
+            echo "  SUPABASE_URL=https://xxx.supabase.co SUPABASE_SERVICE_KEY=xxx $0 saas-prod"
             echo ""
             echo "  # Deploy self-hosted"
             echo "  POSTGRES_PASSWORD=mysecretpassword $0 selfhosted"
             echo ""
-            echo "  # Show logs"
-            echo "  $0 logs archon-server"
+            echo "  # Show logs from development stack"
+            echo "  $0 logs dev-archon-server"
+            echo ""
+            echo "  # Remove development stack"
+            echo "  $0 remove-dev"
             echo ""
             exit 1
             ;;

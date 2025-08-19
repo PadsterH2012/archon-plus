@@ -1,0 +1,267 @@
+version: '3.8'
+
+# Archon Stack with SaaS Supabase - DEVELOPMENT ENVIRONMENT
+# This template deploys Archon DEV using external Supabase (supabase.com)
+# 
+# Prerequisites:
+# 1. Create a Supabase project at https://supabase.com
+# 2. Get your SUPABASE_URL and SUPABASE_SERVICE_KEY from project settings
+# 3. Run the database migration scripts in your Supabase SQL editor
+#
+# Services:
+# - dev-archon-server: Core API and business logic (Port: 9181)
+# - dev-archon-mcp: Model Context Protocol interface (Port: 9051)  
+# - dev-archon-agents: AI operations and streaming (Port: 9052)
+# - dev-archon-ui: Web interface (Port: 4737)
+
+services:
+  # Core Server Service (FastAPI + Socket.IO + Crawling)
+  dev-archon-server:
+    image: hl-harbor.techpad.uk/archon/archon-server:latest
+    environment:
+      # Supabase Configuration (REQUIRED)
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      
+      # Service Discovery
+      - SERVICE_DISCOVERY_MODE=docker_swarm
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      
+      # Port Configuration
+      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-9181}
+      - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-9051}
+      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-9052}
+      
+      # Optional: Logging
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+    ports:
+      - target: 8181
+        published: ${ARCHON_SERVER_PORT:-9181}
+        protocol: tcp
+        mode: ingress
+    networks:
+      - archon-dev-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "sh", "-c", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8181/health')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Model Context Protocol Server
+  dev-archon-mcp:
+    image: hl-harbor.techpad.uk/archon/archon-mcp:latest
+    environment:
+      # Supabase Configuration
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      
+      # Service Discovery
+      - SERVICE_DISCOVERY_MODE=docker_swarm
+      - TRANSPORT=sse
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      
+      # Service URLs for inter-service communication
+      - API_SERVICE_URL=http://dev-archon-server:8181
+      - AGENTS_SERVICE_URL=http://dev-archon-agents:8052
+      
+      # Port Configuration
+      - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-9051}
+      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-9181}
+      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-9052}
+      
+      # Optional: Logging
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+    ports:
+      - target: 8051
+        published: ${ARCHON_MCP_PORT:-9051}
+        protocol: tcp
+        mode: ingress
+    networks:
+      - archon-dev-network
+    healthcheck:
+      test: ["CMD", "sh", "-c", "python -c \"import socket; s=socket.socket(); s.connect(('localhost', 8051)); s.close()\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.125'
+    depends_on:
+      - dev-archon-server
+      - dev-archon-agents
+
+  # AI Agents Service (ML/Reranking)
+  dev-archon-agents:
+    image: hl-harbor.techpad.uk/archon/archon-agents:latest
+    environment:
+      # Supabase Configuration
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      
+      # Service Discovery
+      - SERVICE_DISCOVERY_MODE=docker_swarm
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      
+      # Port Configuration
+      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-9052}
+      
+      # Optional: Logging
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+    ports:
+      - target: 8052
+        published: ${ARCHON_AGENTS_PORT:-9052}
+        protocol: tcp
+        mode: ingress
+    networks:
+      - archon-dev-network
+    healthcheck:
+      test: ["CMD", "sh", "-c", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8052/health')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Frontend Web Interface
+  dev-archon-ui:
+    image: hl-harbor.techpad.uk/archon/archon-ui:latest
+    environment:
+      - VITE_API_URL=http://${HOST:-localhost}:${ARCHON_SERVER_PORT:-9181}
+      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-9181}
+      - HOST=${HOST:-localhost}
+    ports:
+      - target: 5173
+        published: ${ARCHON_UI_PORT:-4737}
+        protocol: tcp
+        mode: ingress
+    networks:
+      - archon-dev-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.125'
+    depends_on:
+      - dev-archon-server
+
+  # Text Embeddings Inference (TEI) - Local Embedding Server
+  dev-archon-embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
+    environment:
+      - MODEL_ID=${EMBEDDING_MODEL_ID:-sentence-transformers/all-MiniLM-L6-v2}
+      - MAX_CONCURRENT_REQUESTS=${TEI_MAX_CONCURRENT:-256}
+      - MAX_BATCH_TOKENS=${TEI_MAX_BATCH_TOKENS:-8192}
+      - MAX_BATCH_REQUESTS=${TEI_MAX_BATCH_REQUESTS:-16}
+      - HOSTNAME=0.0.0.0
+      - PORT=80
+    ports:
+      - target: 80
+        published: ${ARCHON_EMBEDDINGS_PORT:-9080}
+        protocol: tcp
+        mode: ingress
+    networks:
+      - archon-dev-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: ${TEI_MEMORY_LIMIT:-1G}
+          cpus: ${TEI_CPU_LIMIT:-1}
+        reservations:
+          memory: ${TEI_MEMORY_RESERVATION:-512M}
+          cpus: ${TEI_CPU_RESERVATION:-0.5}
+
+networks:
+  archon-dev-network:
+    driver: overlay
+    attachable: true
+
+# Environment Variables Required:
+# SUPABASE_URL=https://your-project.supabase.co
+# SUPABASE_SERVICE_KEY=your-service-key
+#
+# Optional Environment Variables:
+# ARCHON_SERVER_PORT=9181
+# ARCHON_MCP_PORT=9051
+# ARCHON_AGENTS_PORT=9052
+# ARCHON_UI_PORT=4737
+# ARCHON_EMBEDDINGS_PORT=9080
+# HOST=your-domain.com
+# LOG_LEVEL=DEBUG
+# LOGFIRE_TOKEN=your-logfire-token
+#
+# TEI Configuration:
+# EMBEDDING_MODEL_ID=sentence-transformers/all-MiniLM-L6-v2
+# TEI_MAX_CONCURRENT=256
+# TEI_MAX_BATCH_TOKENS=8192
+# TEI_MAX_BATCH_REQUESTS=16
+# TEI_MEMORY_LIMIT=1G
+# TEI_CPU_LIMIT=1
+# TEI_MEMORY_RESERVATION=512M
+# TEI_CPU_RESERVATION=0.5
