@@ -579,8 +579,10 @@ class MCPServerManager:
                                     self._add_log("DEBUG", f"Service ID: {self.service.id}, Service name: {self.service.name}")
 
                                     # Use polling approach for service logs since streaming isn't supported
-                                    # Instead of timestamp filtering, we'll show recent logs on first poll, then only new ones
+                                    # Force an initial seed of recent logs regardless of internal debug buffer content
                                     first_poll = True
+                                    self._has_emitted_service_logs = False
+                                    self._add_log("INFO", "Service logs mode engaged; initial seed will be attempted")
                                     poll_interval = 2  # Poll every 2 seconds
                                     processed_log_hashes = set()  # Track processed logs by hash to avoid duplicates
 
@@ -588,16 +590,10 @@ class MCPServerManager:
                                         try:
                                             # Get recent logs from service
                                             self._add_log("DEBUG", "Attempting to fetch service logs...")
-                                            # Build parameters with optional 'since' after first seed
+                                            # Build parameters for service logs fetch
                                             def _fetch_service_logs():
-                                                kwargs = dict(timestamps=True, stdout=True, stderr=True)
-                                                # During initial seed, prefer tail to get recent history
-                                                if not self._has_emitted_service_logs:
-                                                    kwargs["tail"] = 50
-                                                # After seed, use since to avoid re-reading history
-                                                if self._has_emitted_service_logs and self._last_service_log_since is not None:
-                                                    kwargs["since"] = self._last_service_log_since
-                                                return self.service.logs(**kwargs)
+                                                # Always fetch a recent tail and dedup in-process; 'since' support is unreliable
+                                                return self.service.logs(timestamps=True, stdout=True, stderr=True, tail=50)
                                             logs_generator = await asyncio.get_event_loop().run_in_executor(
                                                 None, _fetch_service_logs
                                             )
@@ -625,11 +621,9 @@ class MCPServerManager:
                                                             self._add_log("INFO", "Using v3 service log processor (bridge to main async context)")
                                                             self._service_log_processor_logged = True
 
-                                                        parsed_logs, new_hashes, latest_since = self._process_service_log_lines_v3(log_lines, first_poll, processed_log_hashes)
+                                                        parsed_logs, new_hashes, _ = self._process_service_log_lines_v3(log_lines, first_poll, processed_log_hashes)
                                                         processed_log_hashes.update(new_hashes)
                                                         first_poll = False  # After first poll, only show new logs
-                                                        if latest_since is not None:
-                                                            self._last_service_log_since = latest_since
 
                                                         # Add the parsed logs to the main async context
                                                         self._add_log("INFO", f"MCP log bridge: about to append {len(parsed_logs)} parsed logs to buffer")
