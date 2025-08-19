@@ -1,0 +1,135 @@
+# Example GitHub Actions Workflow for Dev → Prod Pipeline
+# Save this as .github/workflows/deploy.yml in your repository
+
+name: Deploy Archon
+
+on:
+  push:
+    branches: [main, develop]
+  release:
+    types: [published]
+
+env:
+  HARBOR_REGISTRY: hl-harbor.techpad.uk
+  PROJECT_NAME: archon
+
+jobs:
+  # Build and test on every push
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Login to Harbor Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.HARBOR_REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+          
+      - name: Build and push images
+        run: |
+          # Build with commit SHA tag
+          docker buildx build --push \
+            -t ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-server:${{ github.sha }} \
+            -t ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-server:dev-latest \
+            ./archon-server
+            
+          docker buildx build --push \
+            -t ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-mcp:${{ github.sha }} \
+            -t ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-mcp:dev-latest \
+            ./archon-mcp
+            
+          docker buildx build --push \
+            -t ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-agents:${{ github.sha }} \
+            -t ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-agents:dev-latest \
+            ./archon-agents
+            
+          docker buildx build --push \
+            -t ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-ui:${{ github.sha }} \
+            -t ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-ui:dev-latest \
+            ./archon-ui
+
+  # Deploy to development on develop branch
+  deploy-dev:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Deploy to Development
+        run: |
+          # Set up SSH connection to deployment server
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > deploy_key
+          chmod 600 deploy_key
+          
+          # Deploy using pipeline script
+          ssh -i deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "cd /path/to/archon-plus && \
+             git pull origin develop && \
+             ./portainer-templates/pipeline-deploy.sh deploy dev ${{ github.sha }}"
+
+  # Deploy to production on release
+  deploy-prod:
+    needs: build-and-test
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Promote to Production
+        run: |
+          # Tag images for production
+          docker pull ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-server:${{ github.sha }}
+          docker tag ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-server:${{ github.sha }} \
+                     ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-server:${{ github.event.release.tag_name }}
+          docker tag ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-server:${{ github.sha }} \
+                     ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-server:latest
+          docker push ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-server:${{ github.event.release.tag_name }}
+          docker push ${{ env.HARBOR_REGISTRY }}/${{ env.PROJECT_NAME }}/archon-server:latest
+          
+          # Repeat for other services...
+          
+      - name: Deploy to Production
+        run: |
+          # Set up SSH connection to production server
+          echo "${{ secrets.PROD_SSH_KEY }}" > prod_key
+          chmod 600 prod_key
+          
+          # Deploy using pipeline script
+          ssh -i prod_key -o StrictHostKeyChecking=no \
+            ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} \
+            "cd /path/to/archon-plus && \
+             git pull origin main && \
+             ./portainer-templates/pipeline-deploy.sh deploy prod ${{ github.event.release.tag_name }}"
+
+  # Manual promotion job (can be triggered manually)
+  promote-to-prod:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Promote Dev to Prod
+        run: |
+          # Set up SSH connection
+          echo "${{ secrets.PROD_SSH_KEY }}" > prod_key
+          chmod 600 prod_key
+          
+          # Promote using pipeline script
+          ssh -i prod_key -o StrictHostKeyChecking=no \
+            ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} \
+            "cd /path/to/archon-plus && \
+             ./portainer-templates/pipeline-deploy.sh promote dev prod"

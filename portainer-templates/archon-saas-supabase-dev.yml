@@ -27,10 +27,10 @@ services:
       - SERVICE_DISCOVERY_MODE=docker_swarm
       - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
       
-      # Port Configuration
-      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-9181}
-      - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-9051}
-      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-9052}
+      # Port Configuration (internal ports stay standard, external ports are mapped)
+      - ARCHON_SERVER_PORT=8181
+      - ARCHON_MCP_PORT=8051
+      - ARCHON_AGENTS_PORT=8052
       
       # Optional: Logging
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
@@ -83,10 +83,10 @@ services:
       - API_SERVICE_URL=http://dev-archon-server:8181
       - AGENTS_SERVICE_URL=http://dev-archon-agents:8052
       
-      # Port Configuration
-      - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-9051}
-      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-9181}
-      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-9052}
+      # Port Configuration (internal ports stay standard, external ports are mapped)
+      - ARCHON_MCP_PORT=8051
+      - ARCHON_SERVER_PORT=8181
+      - ARCHON_AGENTS_PORT=8052
       
       # Optional: Logging
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
@@ -132,8 +132,8 @@ services:
       - SERVICE_DISCOVERY_MODE=docker_swarm
       - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
       
-      # Port Configuration
-      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-9052}
+      # Port Configuration (internal ports stay standard, external ports are mapped)
+      - ARCHON_AGENTS_PORT=8052
       
       # Optional: Logging
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
@@ -169,7 +169,7 @@ services:
     image: hl-harbor.techpad.uk/archon/archon-ui:latest
     environment:
       - VITE_API_URL=http://${HOST:-localhost}:${ARCHON_SERVER_PORT:-9181}
-      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-9181}
+      - ARCHON_SERVER_PORT=8181
       - HOST=${HOST:-localhost}
     ports:
       - target: 5173
