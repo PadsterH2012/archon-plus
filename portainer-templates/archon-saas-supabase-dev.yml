@@ -40,7 +40,9 @@ services:
         protocol: tcp
         mode: ingress
     networks:
-      - archon-dev-network
+      archon-dev-network:
+        aliases:
+          - archon-server  # Alias for UI nginx compatibility
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:

@@ -207,6 +207,8 @@ pipeline {
         stage('Deploy via Portainer Webhook') {
             when {
                 anyOf {
+                    branch 'main'
+                    branch 'develop'
                     branch 'homelab-deployment'
                     branch 'feature/advanced-workflow-orchestration'
                     expression { params.FORCE_DEPLOY == true }
@@ -214,29 +216,45 @@ pipeline {
             }
             steps {
                 script {
+                    // Determine which webhook to use based on branch
+                    def webhookId = ""
+                    def environment = ""
+
+                    if (env.BRANCH_NAME == 'develop' || env.BRANCH_NAME.startsWith('feature/')) {
+                        webhookId = "2bcf99e2-495b-412e-b50f-d2bf672cc99d"  // Dev webhook
+                        environment = "development"
+                    } else if (env.BRANCH_NAME == 'main') {
+                        webhookId = "33fc8bc2-1582-4ad5-97b7-d1bb9f4289f8"  // Prod webhook (if you have one)
+                        environment = "production"
+                    } else {
+                        webhookId = "2bcf99e2-495b-412e-b50f-d2bf672cc99d"  // Default to dev
+                        environment = "development"
+                    }
+
                     sh """
                         echo "🚀 Triggering Portainer stack redeploy..."
                         echo "📋 Deployment Details:"
                         echo "   • Branch: ${env.BRANCH_NAME}"
+                        echo "   • Environment: ${environment}"
                         echo "   • Build: ${env.BUILD_NUMBER}"
                         echo "   • Image Tag: ${IMAGE_TAG}"
                         echo "   • Portainer URL: http://10.202.70.20:9000"
-                        echo "   • Webhook ID: 33fc8bc2-1582-4ad5-97b7-d1bb9f4289f8"
+                        echo "   • Webhook ID: ${webhookId}"
 
                         # Test Portainer connectivity first
                         echo "🔍 Testing Portainer connectivity..."
                         curl -f http://10.202.70.20:9000 > /dev/null 2>&1 || echo "⚠️ Portainer may not be accessible"
 
                         # Trigger Portainer webhook to redeploy stack with new images
-                        echo "📡 Sending webhook request..."
+                        echo "📡 Sending webhook request to ${environment} environment..."
                         WEBHOOK_RESPONSE=\$(curl -s -w "%{http_code}" -X POST \\
-                            http://10.202.70.20:9000/api/stacks/webhooks/33fc8bc2-1582-4ad5-97b7-d1bb9f4289f8)
+                            http://10.202.70.20:9000/api/stacks/webhooks/${webhookId})
 
                         echo "Webhook response: \$WEBHOOK_RESPONSE"
 
                         if [ "\$WEBHOOK_RESPONSE" = "200" ] || [ "\$WEBHOOK_RESPONSE" = "204" ]; then
                             echo "✅ Portainer webhook triggered successfully!"
-                            echo "🔄 Stack redeployment initiated in Portainer"
+                            echo "🔄 Stack redeployment initiated in Portainer (${environment})"
                             echo "📊 Monitor deployment progress at: http://10.202.70.20:9000"
                             echo "🌐 Images deployed: hl-harbor.techpad.uk/archon/archon-*:${IMAGE_TAG}"
                         else

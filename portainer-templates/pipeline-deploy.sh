@@ -9,6 +9,12 @@ set -e
 HARBOR_REGISTRY="hl-harbor.techpad.uk"
 PROJECT_NAME="archon"
 ENVIRONMENTS=("dev" "prod")
+PORTAINER_URL="http://10.202.70.20:9000"
+
+# Webhook IDs for each environment
+declare -A WEBHOOK_IDS
+WEBHOOK_IDS["dev"]="2bcf99e2-495b-412e-b50f-d2bf672cc99d"
+WEBHOOK_IDS["prod"]="33fc8bc2-1582-4ad5-97b7-d1bb9f4289f8"  # Add your prod webhook ID here
 
 # Colors for output
 RED='\033[0;31m'
@@ -110,13 +116,62 @@ deploy_environment() {
     docker stack deploy -c "$compose_file" "$stack_name"
     
     print_success "Deployment to ${env} completed!"
-    
+
     # Wait for services to be ready
     print_status "Waiting for services to be ready..."
     sleep 30
-    
+
     # Health check
     health_check "$env"
+}
+
+# Deploy using Portainer webhook
+deploy_webhook() {
+    local env=$1
+
+    validate_environment "$env"
+
+    local webhook_id="${WEBHOOK_IDS[$env]}"
+    if [[ -z "$webhook_id" ]]; then
+        print_error "No webhook ID configured for environment: ${env}"
+        exit 1
+    fi
+
+    print_status "Triggering Portainer webhook deployment for ${env} environment..."
+    print_status "Webhook ID: ${webhook_id}"
+    print_status "Portainer URL: ${PORTAINER_URL}"
+
+    # Test Portainer connectivity
+    print_status "Testing Portainer connectivity..."
+    if ! curl -f "${PORTAINER_URL}" > /dev/null 2>&1; then
+        print_warning "Portainer may not be accessible at ${PORTAINER_URL}"
+    fi
+
+    # Trigger webhook
+    print_status "Sending webhook request..."
+    local webhook_url="${PORTAINER_URL}/api/stacks/webhooks/${webhook_id}"
+    local response
+    response=$(curl -s -w "%{http_code}" -X POST "$webhook_url")
+
+    print_status "Webhook response: ${response}"
+
+    if [[ "$response" == "200" ]] || [[ "$response" == "204" ]]; then
+        print_success "Portainer webhook triggered successfully!"
+        print_status "Stack redeployment initiated in Portainer (${env})"
+        print_status "Monitor deployment progress at: ${PORTAINER_URL}"
+
+        # Wait for deployment to start
+        print_status "Waiting for deployment to start..."
+        sleep 15
+
+        # Optional: Wait and check deployment status
+        print_status "Checking deployment status..."
+        sleep 30
+        health_check "$env"
+    else
+        print_error "Webhook failed with response: ${response}"
+        exit 1
+    fi
 }
 
 # Health check for deployed environment
@@ -215,12 +270,14 @@ show_usage() {
     echo ""
     echo "Commands:"
     echo "  deploy <env> [version]     Deploy to environment (dev|prod)"
+    echo "  webhook <env>              Deploy using Portainer webhook"
     echo "  promote <from> <to> [ver]  Promote between environments"
     echo "  rollback <env> <version>   Rollback to specific version"
     echo "  health <env>               Run health check"
     echo ""
     echo "Examples:"
     echo "  $0 deploy dev"
+    echo "  $0 webhook dev             # Use Portainer webhook for dev"
     echo "  $0 deploy prod v1.2.3"
     echo "  $0 promote dev prod"
     echo "  $0 promote dev prod v1.2.3"
@@ -233,6 +290,9 @@ main() {
     case "${1:-}" in
         "deploy")
             deploy_environment "${2:-}" "${3:-latest}"
+            ;;
+        "webhook")
+            deploy_webhook "${2:-}"
             ;;
         "promote")
             promote_environment "${2:-}" "${3:-}" "${4:-latest}"

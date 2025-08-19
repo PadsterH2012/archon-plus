@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   archon-server:
-    image: hl-harbor.techpad.uk/archon/archon-server:latest
+    image: hl-harbor.techpad.uk/archon/archon-server:4-d298860
     ports:
       - "8181:8181"
     environment:
@@ -41,7 +41,7 @@ services:
       start_period: 40s
 
   archon-mcp:
-    image: hl-harbor.techpad.uk/archon/archon-mcp:latest
+    image: hl-harbor.techpad.uk/archon/archon-mcp:4-d298860
     ports:
       - "8051:8051"
     environment:
@@ -72,7 +72,7 @@ services:
       start_period: 40s
 
   archon-agents:
-    image: hl-harbor.techpad.uk/archon/archon-agents:latest
+    image: hl-harbor.techpad.uk/archon/archon-agents:4-d298860
     ports:
       - "8052:8052"
     environment:
@@ -103,7 +103,7 @@ services:
       start_period: 40s
 
   archon-ui:
-    image: hl-harbor.techpad.uk/archon/archon-ui:latest
+    image: hl-harbor.techpad.uk/archon/archon-ui:4-d298860
     ports:
       - "3737:5173"
     environment:
