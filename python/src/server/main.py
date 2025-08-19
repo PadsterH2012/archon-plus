@@ -20,8 +20,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api_routes.agent_chat_api import router as agent_chat_router
+from .api_routes.backup_api import router as backup_router
 from .api_routes.bug_report_api import router as bug_report_router
 from .api_routes.coverage_api import router as coverage_router
+from .api_routes.export_import_api import router as export_import_router
 from .api_routes.internal_api import router as internal_router
 from .api_routes.knowledge_api import router as knowledge_router
 from .api_routes.mcp_api import router as mcp_router
@@ -207,6 +209,8 @@ app.include_router(mcp_router)
 # app.include_router(mcp_client_router)  # Removed - not part of new architecture
 app.include_router(knowledge_router)
 app.include_router(projects_router)
+app.include_router(export_import_router)
+app.include_router(backup_router)
 app.include_router(tests_router)
 app.include_router(agent_chat_router)
 app.include_router(internal_router)

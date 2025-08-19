@@ -1,6 +1,6 @@
 version: '3.8'
 
-# Archon Stack with SaaS Supabase
+# Archon Stack with SaaS Supabase (Fixed UI Version)
 # This template deploys Archon using external Supabase (supabase.com)
 # 
 # Prerequisites:
@@ -12,7 +12,7 @@ version: '3.8'
 # - archon-server: Core API and business logic (Port: 8181)
 # - archon-mcp: Model Context Protocol interface (Port: 8051)  
 # - archon-agents: AI operations and streaming (Port: 8052)
-# - archon-ui: Web interface (Port: 3737)
+# - archon-ui: Web interface (Port: 3737) - Fixed nginx issues
 
 services:
   # Core Server Service (FastAPI + Socket.IO + Crawling)
@@ -164,11 +164,11 @@ services:
           memory: 512M
           cpus: '0.5'
 
-  # Frontend Web Interface
+  # Frontend Web Interface (Fixed nginx issues)
   archon-ui:
     image: hl-harbor.techpad.uk/archon/archon-ui:latest
     environment:
-      - VITE_API_URL=http://${HOST:-localhost}:${ARCHON_SERVER_PORT:-8181}
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8181}
       - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
       - HOST=${HOST:-localhost}
     ports:
@@ -178,18 +178,27 @@ services:
         mode: ingress
     networks:
       - archon-network
+    # Override nginx command to use simple Python server instead
+    command: >
+      sh -c "
+      echo 'Installing Python and starting simple HTTP server...' &&
+      apk add --no-cache python3 &&
+      cd /usr/share/nginx/html &&
+      echo 'Starting server on port 5173...' &&
+      python3 -m http.server 5173
+      "
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      test: ["CMD", "sh", "-c", "wget --no-verbose --tries=1 --spider http://localhost:5173 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 60s
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
-        delay: 5s
-        max_attempts: 3
+        delay: 10s
+        max_attempts: 5
       resources:
         limits:
           memory: 512M
@@ -245,6 +254,7 @@ networks:
 # Environment Variables Required:
 # SUPABASE_URL=https://your-project.supabase.co
 # SUPABASE_SERVICE_KEY=your-service-key
+# VITE_API_URL=http://localhost:8181
 #
 # Optional Environment Variables:
 # ARCHON_SERVER_PORT=8181

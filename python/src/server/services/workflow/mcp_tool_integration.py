@@ -188,6 +188,138 @@ class MCPToolRegistry:
             "parameters": {},
             "returns": "JSON with session information",
             "example": {}
+        },
+
+        # Export/Import & Backup Tools
+        "export_project_archon": {
+            "category": "export_import",
+            "description": "Export a project to a portable package format",
+            "parameters": {
+                "project_id": {"type": "string", "required": True, "description": "UUID of project to export"},
+                "export_type": {"type": "string", "required": False, "default": "full", "description": "Export type (full, selective, incremental)"},
+                "include_versions": {"type": "boolean", "required": False, "default": True, "description": "Include version history"},
+                "include_sources": {"type": "boolean", "required": False, "default": True, "description": "Include knowledge sources"},
+                "include_attachments": {"type": "boolean", "required": False, "default": False, "description": "Include file attachments"},
+                "version_limit": {"type": "integer", "required": False, "description": "Maximum versions to include"},
+                "exported_by": {"type": "string", "required": False, "default": "mcp_tool", "description": "User performing export"}
+            },
+            "returns": "JSON with export result and download information",
+            "example": {
+                "project_id": "550e8400-e29b-41d4-a716-446655440000",
+                "export_type": "full",
+                "include_versions": True,
+                "version_limit": 50
+            }
+        },
+
+        "import_project_archon": {
+            "category": "export_import",
+            "description": "Import a project from an exported package file",
+            "parameters": {
+                "import_file_path": {"type": "string", "required": True, "description": "Path to exported ZIP file"},
+                "import_type": {"type": "string", "required": False, "default": "full", "description": "Import type (full, selective, merge)"},
+                "conflict_resolution": {"type": "string", "required": False, "default": "merge", "description": "Conflict resolution (merge, overwrite, skip, fail)"},
+                "target_project_id": {"type": "string", "required": False, "description": "Existing project ID to import into"},
+                "dry_run": {"type": "boolean", "required": False, "default": False, "description": "Validate without importing"},
+                "imported_by": {"type": "string", "required": False, "default": "mcp_tool", "description": "User performing import"}
+            },
+            "returns": "JSON with import result and project information",
+            "example": {
+                "import_file_path": "/tmp/project_export.zip",
+                "import_type": "full",
+                "conflict_resolution": "merge"
+            }
+        },
+
+        "validate_import_file_archon": {
+            "category": "export_import",
+            "description": "Validate an import file without performing the actual import",
+            "parameters": {
+                "import_file_path": {"type": "string", "required": True, "description": "Path to exported ZIP file to validate"}
+            },
+            "returns": "JSON with validation result and file metadata",
+            "example": {
+                "import_file_path": "/tmp/project_export.zip"
+            }
+        },
+
+        "create_backup_archon": {
+            "category": "backup",
+            "description": "Create a backup of a specific project",
+            "parameters": {
+                "project_id": {"type": "string", "required": True, "description": "UUID of project to backup"},
+                "backup_type": {"type": "string", "required": False, "default": "full", "description": "Backup type (full, selective, incremental)"},
+                "compress": {"type": "boolean", "required": False, "default": True, "description": "Compress the backup"},
+                "encrypt": {"type": "boolean", "required": False, "default": False, "description": "Encrypt the backup"},
+                "created_by": {"type": "string", "required": False, "default": "mcp_tool", "description": "User creating backup"}
+            },
+            "returns": "JSON with backup result and metadata",
+            "example": {
+                "project_id": "550e8400-e29b-41d4-a716-446655440000",
+                "backup_type": "full",
+                "compress": True
+            }
+        },
+
+        "restore_backup_archon": {
+            "category": "backup",
+            "description": "Restore a project from a backup",
+            "parameters": {
+                "backup_id": {"type": "string", "required": True, "description": "UUID of backup to restore"},
+                "target_project_id": {"type": "string", "required": False, "description": "Existing project ID to restore into"},
+                "conflict_resolution": {"type": "string", "required": False, "default": "merge", "description": "Conflict resolution strategy"},
+                "restored_by": {"type": "string", "required": False, "default": "mcp_tool", "description": "User performing restoration"}
+            },
+            "returns": "JSON with restoration result and project information",
+            "example": {
+                "backup_id": "backup-123e4567-e89b-12d3-a456-426614174000",
+                "conflict_resolution": "merge"
+            }
+        },
+
+        "list_backups_archon": {
+            "category": "backup",
+            "description": "List available backups, optionally filtered by project",
+            "parameters": {
+                "project_id": {"type": "string", "required": False, "description": "Optional project ID to filter backups"}
+            },
+            "returns": "JSON with list of available backups and metadata",
+            "example": {
+                "project_id": "550e8400-e29b-41d4-a716-446655440000"
+            }
+        },
+
+        "schedule_backup_archon": {
+            "category": "backup",
+            "description": "Schedule automatic backups for a project",
+            "parameters": {
+                "project_id": {"type": "string", "required": True, "description": "UUID of project to schedule backups for"},
+                "schedule_type": {"type": "string", "required": False, "default": "cron", "description": "Schedule type (cron, interval)"},
+                "cron_expression": {"type": "string", "required": False, "description": "Cron expression for cron-based schedules"},
+                "interval_minutes": {"type": "integer", "required": False, "description": "Interval in minutes for interval-based schedules"},
+                "backup_type": {"type": "string", "required": False, "default": "full", "description": "Type of backup to create"},
+                "enabled": {"type": "boolean", "required": False, "default": True, "description": "Whether schedule should be enabled"},
+                "created_by": {"type": "string", "required": False, "default": "mcp_tool", "description": "User creating schedule"}
+            },
+            "returns": "JSON with schedule creation result",
+            "example": {
+                "project_id": "550e8400-e29b-41d4-a716-446655440000",
+                "schedule_type": "cron",
+                "cron_expression": "0 2 * * *",
+                "backup_type": "full"
+            }
+        },
+
+        "list_backup_schedules_archon": {
+            "category": "backup",
+            "description": "List backup schedules, optionally filtered by project",
+            "parameters": {
+                "project_id": {"type": "string", "required": False, "description": "Optional project ID to filter schedules"}
+            },
+            "returns": "JSON with list of backup schedules",
+            "example": {
+                "project_id": "550e8400-e29b-41d4-a716-446655440000"
+            }
         }
     }
     

@@ -11,6 +11,7 @@ This package organizes the API into logical modules:
 """
 
 from .agent_chat_api import router as agent_chat_router
+from .export_import_api import router as export_import_router
 from .internal_api import router as internal_router
 from .knowledge_api import router as knowledge_router
 from .mcp_api import router as mcp_router
@@ -28,4 +29,5 @@ __all__ = [
     "agent_chat_router",
     "internal_router",
     "workflow_router",
+    "export_import_router",
 ]

@@ -33,12 +33,23 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Set permissions for existing nginx user
-RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    chown -R nginx:nginx /var/cache/nginx && \
-    chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d && \
-    chmod -R 755 /usr/share/nginx/html
+# Create necessary directories and set permissions for nginx user
+RUN mkdir -p /var/cache/nginx/client_temp \
+             /var/cache/nginx/proxy_temp \
+             /var/cache/nginx/fastcgi_temp \
+             /var/cache/nginx/uwsgi_temp \
+             /var/cache/nginx/scgi_temp \
+             /var/run/nginx \
+             /var/log/nginx && \
+    chown -R nginx:nginx /usr/share/nginx/html \
+                         /var/cache/nginx \
+                         /var/log/nginx \
+                         /var/run/nginx \
+                         /etc/nginx/conf.d && \
+    chmod -R 755 /usr/share/nginx/html && \
+    chmod -R 755 /var/cache/nginx && \
+    chmod -R 755 /var/log/nginx && \
+    chmod -R 755 /var/run/nginx
 
 # Switch to non-root user
 USER nginx

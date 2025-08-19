@@ -122,3 +122,116 @@ def test_knowledge_item():
         "content": "This is test content for knowledge base",
         "source_id": "test-source",
     }
+
+
+# Export/Import Testing Fixtures
+
+@pytest.fixture
+def temp_directory():
+    """Provide a temporary directory for test files"""
+    import tempfile
+    temp_dir = tempfile.mkdtemp()
+    yield temp_dir
+
+    # Cleanup
+    import shutil
+    shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+@pytest.fixture
+def sample_export_project_data():
+    """Provide comprehensive project data for export testing"""
+    return {
+        "id": "export-test-project-123",
+        "title": "Export Test Project",
+        "description": "A comprehensive test project for export/import testing",
+        "github_repo": "https://github.com/test/export-repo",
+        "pinned": False,
+        "docs": [
+            {
+                "id": "export-doc-1",
+                "document_type": "prp",
+                "title": "Export Test PRP",
+                "content": {
+                    "goal": "Test the export functionality thoroughly",
+                    "why": ["Ensure data integrity", "Validate export format"],
+                    "what": {
+                        "description": "Complete export testing with all data types",
+                        "success_criteria": ["All data exported", "Format validated"]
+                    }
+                },
+                "metadata": {"version": "1.0", "author": "export_tester"}
+            }
+        ],
+        "features": ["export", "testing"],
+        "data": {"test_config": {"export_enabled": True}},
+        "created_at": "2025-08-18T20:00:00Z",
+        "updated_at": "2025-08-18T22:00:00Z"
+    }
+
+
+@pytest.fixture
+def sample_export_tasks_data():
+    """Provide comprehensive tasks data for export testing"""
+    return [
+        {
+            "id": "export-task-1",
+            "project_id": "export-test-project-123",
+            "title": "Export Test Task 1",
+            "description": "First task for export testing",
+            "status": "done",
+            "assignee": "AI IDE Agent",
+            "task_order": 1,
+            "feature": "export",
+            "sources": [{"url": "test.com", "type": "docs"}],
+            "code_examples": [{"file": "test.py", "function": "test"}],
+            "created_at": "2025-08-18T20:30:00Z",
+            "updated_at": "2025-08-18T21:45:00Z"
+        },
+        {
+            "id": "export-task-2",
+            "project_id": "export-test-project-123",
+            "title": "Export Test Task 2",
+            "description": "Second task for export testing",
+            "status": "todo",
+            "assignee": "User",
+            "task_order": 2,
+            "feature": "testing",
+            "sources": [],
+            "code_examples": [],
+            "created_at": "2025-08-18T21:00:00Z",
+            "updated_at": "2025-08-18T21:00:00Z"
+        }
+    ]
+
+
+def create_test_export_file(temp_dir: str, project_data: dict, tasks_data: list) -> str:
+    """Utility function to create a test export file"""
+    import json
+    import zipfile
+    from datetime import datetime
+
+    export_file = os.path.join(temp_dir, "test_export.zip")
+
+    with zipfile.ZipFile(export_file, 'w') as zipf:
+        # Create manifest
+        manifest = {
+            "format_version": "1.0.0",
+            "export_timestamp": datetime.now().isoformat(),
+            "project_id": project_data["id"],
+            "exported_by": "test_user",
+            "export_type": "full"
+        }
+        zipf.writestr("manifest.json", json.dumps(manifest, indent=2))
+
+        # Create project data
+        zipf.writestr("project.json", json.dumps(project_data, indent=2))
+
+        # Create tasks data
+        tasks_export = {
+            "tasks": tasks_data,
+            "statistics": {"total_tasks": len(tasks_data)}
+        }
+        zipf.writestr("tasks.json", json.dumps(tasks_export, indent=2))
+
+    return export_file
