@@ -40,6 +40,9 @@ services:
       # MCP Service Management (for Docker Swarm)
       - MCP_CONTAINER_NAME=archon-dev_dev-archon-mcp
 
+      # MCP Host Configuration (for client connections)
+      - MCP_HOST=${HOST:-localhost}
+
       # Optional: Logging
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
     ports:
@@ -191,6 +194,10 @@ services:
       - VITE_API_URL=http://${HOST:-localhost}:${ARCHON_SERVER_PORT:-9181}
       - ARCHON_SERVER_PORT=8181
       - HOST=${HOST:-localhost}
+
+      # MCP Configuration for Development Environment
+      - VITE_MCP_HOST=${HOST:-localhost}
+      - VITE_MCP_PORT=${ARCHON_MCP_PORT:-9051}
     ports:
       - target: 5173
         published: ${ARCHON_UI_PORT:-4737}
