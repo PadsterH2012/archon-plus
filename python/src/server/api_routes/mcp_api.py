@@ -607,9 +607,17 @@ class MCPServerManager:
 
                                                     # Process the log lines
                                                     try:
-                                                        new_hashes = self._process_service_log_lines_v2(log_lines, first_poll, processed_log_hashes)
+                                                        parsed_logs, new_hashes = self._process_service_log_lines_v3(log_lines, first_poll, processed_log_hashes)
                                                         processed_log_hashes.update(new_hashes)
                                                         first_poll = False  # After first poll, only show new logs
+
+                                                        # Add the parsed logs to the main async context
+                                                        for level, message in parsed_logs:
+                                                            self._add_log(level, message)
+
+                                                        if parsed_logs:
+                                                            self._add_log("DEBUG", f"Added {len(parsed_logs)} logs to dashboard from service logs")
+
                                                     except Exception as process_error:
                                                         self._add_log("ERROR", f"Error processing log lines: {str(process_error)}")
                                                         # Show first few lines for debugging even if processing fails
@@ -747,9 +755,6 @@ class MCPServerManager:
 
         self._add_log("DEBUG", f"Processing {len(log_lines)} log lines (first_poll: {first_poll}, current_logs: {current_log_count}, treat_as_first: {treat_as_first_poll})")
 
-        # Test: Add a direct log entry to verify _add_log is working
-        self._add_log("INFO", "🧪 TEST: Direct log entry from service log processing")
-
         for i, log_line in enumerate(log_lines):
             if log_line.strip():
                 # Create hash of log line for deduplication
@@ -797,6 +802,64 @@ class MCPServerManager:
 
         self._add_log("DEBUG", f"Added {new_logs_added} new log entries this poll")
         return new_hashes
+
+    def _process_service_log_lines_v3(self, log_lines, first_poll, processed_log_hashes):
+        """Process log lines from Docker service logs and return parsed logs for main async context."""
+        import hashlib
+
+        parsed_logs = []  # Collect logs to return instead of adding directly
+        new_hashes = set()
+
+        # If we have no logs in our buffer yet, treat this as first poll to show recent logs
+        current_log_count = len(self.logs)
+        treat_as_first_poll = first_poll or current_log_count == 0
+
+        # Note: Don't call self._add_log() here as we're in executor thread context
+        print(f"[SERVICE LOG PROCESSOR] Processing {len(log_lines)} log lines (first_poll: {first_poll}, current_logs: {current_log_count}, treat_as_first: {treat_as_first_poll})")
+
+        for i, log_line in enumerate(log_lines):
+            if log_line.strip():
+                # Create hash of log line for deduplication
+                log_hash = hashlib.md5(log_line.encode()).hexdigest()
+
+                # Debug first few log lines to understand format
+                if i < 3:
+                    print(f"[SERVICE LOG PROCESSOR] Sample log line {i}: {log_line[:100]}...")
+
+                # On first poll or when no logs exist, show recent logs. On subsequent polls, only show new logs
+                if treat_as_first_poll:
+                    # Show all logs on first poll, but track them
+                    processed_log_hashes.add(log_hash)
+                    new_hashes.add(log_hash)
+
+                    # Extract message from timestamped log
+                    if log_line.startswith('20') and 'T' in log_line[:20]:
+                        parts = log_line.split(' ', 1)
+                        if len(parts) >= 2:
+                            message = parts[1]
+                            level, parsed_message = self._parse_log_line(message)
+                            parsed_logs.append((level, parsed_message))
+                    else:
+                        level, parsed_message = self._parse_log_line(log_line)
+                        parsed_logs.append((level, parsed_message))
+                else:
+                    # Only show logs we haven't seen before
+                    if log_hash not in processed_log_hashes:
+                        new_hashes.add(log_hash)
+
+                        # Extract message from timestamped log
+                        if log_line.startswith('20') and 'T' in log_line[:20]:
+                            parts = log_line.split(' ', 1)
+                            if len(parts) >= 2:
+                                message = parts[1]
+                                level, parsed_message = self._parse_log_line(message)
+                                parsed_logs.append((level, parsed_message))
+                        else:
+                            level, parsed_message = self._parse_log_line(log_line)
+                            parsed_logs.append((level, parsed_message))
+
+        print(f"[SERVICE LOG PROCESSOR] Returning {len(parsed_logs)} parsed logs to main context")
+        return parsed_logs, new_hashes
 
     def _parse_log_line(self, line: str) -> tuple[str, str]:
         """Parse a log line to extract level and message."""
