@@ -679,6 +679,7 @@ async def initialize_credentials() -> None:
         "LLM_BASE_URL",  # Ollama base URL
         "EMBEDDING_MODEL",  # Custom embedding model
         "MODEL_CHOICE",  # Chat model for sync contexts
+        "EMBEDDING_BASE_URL",  # Custom embedding service URL (for dev environment)
     ]
 
     # RAG settings that should NOT be set as env vars (will be looked up on demand):

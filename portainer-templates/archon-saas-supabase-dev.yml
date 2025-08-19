@@ -37,6 +37,9 @@ services:
       - ARCHON_MCP_HOST=dev-archon-mcp
       - ARCHON_AGENTS_HOST=dev-archon-agents
 
+      # Embedding Service Override for Development Environment
+      - EMBEDDING_BASE_URL=http://dev-archon-embeddings:80
+
       # MCP Service Management (for Docker Swarm)
       - MCP_CONTAINER_NAME=archon-dev_dev-archon-mcp
 
