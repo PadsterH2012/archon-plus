@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader, Settings, ChevronDown, ChevronUp, Palette, Key, Brain, Code, Activity, FileCode, Bug } from 'lucide-react';
+import { Loader, Settings, ChevronDown, ChevronUp, Palette, Key, Brain, Code, Activity, FileCode, Bug, HardDrive } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../contexts/ToastContext';
 import { useSettings } from '../contexts/SettingsContext';
@@ -11,6 +11,7 @@ import { CodeExtractionSettings } from '../components/settings/CodeExtractionSet
 import { TestStatus } from '../components/settings/TestStatus';
 import { IDEGlobalRules } from '../components/settings/IDEGlobalRules';
 import { ButtonPlayground } from '../components/settings/ButtonPlayground';
+import { BackupRestoreSection } from '../components/settings/BackupRestoreSection';
 import { CollapsibleSettingsCard } from '../components/ui/CollapsibleSettingsCard';
 import { BugReportButton } from '../components/bug-report/BugReportButton';
 import { credentialsService, RagSettings, CodeExtractionSettings as CodeExtractionSettingsType } from '../services/credentialsService';
@@ -131,6 +132,17 @@ export const SettingsPage = () => {
               </CollapsibleSettingsCard>
             </motion.div>
           )}
+          <motion.div variants={itemVariants}>
+            <CollapsibleSettingsCard
+              title="Backup & Restore"
+              icon={HardDrive}
+              accentColor="blue"
+              storageKey="backup-restore"
+              defaultExpanded={true}
+            >
+              <BackupRestoreSection />
+            </CollapsibleSettingsCard>
+          </motion.div>
           <motion.div variants={itemVariants}>
             <CollapsibleSettingsCard
               title="Test Status"

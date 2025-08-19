@@ -18,6 +18,7 @@ import { ProjectCreationProgressCard } from '../components/ProjectCreationProgre
 import { projectCreationProgressService } from '../services/projectCreationProgressService';
 import type { ProjectCreationProgressData } from '../services/projectCreationProgressService';
 import { projectListSocketIO, taskUpdateSocketIO } from '../services/socketIOService';
+import { ProjectExportImportActions } from '../components/project-tasks/ProjectExportImportActions';
 
 interface ProjectPageProps {
   className?: string;
@@ -885,6 +886,28 @@ export function ProjectPage({
       {/* Project Details Section */}
       {showProjectDetails && selectedProject && (
         <motion.div variants={itemVariants}>
+          {/* Project Header with Export/Import Actions */}
+          <div className="flex items-center justify-between mb-6 p-4 rounded-xl backdrop-blur-md bg-gradient-to-r from-white/80 to-white/60 dark:from-white/10 dark:to-black/30 border border-gray-200 dark:border-zinc-800/50 shadow-lg">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-1">
+                {selectedProject.title}
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">
+                {selectedProject.description || 'No description provided'}
+              </p>
+            </div>
+            <ProjectExportImportActions
+              projectId={selectedProject.id}
+              projectTitle={selectedProject.title}
+              onProjectImported={(newProjectId) => {
+                // Refresh projects list when import is successful
+                loadProjects();
+                showToast('Project imported successfully!', 'success');
+              }}
+              className="flex-shrink-0"
+            />
+          </div>
+
           <Tabs defaultValue="tasks" value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList>
               <TabsTrigger value="docs" className="py-3 font-mono transition-all duration-300" color="blue">
