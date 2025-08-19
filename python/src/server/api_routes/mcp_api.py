@@ -573,7 +573,7 @@ class MCPServerManager:
                                         try:
                                             # Get recent logs from service
                                             logs = await asyncio.get_event_loop().run_in_executor(
-                                                None, lambda: self.service.logs(tail=50, timestamps=True)
+                                                None, lambda: self.service.logs(tail=50, timestamps=True, stdout=True, stderr=True)
                                             )
 
                                             if logs:
