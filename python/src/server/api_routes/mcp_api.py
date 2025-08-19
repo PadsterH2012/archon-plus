@@ -522,8 +522,13 @@ class MCPServerManager:
                     self._add_log("WARNING", "Could not find container ID from service task")
                     return
 
-                # Debug: log the container ID we found
+                # Debug: log the container ID we found and task details
                 self._add_log("DEBUG", f"Found container ID from task: {container_id[:12]}...{container_id[-12:] if len(container_id) > 24 else ''}")
+
+                # Debug: log task node information
+                node_id = task.get('NodeID', 'unknown')
+                task_slot = task.get('Slot', 'unknown')
+                self._add_log("DEBUG", f"Task running on node: {node_id}, slot: {task_slot}")
 
                 # Try different approaches to get the container
                 try:
@@ -540,6 +545,8 @@ class MCPServerManager:
                         # If both fail, try to find container by listing all containers
                         try:
                             all_containers = self.docker_client.containers.list(all=True)
+                            self._add_log("DEBUG", f"Found {len(all_containers)} total containers on this node")
+
                             matching_container = None
                             for container in all_containers:
                                 if container.id.startswith(container_id[:12]) or container_id.startswith(container.id[:12]):
@@ -550,8 +557,44 @@ class MCPServerManager:
                                 container_to_read = matching_container
                                 self._add_log("INFO", f"Found matching container: {matching_container.id[:12]}")
                             else:
-                                self._add_log("ERROR", f"Container not found. Task container ID: {container_id[:12]}, tried full ID and short ID")
-                                return
+                                # In Swarm mode, container might be on different node - try service logs instead
+                                self._add_log("WARNING", f"Container not found on this node. Task container ID: {container_id[:12]}, tried full ID and short ID")
+                                self._add_log("INFO", "Attempting to read logs directly from service instead of container")
+
+                                # Try to read logs from the service directly
+                                try:
+                                    # Use service logs instead of container logs
+                                    log_generator = self.service.logs(stream=True, follow=True, tail=100)
+
+                                    # Process service logs similar to container logs
+                                    while True:
+                                        try:
+                                            log_line = await asyncio.get_event_loop().run_in_executor(
+                                                None, next, log_generator, None
+                                            )
+
+                                            if log_line is None:
+                                                break
+
+                                            # Decode bytes to string
+                                            if isinstance(log_line, bytes):
+                                                log_line = log_line.decode("utf-8").strip()
+
+                                            if log_line:
+                                                level, message = self._parse_log_line(log_line)
+                                                self._add_log(level, message)
+
+                                        except StopIteration:
+                                            break
+                                        except Exception as e:
+                                            self._add_log("ERROR", f"Service log reading error: {str(e)}")
+                                            break
+
+                                    return  # Exit the function as we're reading from service logs
+
+                                except Exception as service_log_error:
+                                    self._add_log("ERROR", f"Failed to read service logs: {str(service_log_error)}")
+                                    return
                         except Exception as e3:
                             self._add_log("ERROR", f"Failed to find container: {str(e3)}")
                             return
