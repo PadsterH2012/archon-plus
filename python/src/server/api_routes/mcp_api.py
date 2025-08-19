@@ -561,34 +561,56 @@ class MCPServerManager:
                                 self._add_log("WARNING", f"Container not found on this node. Task container ID: {container_id[:12]}, tried full ID and short ID")
                                 self._add_log("INFO", "Attempting to read logs directly from service instead of container")
 
-                                # Try to read logs from the service directly
+                                # Try to read logs from the service directly using polling
                                 try:
-                                    # Use service logs instead of container logs
-                                    log_generator = self.service.logs(stream=True, follow=True, tail=100)
+                                    self._add_log("INFO", "Starting service log polling (service logs don't support streaming)")
 
-                                    # Process service logs similar to container logs
+                                    # Use polling approach for service logs since streaming isn't supported
+                                    last_timestamp = None
+                                    poll_interval = 2  # Poll every 2 seconds
+
                                     while True:
                                         try:
-                                            log_line = await asyncio.get_event_loop().run_in_executor(
-                                                None, next, log_generator, None
+                                            # Get recent logs from service
+                                            logs = await asyncio.get_event_loop().run_in_executor(
+                                                None, lambda: self.service.logs(tail=50, timestamps=True)
                                             )
 
-                                            if log_line is None:
-                                                break
+                                            if logs:
+                                                # Process logs line by line
+                                                if isinstance(logs, bytes):
+                                                    logs = logs.decode("utf-8")
 
-                                            # Decode bytes to string
-                                            if isinstance(log_line, bytes):
-                                                log_line = log_line.decode("utf-8").strip()
+                                                log_lines = logs.strip().split('\n') if logs.strip() else []
 
-                                            if log_line:
-                                                level, message = self._parse_log_line(log_line)
-                                                self._add_log(level, message)
+                                                for log_line in log_lines:
+                                                    if log_line.strip():
+                                                        # Parse timestamp if present
+                                                        if log_line.startswith('20') and 'T' in log_line[:20]:
+                                                            # Extract timestamp and message
+                                                            parts = log_line.split(' ', 1)
+                                                            if len(parts) >= 2:
+                                                                timestamp = parts[0]
+                                                                message = parts[1]
 
-                                        except StopIteration:
-                                            break
+                                                                # Skip if we've seen this timestamp before
+                                                                if last_timestamp and timestamp <= last_timestamp:
+                                                                    continue
+
+                                                                last_timestamp = timestamp
+                                                                level, parsed_message = self._parse_log_line(message)
+                                                                self._add_log(level, parsed_message)
+                                                        else:
+                                                            # No timestamp, just process the line
+                                                            level, parsed_message = self._parse_log_line(log_line)
+                                                            self._add_log(level, parsed_message)
+
+                                            # Wait before next poll
+                                            await asyncio.sleep(poll_interval)
+
                                         except Exception as e:
-                                            self._add_log("ERROR", f"Service log reading error: {str(e)}")
-                                            break
+                                            self._add_log("ERROR", f"Service log polling error: {str(e)}")
+                                            await asyncio.sleep(poll_interval)
 
                                     return  # Exit the function as we're reading from service logs
 
