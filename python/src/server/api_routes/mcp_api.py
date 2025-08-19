@@ -157,7 +157,8 @@ class MCPServerManager:
 
     async def _ensure_log_reader_running(self):
         """Ensure the log reader task is running if container is active."""
-        if not self.container:
+        # Check if we have a container (Compose mode) or service (Swarm mode)
+        if not self.container and not self.service:
             return
 
         # Cancel existing task if any
@@ -221,6 +222,14 @@ class MCPServerManager:
 
             if container_status == "running":
                 if self.is_swarm_mode:
+                    # In Swarm mode, service is managed by orchestrator, but we can start log reading
+                    self.status = "running"
+                    self.start_time = time.time()
+
+                    # Start log reader if not already active
+                    if not self._is_log_reader_active():
+                        await self._ensure_log_reader_running()
+
                     mcp_logger.info("MCP service is already running in Docker Swarm")
                     return {
                         "success": True,
@@ -489,13 +498,41 @@ class MCPServerManager:
             self.log_websockets.remove(ws)
 
     async def _read_container_logs(self):
-        """Read logs from Docker container."""
-        if not self.container:
-            return
+        """Read logs from Docker container or service."""
+        container_to_read = None
 
         try:
+            if self.is_swarm_mode and self.service:
+                # In Docker Swarm mode, get the actual container from service tasks
+                tasks = self.service.tasks()
+                running_tasks = [task for task in tasks if task.get('Status', {}).get('State') == 'running']
+
+                if not running_tasks:
+                    self._add_log("WARNING", "No running tasks found for service")
+                    return
+
+                # Get the container ID from the first running task
+                task = running_tasks[0]
+                container_id = task.get('Status', {}).get('ContainerStatus', {}).get('ContainerID')
+
+                if not container_id:
+                    self._add_log("WARNING", "Could not find container ID from service task")
+                    return
+
+                # Get the actual container object
+                container_to_read = self.docker_client.containers.get(container_id)
+                self._add_log("INFO", f"Reading logs from Swarm service container: {container_id[:12]}")
+
+            elif not self.is_swarm_mode and self.container:
+                # Docker Compose mode - use the container directly
+                container_to_read = self.container
+                self._add_log("INFO", f"Reading logs from Compose container: {self.container.id[:12]}")
+            else:
+                self._add_log("WARNING", "No container or service available for log reading")
+                return
+
             # Stream logs from container
-            log_generator = self.container.logs(stream=True, follow=True, tail=100)
+            log_generator = container_to_read.logs(stream=True, follow=True, tail=100)
 
             while True:
                 try:
