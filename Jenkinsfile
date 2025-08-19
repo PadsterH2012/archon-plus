@@ -207,6 +207,7 @@ pipeline {
         stage('Deploy via Portainer Webhook') {
             when {
                 anyOf {
+                    branch 'main'
                     branch 'develop'
                     branch 'homelab-deployment'
                     branch 'feature/advanced-workflow-orchestration'
@@ -215,7 +216,7 @@ pipeline {
             }
             steps {
                 script {
-                    // Only dev environment uses webhook - production is manual
+                    // Main branch auto-deploys to dev environment - production is manual
                     def webhookId = "2bcf99e2-495b-412e-b50f-d2bf672cc99d"  // Dev webhook
                     def environment = "development"
 
@@ -257,46 +258,7 @@ pipeline {
             }
         }
 
-        stage('Production Deployment Instructions') {
-            when {
-                branch 'main'
-            }
-            steps {
-                script {
-                    echo """
-                    🎉 Build completed successfully for MAIN branch!
 
-                    📦 Images built and pushed to Harbor:
-                       • hl-harbor.techpad.uk/archon/archon-server:${IMAGE_TAG}
-                       • hl-harbor.techpad.uk/archon/archon-mcp:${IMAGE_TAG}
-                       • hl-harbor.techpad.uk/archon/archon-agents:${IMAGE_TAG}
-                       • hl-harbor.techpad.uk/archon/archon-ui:${IMAGE_TAG}
-
-                    🚀 MANUAL PRODUCTION DEPLOYMENT REQUIRED:
-
-                    Option 1 - Portainer UI:
-                       1. Go to: http://10.202.70.20:9000
-                       2. Navigate to Stacks → archon (production stack)
-                       3. Click 'Update the stack'
-                       4. Redeploy to pull latest images
-
-                    Option 2 - Pipeline Script:
-                       ssh to deployment server and run:
-                       cd /path/to/archon-plus
-                       ./portainer-templates/pipeline-deploy.sh deploy prod ${IMAGE_TAG}
-
-                    Option 3 - Docker Command:
-                       docker stack deploy -c portainer-templates/archon-saas-supabase-prod.yml archon
-
-                    📊 Monitor deployment at: http://10.202.70.20:9000
-                    🌐 Production URLs:
-                       • UI: http://localhost:3737
-                       • API: http://localhost:8181
-                       • MCP: http://localhost:8051
-                    """
-                }
-            }
-        }
 
         stage('Health Check') {
             steps {
@@ -339,10 +301,17 @@ pipeline {
 
         success {
             script {
-                echo "✅ Archon deployment completed successfully!"
-                echo "🌐 Archon UI: https://archon.techpad.uk"
-                echo "🔌 MCP Server: https://archon-mcp.techpad.uk"
-                echo "📡 API Server: https://archon-api.techpad.uk"
+                echo "✅ Archon build and dev deployment completed successfully!"
+                echo "🚀 Development Environment:"
+                echo "   • UI: http://localhost:4737"
+                echo "   • API: http://localhost:9181"
+                echo "   • MCP: http://localhost:9051"
+                echo "   • Agents: http://localhost:9052"
+                echo ""
+                echo "📋 For Production Deployment:"
+                echo "   1. Portainer UI: http://10.202.70.20:9000 → Stacks → archon → Update"
+                echo "   2. Pipeline: ./portainer-templates/pipeline-deploy.sh deploy prod ${IMAGE_TAG}"
+                echo "   3. Manual: docker stack deploy -c portainer-templates/archon-saas-supabase-prod.yml archon"
             }
         }
 
