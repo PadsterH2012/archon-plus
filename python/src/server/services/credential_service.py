@@ -502,7 +502,9 @@ class CredentialService:
         elif provider == "local":
             return "http://localhost:8080"
         elif provider == "tei":
-            return "http://archon-embeddings:80"
+            # Use environment variable for TEI embedding service URL
+            # This allows different URLs for dev vs prod environments
+            return os.getenv("EMBEDDING_BASE_URL", "http://archon-embeddings:80")
         elif provider == "openai":
             # OpenAI should never use custom base URLs - always use default
             return None

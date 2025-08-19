@@ -5,6 +5,7 @@ Provides a unified interface for creating OpenAI-compatible clients for differen
 Supports OpenAI, Ollama, and Google Gemini.
 """
 
+import os
 import time
 from contextlib import asynccontextmanager
 from typing import Any
@@ -148,11 +149,13 @@ async def get_llm_client(provider: str | None = None, use_embedding_provider: bo
 
         elif provider_name == "tei":
             # Text Embeddings Inference (TEI) server
+            # Use environment variable for TEI embedding service URL
+            default_url = os.getenv("EMBEDDING_BASE_URL", "http://archon-embeddings:80")
             client = openai.AsyncOpenAI(
                 api_key=api_key or "tei",  # TEI doesn't require authentication
-                base_url=base_url or "http://archon-embeddings:80",
+                base_url=base_url or default_url,
             )
-            logger.info(f"TEI embedding server client created successfully with base URL: {base_url or 'http://archon-embeddings:80'}")
+            logger.info(f"TEI embedding server client created successfully with base URL: {base_url or default_url}")
 
         else:
             raise ValueError(f"Unsupported LLM provider: {provider_name}")
