@@ -308,6 +308,10 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
     define: {
       'import.meta.env.VITE_HOST': JSON.stringify(host),
       'import.meta.env.VITE_PORT': JSON.stringify(port),
+      'import.meta.env.VITE_MCP_HOST': JSON.stringify(env.VITE_MCP_HOST || process.env.VITE_MCP_HOST || ''),
+      'import.meta.env.VITE_MCP_PORT': JSON.stringify(env.VITE_MCP_PORT || process.env.VITE_MCP_PORT || ''),
+      'import.meta.env.VITE_MCP_NAME': JSON.stringify(env.VITE_MCP_NAME || process.env.VITE_MCP_NAME || ''),
+      'import.meta.env.ARCHON_MCP_PORT': JSON.stringify(env.ARCHON_MCP_PORT || process.env.ARCHON_MCP_PORT || ''),
     },
     resolve: {
       alias: {
@@ -325,11 +329,14 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         '**/cypress/**',
         '**/.{idea,git,cache,output,temp}/**',
         '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
-        '**/*.test.{ts,tsx}',
       ],
       env: {
         VITE_HOST: host,
         VITE_PORT: port,
+        VITE_MCP_HOST: env.VITE_MCP_HOST || process.env.VITE_MCP_HOST || '',
+        VITE_MCP_PORT: env.VITE_MCP_PORT || process.env.VITE_MCP_PORT || '',
+        VITE_MCP_NAME: env.VITE_MCP_NAME || process.env.VITE_MCP_NAME || '',
+        ARCHON_MCP_PORT: env.ARCHON_MCP_PORT || process.env.ARCHON_MCP_PORT || '',
       },
       coverage: {
         provider: 'v8',
@@ -340,7 +347,6 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
           '**/*.d.ts',
           '**/*.config.*',
           '**/mockData.ts',
-          '**/*.test.{ts,tsx}',
         ],
       }
     }
