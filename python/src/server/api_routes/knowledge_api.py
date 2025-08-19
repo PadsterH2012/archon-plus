@@ -290,7 +290,7 @@ async def refresh_knowledge_item(source_id: str):
                 supabase_client = get_supabase_client()
                 pages_response = (
                     supabase_client.from_("archon_crawled_pages")
-                    .select("content, title, url")
+                    .select("content, url")  # Remove title as it doesn't exist in this table
                     .eq("source_id", source_id)
                     .order("id")  # Use id instead of chunk_number for ordering
                     .execute()
@@ -303,7 +303,8 @@ async def refresh_knowledge_item(source_id: str):
                     )
 
                 # Reconstruct the original file content
-                file_title = pages_response.data[0].get("title", source_id)
+                # Use source_id as title since title column doesn't exist in archon_crawled_pages
+                file_title = source_id
                 combined_content = "\n\n".join([page["content"] for page in pages_response.data])
 
                 # Use raw: prefix so crawl4ai can handle it as raw content
