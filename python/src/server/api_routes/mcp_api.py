@@ -82,6 +82,8 @@ class MCPServerManager:
         self._min_operation_interval = 2.0  # Minimum 2 seconds between operations
         # Internal debug/control flags
         self._service_log_processor_logged = False  # ensure we log v3 bridge info once
+        self._has_emitted_service_logs = False  # seed once when switching to service logs
+        self._last_service_log_since: int | None = None  # epoch seconds for 'since' param
         self._initialize_docker_client()
 
     def _initialize_docker_client(self):
@@ -586,8 +588,18 @@ class MCPServerManager:
                                         try:
                                             # Get recent logs from service
                                             self._add_log("DEBUG", "Attempting to fetch service logs...")
+                                            # Build parameters with optional 'since' after first seed
+                                            def _fetch_service_logs():
+                                                kwargs = dict(timestamps=True, stdout=True, stderr=True)
+                                                # During initial seed, prefer tail to get recent history
+                                                if not self._has_emitted_service_logs:
+                                                    kwargs["tail"] = 50
+                                                # After seed, use since to avoid re-reading history
+                                                if self._has_emitted_service_logs and self._last_service_log_since is not None:
+                                                    kwargs["since"] = self._last_service_log_since
+                                                return self.service.logs(**kwargs)
                                             logs_generator = await asyncio.get_event_loop().run_in_executor(
-                                                None, lambda: self.service.logs(tail=50, timestamps=True, stdout=True, stderr=True)
+                                                None, _fetch_service_logs
                                             )
 
                                             self._add_log("DEBUG", f"Service logs generator type: {type(logs_generator)}")
@@ -613,9 +625,11 @@ class MCPServerManager:
                                                             self._add_log("INFO", "Using v3 service log processor (bridge to main async context)")
                                                             self._service_log_processor_logged = True
 
-                                                        parsed_logs, new_hashes = self._process_service_log_lines_v3(log_lines, first_poll, processed_log_hashes)
+                                                        parsed_logs, new_hashes, latest_since = self._process_service_log_lines_v3(log_lines, first_poll, processed_log_hashes)
                                                         processed_log_hashes.update(new_hashes)
                                                         first_poll = False  # After first poll, only show new logs
+                                                        if latest_since is not None:
+                                                            self._last_service_log_since = latest_since
 
                                                         # Add the parsed logs to the main async context
                                                         self._add_log("INFO", f"MCP log bridge: about to append {len(parsed_logs)} parsed logs to buffer")
@@ -812,62 +826,73 @@ class MCPServerManager:
         return new_hashes
 
     def _process_service_log_lines_v3(self, log_lines, first_poll, processed_log_hashes):
-        """Process log lines from Docker service logs and return parsed logs for main async context."""
+        """Process log lines, return parsed logs and update last-seen timestamp.
+        NOTE: Do not call _add_log from here (executor thread)."""
         import hashlib
+        import datetime
 
-        parsed_logs = []  # Collect logs to return instead of adding directly
+        parsed_logs = []
         new_hashes = set()
+        latest_ts = None  # track latest Docker timestamp seen
 
-        # If we have no logs in our buffer yet, treat this as first poll to show recent logs
-        current_log_count = len(self.logs)
-        treat_as_first_poll = first_poll or current_log_count == 0
-
-        # Note: Don't call self._add_log() here as we're in executor thread context
-        print(f"[SERVICE LOG PROCESSOR] Processing {len(log_lines)} log lines (first_poll: {first_poll}, current_logs: {current_log_count}, treat_as_first: {treat_as_first_poll})")
+        # Seed on first run of service logs, regardless of buffer containing internal debug
+        treat_as_first_poll = first_poll or (not self._has_emitted_service_logs)
 
         for i, log_line in enumerate(log_lines):
-            if log_line.strip():
-                # Create hash of log line for deduplication
-                log_hash = hashlib.md5(log_line.encode()).hexdigest()
+            line = log_line.strip()
+            if not line:
+                continue
 
-                # Debug first few log lines to understand format
-                if i < 3:
-                    print(f"[SERVICE LOG PROCESSOR] Sample log line {i}: {log_line[:100]}...")
-
-                # On first poll or when no logs exist, show recent logs. On subsequent polls, only show new logs
-                if treat_as_first_poll:
-                    # Show all logs on first poll, but track them
-                    processed_log_hashes.add(log_hash)
-                    new_hashes.add(log_hash)
-
-                    # Extract message from timestamped log
-                    if log_line.startswith('20') and 'T' in log_line[:20]:
-                        parts = log_line.split(' ', 1)
-                        if len(parts) >= 2:
-                            message = parts[1]
-                            level, parsed_message = self._parse_log_line(message)
-                            parsed_logs.append((level, parsed_message))
-                    else:
-                        level, parsed_message = self._parse_log_line(log_line)
-                        parsed_logs.append((level, parsed_message))
-                else:
-                    # Only show logs we haven't seen before
-                    if log_hash not in processed_log_hashes:
-                        new_hashes.add(log_hash)
-
-                        # Extract message from timestamped log
-                        if log_line.startswith('20') and 'T' in log_line[:20]:
-                            parts = log_line.split(' ', 1)
-                            if len(parts) >= 2:
-                                message = parts[1]
-                                level, parsed_message = self._parse_log_line(message)
-                                parsed_logs.append((level, parsed_message))
+            # Docker service adds RFC3339 timestamp before app log; split once
+            ts_str = None
+            msg_part = line
+            if line.startswith('20') and 'T' in line[:20]:
+                parts = line.split(' ', 1)
+                if len(parts) == 2:
+                    ts_str, msg_part = parts[0], parts[1]
+                    # Track latest timestamp
+                    try:
+                        # RFC3339 with nanoseconds; trim to microseconds for Python
+                        ts_norm = ts_str.rstrip('Z')
+                        # allow variable fractional seconds
+                        if '.' in ts_norm:
+                            date_part, frac = ts_norm.split('.')
+                            # keep microseconds precision
+                            ts_parse = datetime.datetime.fromisoformat(f"{date_part}.{frac[:6]}")
                         else:
-                            level, parsed_message = self._parse_log_line(log_line)
-                            parsed_logs.append((level, parsed_message))
+                            ts_parse = datetime.datetime.fromisoformat(ts_norm)
+                        if latest_ts is None or ts_parse > latest_ts:
+                            latest_ts = ts_parse
+                    except Exception:
+                        pass
 
-        print(f"[SERVICE LOG PROCESSOR] Returning {len(parsed_logs)} parsed logs to main context")
-        return parsed_logs, new_hashes
+            # Dedup on inner message (not Docker timestamp)
+            log_hash = hashlib.md5(msg_part.encode()).hexdigest()
+
+            if treat_as_first_poll:
+                processed_log_hashes.add(log_hash)
+                new_hashes.add(log_hash)
+                level, parsed_message = self._parse_log_line(msg_part)
+                parsed_logs.append((level, parsed_message))
+            else:
+                if log_hash not in processed_log_hashes:
+                    new_hashes.add(log_hash)
+                    level, parsed_message = self._parse_log_line(msg_part)
+                    parsed_logs.append((level, parsed_message))
+
+        # Update state: after first emission, flip the flag
+        if treat_as_first_poll:
+            self._has_emitted_service_logs = True
+
+        # Convert latest_ts to epoch seconds for 'since'
+        latest_since = None
+        if latest_ts is not None:
+            try:
+                latest_since = int(latest_ts.timestamp())
+            except Exception:
+                latest_since = None
+
+        return parsed_logs, new_hashes, latest_since
 
     def _parse_log_line(self, line: str) -> tuple[str, str]:
         """Parse a log line to extract level and message."""
