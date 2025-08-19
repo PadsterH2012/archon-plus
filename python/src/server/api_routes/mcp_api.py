@@ -602,47 +602,23 @@ class MCPServerManager:
                                                             log_lines.append(log_entry.strip())
 
                                                     self._add_log("DEBUG", f"Processed {log_count} log entries, {len(log_lines)} non-empty lines")
+
+                                                    # Process the log lines
+                                                    try:
+                                                        last_timestamp = self._process_service_log_lines(log_lines, last_timestamp)
+                                                    except Exception as process_error:
+                                                        self._add_log("ERROR", f"Error processing log lines: {str(process_error)}")
+                                                        # Show first few lines for debugging even if processing fails
+                                                        for i, line in enumerate(log_lines[:3]):
+                                                            self._add_log("DEBUG", f"Failed processing line {i}: {line[:100]}...")
+
                                                 except Exception as gen_error:
                                                     self._add_log("ERROR", f"Error processing log generator: {str(gen_error)}")
                                                     continue
                                             else:
                                                 self._add_log("DEBUG", "No logs generator returned from service")
 
-                                                new_logs_added = 0
-                                                for i, log_line in enumerate(log_lines):
-                                                    if log_line.strip():
-                                                        # Debug first few log lines to understand format
-                                                        if i < 3:
-                                                            self._add_log("DEBUG", f"Sample log line {i}: {log_line[:100]}...")
 
-                                                        # Parse timestamp if present
-                                                        if log_line.startswith('20') and 'T' in log_line[:20]:
-                                                            # Extract timestamp and message
-                                                            parts = log_line.split(' ', 1)
-                                                            if len(parts) >= 2:
-                                                                timestamp = parts[0]
-                                                                message = parts[1]
-
-                                                                # Skip if we've seen this timestamp before
-                                                                if last_timestamp and timestamp <= last_timestamp:
-                                                                    if i < 3:
-                                                                        self._add_log("DEBUG", f"Skipping log with timestamp {timestamp} (last: {last_timestamp})")
-                                                                    continue
-
-                                                                last_timestamp = timestamp
-                                                                level, parsed_message = self._parse_log_line(message)
-                                                                self._add_log(level, parsed_message)
-                                                                new_logs_added += 1
-                                                        else:
-                                                            # No timestamp, just process the line - but only if it's the first poll
-                                                            if last_timestamp is None:
-                                                                level, parsed_message = self._parse_log_line(log_line)
-                                                                self._add_log(level, parsed_message)
-                                                                new_logs_added += 1
-                                                            elif i < 3:
-                                                                self._add_log("DEBUG", f"Skipping non-timestamped log: {log_line[:50]}...")
-
-                                                self._add_log("DEBUG", f"Added {new_logs_added} new log entries this poll (last_timestamp: {last_timestamp})")
 
                                             # Wait before next poll
                                             await asyncio.sleep(poll_interval)
@@ -711,6 +687,48 @@ class MCPServerManager:
                     )
             except Exception:
                 pass
+
+    def _process_service_log_lines(self, log_lines, last_timestamp):
+        """Process log lines from Docker service logs."""
+        new_logs_added = 0
+
+        self._add_log("DEBUG", f"Starting to process {len(log_lines)} log lines")
+
+        for i, log_line in enumerate(log_lines):
+            if log_line.strip():
+                # Debug first few log lines to understand format
+                if i < 3:
+                    self._add_log("DEBUG", f"Sample log line {i}: {log_line[:100]}...")
+
+                # Parse timestamp if present
+                if log_line.startswith('20') and 'T' in log_line[:20]:
+                    # Extract timestamp and message
+                    parts = log_line.split(' ', 1)
+                    if len(parts) >= 2:
+                        timestamp = parts[0]
+                        message = parts[1]
+
+                        # Skip if we've seen this timestamp before
+                        if last_timestamp and timestamp <= last_timestamp:
+                            if i < 3:
+                                self._add_log("DEBUG", f"Skipping log with timestamp {timestamp} (last: {last_timestamp})")
+                            continue
+
+                        last_timestamp = timestamp
+                        level, parsed_message = self._parse_log_line(message)
+                        self._add_log(level, parsed_message)
+                        new_logs_added += 1
+                else:
+                    # No timestamp, just process the line - but only if it's the first poll
+                    if last_timestamp is None:
+                        level, parsed_message = self._parse_log_line(log_line)
+                        self._add_log(level, parsed_message)
+                        new_logs_added += 1
+                    elif i < 3:
+                        self._add_log("DEBUG", f"Skipping non-timestamped log: {log_line[:50]}...")
+
+        self._add_log("DEBUG", f"Added {new_logs_added} new log entries this poll (last_timestamp: {last_timestamp})")
+        return last_timestamp
 
     def _parse_log_line(self, line: str) -> tuple[str, str]:
         """Parse a log line to extract level and message."""
