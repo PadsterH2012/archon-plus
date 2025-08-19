@@ -747,6 +747,9 @@ class MCPServerManager:
 
         self._add_log("DEBUG", f"Processing {len(log_lines)} log lines (first_poll: {first_poll}, current_logs: {current_log_count}, treat_as_first: {treat_as_first_poll})")
 
+        # Test: Add a direct log entry to verify _add_log is working
+        self._add_log("INFO", "🧪 TEST: Direct log entry from service log processing")
+
         for i, log_line in enumerate(log_lines):
             if log_line.strip():
                 # Create hash of log line for deduplication
