@@ -511,6 +511,9 @@ class MCPServerManager:
                     self._add_log("WARNING", "No running tasks found for service")
                     return
 
+                # Debug: log task information
+                self._add_log("DEBUG", f"Found {len(running_tasks)} running tasks for service")
+
                 # Get the container ID from the first running task
                 task = running_tasks[0]
                 container_id = task.get('Status', {}).get('ContainerStatus', {}).get('ContainerID')
@@ -519,9 +522,39 @@ class MCPServerManager:
                     self._add_log("WARNING", "Could not find container ID from service task")
                     return
 
-                # Get the actual container object
-                container_to_read = self.docker_client.containers.get(container_id)
-                self._add_log("INFO", f"Reading logs from Swarm service container: {container_id[:12]}")
+                # Debug: log the container ID we found
+                self._add_log("DEBUG", f"Found container ID from task: {container_id[:12]}...{container_id[-12:] if len(container_id) > 24 else ''}")
+
+                # Try different approaches to get the container
+                try:
+                    # First try with full container ID
+                    container_to_read = self.docker_client.containers.get(container_id)
+                    self._add_log("INFO", f"Reading logs from Swarm service container: {container_id[:12]}")
+                except Exception as e:
+                    # If full ID fails, try with short ID (first 12 characters)
+                    short_id = container_id[:12]
+                    try:
+                        container_to_read = self.docker_client.containers.get(short_id)
+                        self._add_log("INFO", f"Reading logs from Swarm service container (short ID): {short_id}")
+                    except Exception as e2:
+                        # If both fail, try to find container by listing all containers
+                        try:
+                            all_containers = self.docker_client.containers.list(all=True)
+                            matching_container = None
+                            for container in all_containers:
+                                if container.id.startswith(container_id[:12]) or container_id.startswith(container.id[:12]):
+                                    matching_container = container
+                                    break
+
+                            if matching_container:
+                                container_to_read = matching_container
+                                self._add_log("INFO", f"Found matching container: {matching_container.id[:12]}")
+                            else:
+                                self._add_log("ERROR", f"Container not found. Task container ID: {container_id[:12]}, tried full ID and short ID")
+                                return
+                        except Exception as e3:
+                            self._add_log("ERROR", f"Failed to find container: {str(e3)}")
+                            return
 
             elif not self.is_swarm_mode and self.container:
                 # Docker Compose mode - use the container directly
