@@ -14,7 +14,7 @@ PORTAINER_URL="http://10.202.70.20:9000"
 # Webhook IDs for each environment
 declare -A WEBHOOK_IDS
 WEBHOOK_IDS["dev"]="2bcf99e2-495b-412e-b50f-d2bf672cc99d"
-WEBHOOK_IDS["prod"]="33fc8bc2-1582-4ad5-97b7-d1bb9f4289f8"  # Add your prod webhook ID here
+# Production uses manual deployment - no webhook
 
 # Colors for output
 RED='\033[0;31m'
@@ -134,6 +134,8 @@ deploy_webhook() {
     local webhook_id="${WEBHOOK_IDS[$env]}"
     if [[ -z "$webhook_id" ]]; then
         print_error "No webhook ID configured for environment: ${env}"
+        print_error "Webhook deployment is only available for development environment"
+        print_error "Use 'deploy' command for production: ./pipeline-deploy.sh deploy prod"
         exit 1
     fi
 

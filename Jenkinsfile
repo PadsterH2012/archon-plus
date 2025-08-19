@@ -207,7 +207,6 @@ pipeline {
         stage('Deploy via Portainer Webhook') {
             when {
                 anyOf {
-                    branch 'main'
                     branch 'develop'
                     branch 'homelab-deployment'
                     branch 'feature/advanced-workflow-orchestration'
@@ -216,21 +215,9 @@ pipeline {
             }
             steps {
                 script {
-                    // Determine which webhook to use based on branch
-                    def webhookId = ""
-                    def environment = ""
-
-                    if (env.BRANCH_NAME == 'develop' || env.BRANCH_NAME.startsWith('feature/')) {
-                        webhookId = "2bcf99e2-495b-412e-b50f-d2bf672cc99d"  // Dev webhook
-                        environment = "development"
-                    } else if (env.BRANCH_NAME == 'main') {
-                        // For now, use dev webhook for main branch too until prod webhook is created
-                        webhookId = "2bcf99e2-495b-412e-b50f-d2bf672cc99d"  // Dev webhook (temporary)
-                        environment = "development (main branch)"
-                    } else {
-                        webhookId = "2bcf99e2-495b-412e-b50f-d2bf672cc99d"  // Default to dev
-                        environment = "development"
-                    }
+                    // Only dev environment uses webhook - production is manual
+                    def webhookId = "2bcf99e2-495b-412e-b50f-d2bf672cc99d"  // Dev webhook
+                    def environment = "development"
 
                     sh """
                         echo "🚀 Triggering Portainer stack redeploy..."
@@ -265,6 +252,47 @@ pipeline {
 
                         echo "⏳ Waiting for deployment to start..."
                         sleep 10
+                    """
+                }
+            }
+        }
+
+        stage('Production Deployment Instructions') {
+            when {
+                branch 'main'
+            }
+            steps {
+                script {
+                    echo """
+                    🎉 Build completed successfully for MAIN branch!
+
+                    📦 Images built and pushed to Harbor:
+                       • hl-harbor.techpad.uk/archon/archon-server:${IMAGE_TAG}
+                       • hl-harbor.techpad.uk/archon/archon-mcp:${IMAGE_TAG}
+                       • hl-harbor.techpad.uk/archon/archon-agents:${IMAGE_TAG}
+                       • hl-harbor.techpad.uk/archon/archon-ui:${IMAGE_TAG}
+
+                    🚀 MANUAL PRODUCTION DEPLOYMENT REQUIRED:
+
+                    Option 1 - Portainer UI:
+                       1. Go to: http://10.202.70.20:9000
+                       2. Navigate to Stacks → archon (production stack)
+                       3. Click 'Update the stack'
+                       4. Redeploy to pull latest images
+
+                    Option 2 - Pipeline Script:
+                       ssh to deployment server and run:
+                       cd /path/to/archon-plus
+                       ./portainer-templates/pipeline-deploy.sh deploy prod ${IMAGE_TAG}
+
+                    Option 3 - Docker Command:
+                       docker stack deploy -c portainer-templates/archon-saas-supabase-prod.yml archon
+
+                    📊 Monitor deployment at: http://10.202.70.20:9000
+                    🌐 Production URLs:
+                       • UI: http://localhost:3737
+                       • API: http://localhost:8181
+                       • MCP: http://localhost:8051
                     """
                 }
             }
