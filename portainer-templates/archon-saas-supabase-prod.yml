@@ -16,7 +16,7 @@ version: '3.8'
 
 services:
   # Core Server Service (FastAPI + Socket.IO + Crawling)
-  prod-archon-server:
+  archon-server:
     image: hl-harbor.techpad.uk/archon/archon-server:latest
     environment:
       # Supabase Configuration (REQUIRED)
@@ -40,7 +40,7 @@ services:
         protocol: tcp
         mode: ingress
     networks:
-      - archon-prod-network
+      - archon-network
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
@@ -67,7 +67,7 @@ services:
           cpus: '0.5'
 
   # Model Context Protocol Server
-  prod-archon-mcp:
+  archon-mcp:
     image: hl-harbor.techpad.uk/archon/archon-mcp:latest
     environment:
       # Supabase Configuration
@@ -80,8 +80,8 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       
       # Service URLs for inter-service communication
-      - API_SERVICE_URL=http://prod-archon-server:8181
-      - AGENTS_SERVICE_URL=http://prod-archon-agents:8052
+      - API_SERVICE_URL=http://archon-server:8181
+      - AGENTS_SERVICE_URL=http://archon-agents:8052
       
       # Port Configuration
       - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-8051}
@@ -96,7 +96,7 @@ services:
         protocol: tcp
         mode: ingress
     networks:
-      - archon-prod-network
+      - archon-network
     healthcheck:
       test: ["CMD", "sh", "-c", "python -c \"import socket; s=socket.socket(); s.connect(('localhost', 8051)); s.close()\""]
       interval: 30s
@@ -117,11 +117,11 @@ services:
           memory: 256M
           cpus: '0.25'
     depends_on:
-      - prod-archon-server
-      - prod-archon-agents
+      - archon-server
+      - archon-agents
 
   # AI Agents Service (ML/Reranking)
-  prod-archon-agents:
+  archon-agents:
     image: hl-harbor.techpad.uk/archon/archon-agents:latest
     environment:
       # Supabase Configuration
@@ -143,7 +143,7 @@ services:
         protocol: tcp
         mode: ingress
     networks:
-      - archon-prod-network
+      - archon-network
     healthcheck:
       test: ["CMD", "sh", "-c", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8052/health')\""]
       interval: 30s
@@ -165,7 +165,7 @@ services:
           cpus: '0.5'
 
   # Frontend Web Interface
-  prod-archon-ui:
+  archon-ui:
     image: hl-harbor.techpad.uk/archon/archon-ui:latest
     environment:
       - VITE_API_URL=http://${HOST:-localhost}:${ARCHON_SERVER_PORT:-8181}
@@ -177,7 +177,7 @@ services:
         protocol: tcp
         mode: ingress
     networks:
-      - archon-prod-network
+      - archon-network
     # Override nginx command to use simple Python server instead
     command: >
       sh -c "
@@ -206,10 +206,10 @@ services:
           memory: 256M
           cpus: '0.25'
     depends_on:
-      - prod-archon-server
+      - archon-server
 
   # Text Embeddings Inference (TEI) - Local Embedding Server
-  prod-archon-embeddings:
+  archon-embeddings:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
     environment:
       - MODEL_ID=${EMBEDDING_MODEL_ID:-sentence-transformers/all-MiniLM-L6-v2}
@@ -224,7 +224,7 @@ services:
         protocol: tcp
         mode: ingress
     networks:
-      - archon-prod-network
+      - archon-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/health"]
       interval: 30s
@@ -246,7 +246,7 @@ services:
           cpus: ${TEI_CPU_RESERVATION:-1}
 
 networks:
-  archon-prod-network:
+  archon-network:
     driver: overlay
     attachable: true
 

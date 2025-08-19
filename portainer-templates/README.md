@@ -13,11 +13,11 @@ This directory contains Docker Swarm stack templates for deploying Archon in dif
 - Standard production ports
 
 **Services:**
-- `prod-archon-server`: Core API and business logic (Port: 8181)
-- `prod-archon-mcp`: Model Context Protocol interface (Port: 8051)
-- `prod-archon-agents`: AI operations and streaming (Port: 8052)
-- `prod-archon-ui`: Web interface (Port: 3737)
-- `prod-archon-embeddings`: Text embeddings service (Port: 8080)
+- `archon-server`: Core API and business logic (Port: 8181)
+- `archon-mcp`: Model Context Protocol interface (Port: 8051)
+- `archon-agents`: AI operations and streaming (Port: 8052)
+- `archon-ui`: Web interface (Port: 3737)
+- `archon-embeddings`: Text embeddings service (Port: 8080)
 
 ### 2. Archon with SaaS Supabase - DEVELOPMENT (`archon-saas-supabase-dev.yml`)
 **Recommended for development and testing**
@@ -54,8 +54,8 @@ This directory contains Docker Swarm stack templates for deploying Archon in dif
 The dev and prod templates are designed to run simultaneously in the same Docker Swarm without conflicts:
 
 ### Key Differences:
-- **Service Names**: Dev services prefixed with `dev-`, prod with `prod-`
-- **Networks**: Separate networks (`archon-dev-network` vs `archon-prod-network`)
+- **Service Names**: Dev services prefixed with `dev-`, prod uses standard names
+- **Networks**: Separate networks (`archon-dev-network` vs `archon-network`)
 - **Ports**: Dev uses 9xxx ports, prod uses 8xxx ports
 - **Resources**: Dev uses reduced CPU/memory allocation
 - **Logging**: Dev defaults to DEBUG, prod to INFO
@@ -162,11 +162,11 @@ SITE_URL=http://your-domain.com:3737
 ### Production Template (archon-saas-supabase-prod.yml)
 | Service | Memory | CPU | Storage |
 |---------|--------|-----|---------|
-| prod-archon-server | 1GB | 1 core | - |
-| prod-archon-mcp | 512MB | 0.5 core | - |
-| prod-archon-agents | 1GB | 1 core | - |
-| prod-archon-ui | 512MB | 0.5 core | - |
-| prod-archon-embeddings | 2GB | 2 cores | - |
+| archon-server | 1GB | 1 core | - |
+| archon-mcp | 512MB | 0.5 core | - |
+| archon-agents | 1GB | 1 core | - |
+| archon-ui | 512MB | 0.5 core | - |
+| archon-embeddings | 2GB | 2 cores | - |
 | **Total** | **5GB** | **5 cores** | **-** |
 
 ### Development Template (archon-saas-supabase-dev.yml)
