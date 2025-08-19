@@ -69,10 +69,10 @@ class DocumentStorageService(BaseStorageService):
 
                 await report_progress("Starting document processing...", 10)
 
-                # Use base class chunking
+                # Use base class chunking with smaller chunks for TEI compatibility (256 token limit)
                 chunks = await self.smart_chunk_text_async(
                     file_content,
-                    chunk_size=5000,
+                    chunk_size=800,  # ~200 tokens to stay under TEI's 256 token limit
                     progress_callback=lambda msg, pct: report_progress(
                         f"Chunking: {msg}", 10 + float(pct) * 0.2
                     ),
