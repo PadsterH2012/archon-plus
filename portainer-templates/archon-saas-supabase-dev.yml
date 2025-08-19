@@ -37,6 +37,9 @@ services:
       - ARCHON_MCP_HOST=dev-archon-mcp
       - ARCHON_AGENTS_HOST=dev-archon-agents
 
+      # MCP Service Management (for Docker Swarm)
+      - MCP_CONTAINER_NAME=archon-dev_dev-archon-mcp
+
       # Optional: Logging
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
     ports:

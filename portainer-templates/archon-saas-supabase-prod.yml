@@ -32,6 +32,14 @@ services:
       - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-8051}
       - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
       
+      # Service Host Overrides for Production Environment
+      - ARCHON_SERVER_HOST=archon-server
+      - ARCHON_MCP_HOST=archon-mcp
+      - ARCHON_AGENTS_HOST=archon-agents
+
+      # MCP Service Management (for Docker Swarm)
+      - MCP_CONTAINER_NAME=archon-prod_archon-mcp
+
       # Optional: Logging
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
     ports:

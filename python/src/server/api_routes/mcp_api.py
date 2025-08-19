@@ -9,6 +9,7 @@ Handles:
 """
 
 import asyncio
+import os
 import time
 from collections import deque
 from datetime import datetime
@@ -49,9 +50,28 @@ class MCPServerManager:
     """Manages the MCP Docker container lifecycle."""
 
     def __init__(self):
-        self.container_name = "Archon-MCP"  # Container name from docker-compose.yml
+        # Determine container/service name based on environment
+        self.deployment_mode = os.getenv("SERVICE_DISCOVERY_MODE", "docker_compose")
+
+        if self.deployment_mode == "docker_swarm":
+            # In Docker Swarm, we need to check if we're in dev or prod environment
+            # Use environment variable override or detect from service names
+            mcp_host = os.getenv("ARCHON_MCP_HOST")
+            if mcp_host and mcp_host.startswith("dev-"):
+                # Development environment
+                self.container_name = "archon-dev_dev-archon-mcp"
+            else:
+                # Production environment
+                self.container_name = "archon-prod_archon-mcp"
+            self.is_swarm_mode = True
+        else:
+            # Docker Compose mode - use original container name
+            self.container_name = os.getenv("MCP_CONTAINER_NAME", "Archon-MCP")
+            self.is_swarm_mode = False
+
         self.docker_client = None
         self.container = None
+        self.service = None  # For Docker Swarm mode
         self.status: str = "stopped"
         self.start_time: float | None = None
         self.logs: deque = deque(maxlen=1000)  # Keep last 1000 log entries
@@ -63,35 +83,72 @@ class MCPServerManager:
         self._initialize_docker_client()
 
     def _initialize_docker_client(self):
-        """Initialize Docker client and get container reference."""
+        """Initialize Docker client and get container/service reference."""
         try:
             self.docker_client = docker.from_env()
-            try:
-                self.container = self.docker_client.containers.get(self.container_name)
-                mcp_logger.info(f"Found Docker container: {self.container_name}")
-            except NotFound:
-                mcp_logger.warning(f"Docker container {self.container_name} not found")
-                self.container = None
+
+            if self.is_swarm_mode:
+                # In Docker Swarm mode, we work with services, not containers
+                try:
+                    # Get the service by name
+                    self.service = self.docker_client.services.get(self.container_name)
+                    mcp_logger.info(f"Found Docker Swarm service: {self.container_name}")
+                    self.container = None  # We don't use container reference in swarm mode
+                except NotFound:
+                    mcp_logger.warning(f"Docker Swarm service {self.container_name} not found")
+                    self.service = None
+            else:
+                # Docker Compose mode - use containers
+                try:
+                    self.container = self.docker_client.containers.get(self.container_name)
+                    mcp_logger.info(f"Found Docker container: {self.container_name}")
+                    self.service = None  # We don't use service reference in compose mode
+                except NotFound:
+                    mcp_logger.warning(f"Docker container {self.container_name} not found")
+                    self.container = None
         except Exception as e:
             mcp_logger.error(f"Failed to initialize Docker client: {str(e)}")
             self.docker_client = None
 
     def _get_container_status(self) -> str:
-        """Get the current status of the MCP container."""
+        """Get the current status of the MCP container/service."""
         if not self.docker_client:
             return "docker_unavailable"
 
         try:
-            if self.container:
-                self.container.reload()  # Refresh container info
-            else:
-                self.container = self.docker_client.containers.get(self.container_name)
+            if self.is_swarm_mode:
+                # Docker Swarm mode - check service status
+                if self.service:
+                    self.service.reload()  # Refresh service info
+                else:
+                    self.service = self.docker_client.services.get(self.container_name)
 
-            return self.container.status
+                # In swarm mode, check if service has running tasks
+                tasks = self.service.tasks()
+                if not tasks:
+                    return "not_found"
+
+                # Check if any task is running
+                running_tasks = [task for task in tasks if task.get('Status', {}).get('State') == 'running']
+                if running_tasks:
+                    return "running"
+                else:
+                    # Check for other states
+                    latest_task = max(tasks, key=lambda t: t.get('CreatedAt', ''))
+                    task_state = latest_task.get('Status', {}).get('State', 'unknown')
+                    return task_state
+            else:
+                # Docker Compose mode - check container status
+                if self.container:
+                    self.container.reload()  # Refresh container info
+                else:
+                    self.container = self.docker_client.containers.get(self.container_name)
+
+                return self.container.status
         except NotFound:
             return "not_found"
         except Exception as e:
-            mcp_logger.error(f"Error getting container status: {str(e)}")
+            mcp_logger.error(f"Error getting container/service status: {str(e)}")
             return "error"
 
     def _is_log_reader_active(self) -> bool:
@@ -147,20 +204,36 @@ class MCPServerManager:
             container_status = self._get_container_status()
 
             if container_status == "not_found":
-                mcp_logger.error(f"Container {self.container_name} not found")
-                return {
-                    "success": False,
-                    "status": "not_found",
-                    "message": f"MCP container {self.container_name} not found. Run docker-compose up -d archon-mcp",
-                }
+                if self.is_swarm_mode:
+                    mcp_logger.error(f"Service {self.container_name} not found")
+                    return {
+                        "success": False,
+                        "status": "not_found",
+                        "message": f"MCP service {self.container_name} not found. Check Docker Swarm deployment.",
+                    }
+                else:
+                    mcp_logger.error(f"Container {self.container_name} not found")
+                    return {
+                        "success": False,
+                        "status": "not_found",
+                        "message": f"MCP container {self.container_name} not found. Run docker-compose up -d archon-mcp",
+                    }
 
             if container_status == "running":
-                mcp_logger.warning("MCP server start attempted while already running")
-                return {
-                    "success": False,
-                    "status": "running",
-                    "message": "MCP server is already running",
-                }
+                if self.is_swarm_mode:
+                    mcp_logger.info("MCP service is already running in Docker Swarm")
+                    return {
+                        "success": True,
+                        "status": "running",
+                        "message": "MCP service is running in Docker Swarm (managed by orchestrator)",
+                    }
+                else:
+                    mcp_logger.warning("MCP server start attempted while already running")
+                    return {
+                        "success": False,
+                        "status": "running",
+                        "message": "MCP server is already running",
+                    }
 
             try:
                 # Start the container
