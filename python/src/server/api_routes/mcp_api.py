@@ -159,6 +159,7 @@ class MCPServerManager:
         """Ensure the log reader task is running if container is active."""
         # Check if we have a container (Compose mode) or service (Swarm mode)
         if not self.container and not self.service:
+            self._add_log("DEBUG", "No container or service available for log reading")
             return
 
         # Cancel existing task if any
@@ -172,7 +173,13 @@ class MCPServerManager:
         # Start new log reader task
         self.log_reader_task = asyncio.create_task(self._read_container_logs())
         self._add_log("INFO", "Connected to MCP container logs")
-        mcp_logger.info(f"Started log reader for already-running container: {self.container_name}")
+
+        if self.is_swarm_mode:
+            self._add_log("DEBUG", f"Started log reader for Swarm service: {self.container_name}")
+            mcp_logger.info(f"Started log reader for Swarm service: {self.container_name}")
+        else:
+            self._add_log("DEBUG", f"Started log reader for Compose container: {self.container_name}")
+            mcp_logger.info(f"Started log reader for Compose container: {self.container_name}")
 
     async def start_server(self) -> dict[str, Any]:
         """Start the MCP Docker container."""
@@ -439,6 +446,7 @@ class MCPServerManager:
 
         # If container is running but log reader isn't active, start it
         if self.status == "running" and not self._is_log_reader_active():
+            self._add_log("DEBUG", f"Status is running but log reader not active. Starting log reader. Container: {self.container is not None}, Service: {self.service is not None}")
             asyncio.create_task(self._ensure_log_reader_running())
 
         uptime = None
@@ -564,6 +572,7 @@ class MCPServerManager:
                                 # Try to read logs from the service directly using polling
                                 try:
                                     self._add_log("INFO", "Starting service log polling (service logs don't support streaming)")
+                                    self._add_log("DEBUG", f"Service ID: {self.service.id}, Service name: {self.service.name}")
 
                                     # Use polling approach for service logs since streaming isn't supported
                                     last_timestamp = None
@@ -572,24 +581,34 @@ class MCPServerManager:
                                     while True:
                                         try:
                                             # Get recent logs from service
+                                            self._add_log("DEBUG", "Attempting to fetch service logs...")
                                             logs_generator = await asyncio.get_event_loop().run_in_executor(
                                                 None, lambda: self.service.logs(tail=50, timestamps=True, stdout=True, stderr=True)
                                             )
 
+                                            self._add_log("DEBUG", f"Service logs generator type: {type(logs_generator)}")
+
                                             if logs_generator:
                                                 # Process logs from generator
                                                 log_lines = []
+                                                log_count = 0
                                                 try:
                                                     # Convert generator to list of log lines
                                                     for log_entry in logs_generator:
+                                                        log_count += 1
                                                         if isinstance(log_entry, bytes):
                                                             log_entry = log_entry.decode("utf-8")
                                                         if log_entry.strip():
                                                             log_lines.append(log_entry.strip())
+
+                                                    self._add_log("DEBUG", f"Processed {log_count} log entries, {len(log_lines)} non-empty lines")
                                                 except Exception as gen_error:
                                                     self._add_log("ERROR", f"Error processing log generator: {str(gen_error)}")
                                                     continue
+                                            else:
+                                                self._add_log("DEBUG", "No logs generator returned from service")
 
+                                                new_logs_added = 0
                                                 for log_line in log_lines:
                                                     if log_line.strip():
                                                         # Parse timestamp if present
@@ -607,10 +626,14 @@ class MCPServerManager:
                                                                 last_timestamp = timestamp
                                                                 level, parsed_message = self._parse_log_line(message)
                                                                 self._add_log(level, parsed_message)
+                                                                new_logs_added += 1
                                                         else:
                                                             # No timestamp, just process the line
                                                             level, parsed_message = self._parse_log_line(log_line)
                                                             self._add_log(level, parsed_message)
+                                                            new_logs_added += 1
+
+                                                self._add_log("DEBUG", f"Added {new_logs_added} new log entries this poll")
 
                                             # Wait before next poll
                                             await asyncio.sleep(poll_interval)
