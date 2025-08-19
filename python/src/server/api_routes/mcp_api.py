@@ -741,7 +741,11 @@ class MCPServerManager:
         new_logs_added = 0
         new_hashes = set()
 
-        self._add_log("DEBUG", f"Processing {len(log_lines)} log lines (first_poll: {first_poll})")
+        # If we have no logs in our buffer yet, treat this as first poll to show recent logs
+        current_log_count = len(self.logs)
+        treat_as_first_poll = first_poll or current_log_count == 0
+
+        self._add_log("DEBUG", f"Processing {len(log_lines)} log lines (first_poll: {first_poll}, current_logs: {current_log_count}, treat_as_first: {treat_as_first_poll})")
 
         for i, log_line in enumerate(log_lines):
             if log_line.strip():
@@ -752,8 +756,8 @@ class MCPServerManager:
                 if i < 3:
                     self._add_log("DEBUG", f"Sample log line {i}: {log_line[:100]}...")
 
-                # On first poll, show recent logs. On subsequent polls, only show new logs
-                if first_poll:
+                # On first poll or when no logs exist, show recent logs. On subsequent polls, only show new logs
+                if treat_as_first_poll:
                     # Show all logs on first poll, but track them
                     processed_log_hashes.add(log_hash)
                     new_hashes.add(log_hash)
