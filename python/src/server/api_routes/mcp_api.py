@@ -80,6 +80,8 @@ class MCPServerManager:
         self._operation_lock = asyncio.Lock()  # Prevent concurrent start/stop operations
         self._last_operation_time = 0
         self._min_operation_interval = 2.0  # Minimum 2 seconds between operations
+        # Internal debug/control flags
+        self._service_log_processor_logged = False  # ensure we log v3 bridge info once
         self._initialize_docker_client()
 
     def _initialize_docker_client(self):
@@ -607,13 +609,19 @@ class MCPServerManager:
 
                                                     # Process the log lines
                                                     try:
+                                                        if not self._service_log_processor_logged:
+                                                            self._add_log("INFO", "Using v3 service log processor (bridge to main async context)")
+                                                            self._service_log_processor_logged = True
+
                                                         parsed_logs, new_hashes = self._process_service_log_lines_v3(log_lines, first_poll, processed_log_hashes)
                                                         processed_log_hashes.update(new_hashes)
                                                         first_poll = False  # After first poll, only show new logs
 
                                                         # Add the parsed logs to the main async context
+                                                        self._add_log("INFO", f"MCP log bridge: about to append {len(parsed_logs)} parsed logs to buffer")
                                                         for level, message in parsed_logs:
                                                             self._add_log(level, message)
+                                                        self._add_log("INFO", f"MCP log bridge: buffer size now {len(self.logs)}")
 
                                                         if parsed_logs:
                                                             self._add_log("DEBUG", f"Added {len(parsed_logs)} logs to dashboard from service logs")
