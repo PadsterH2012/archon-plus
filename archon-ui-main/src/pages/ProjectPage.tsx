@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useStaggeredEntrance } from '../hooks/useStaggeredEntrance';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/project-tasks/Tabs';
 import { DocsTab } from '../components/project-tasks/DocsTab';
+import { ComponentsTab } from '../components/project-tasks/ComponentsTab';
 // import { FeaturesTab } from '../components/project-tasks/FeaturesTab';
 // import { DataTab } from '../components/project-tasks/DataTab';
 import { TasksTab } from '../components/project-tasks/TasksTab';
@@ -913,6 +914,9 @@ export function ProjectPage({
               <TabsTrigger value="docs" className="py-3 font-mono transition-all duration-300" color="blue">
                 Docs
               </TabsTrigger>
+              <TabsTrigger value="components" className="py-3 font-mono transition-all duration-300" color="purple">
+                Components
+              </TabsTrigger>
               {/* <TabsTrigger value="features" className="py-3 font-mono transition-all duration-300" color="purple">
                 Features
               </TabsTrigger>
@@ -929,6 +933,11 @@ export function ProjectPage({
               {activeTab === 'docs' && (
                 <TabsContent value="docs" className="mt-0">
                   <DocsTab tasks={tasks} project={selectedProject} />
+                </TabsContent>
+              )}
+              {activeTab === 'components' && (
+                <TabsContent value="components" className="mt-0">
+                  <ComponentsTab project={selectedProject} />
                 </TabsContent>
               )}
               {/* {activeTab === 'features' && (
