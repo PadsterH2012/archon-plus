@@ -181,13 +181,46 @@ class MCPToolRegistry:
             "returns": "JSON with health status",
             "example": {}
         },
-        
+
         "session_info_archon": {
             "category": "system",
             "description": "Get current session and all active sessions info",
             "parameters": {},
             "returns": "JSON with session information",
             "example": {}
+        },
+
+        # Shell & Command Execution Tools
+        "execute_shell_command": {
+            "category": "system",
+            "description": "Execute shell commands with working directory support",
+            "parameters": {
+                "command": {"type": "string", "required": True, "description": "Shell command to execute"},
+                "working_directory": {"type": "string", "required": False, "default": ".", "description": "Working directory for command execution"},
+                "timeout": {"type": "integer", "required": False, "default": 30, "description": "Command timeout in seconds"},
+                "capture_output": {"type": "boolean", "required": False, "default": True, "description": "Whether to capture stdout/stderr"}
+            },
+            "returns": "JSON with command result, stdout, stderr, and exit code",
+            "example": {
+                "command": "git status",
+                "working_directory": "/path/to/repo",
+                "timeout": 10
+            }
+        },
+        "execute_mcp_tool": {
+            "category": "system",
+            "description": "Execute custom MCP tools by name with parameters",
+            "parameters": {
+                "tool_name": {"type": "string", "required": True, "description": "Name of the MCP tool to execute"},
+                "tool_parameters": {"type": "object", "required": False, "default": {}, "description": "Parameters to pass to the MCP tool"},
+                "mcp_server": {"type": "string", "required": False, "description": "Specific MCP server to use (optional)"}
+            },
+            "returns": "JSON with tool execution result",
+            "example": {
+                "tool_name": "git_commit",
+                "tool_parameters": {"message": "feat: add new feature"},
+                "mcp_server": "git"
+            }
         },
 
         # Export/Import & Backup Tools

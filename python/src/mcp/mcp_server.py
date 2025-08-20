@@ -332,6 +332,19 @@ def register_modules():
     else:
         logger.info("⚠ Project module skipped - Projects are disabled")
 
+    # Import and register Shell module for command execution
+    try:
+        from src.mcp.modules.shell_module import register_shell_tools
+
+        register_shell_tools(mcp)
+        modules_registered += 1
+        logger.info("✓ Shell module registered")
+    except ImportError as e:
+        logger.warning(f"⚠ Shell module not available: {e}")
+    except Exception as e:
+        logger.error(f"✗ Error registering Shell module: {e}")
+        logger.error(traceback.format_exc())
+
     logger.info(f"📦 Total modules registered: {modules_registered}")
 
     if modules_registered == 0:

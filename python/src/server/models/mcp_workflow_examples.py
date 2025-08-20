@@ -478,11 +478,143 @@ def create_health_monitoring_workflow() -> WorkflowTemplate:
     )
 
 
+def create_git_commit_push_workflow() -> WorkflowTemplate:
+    """
+    Git Commit and Push Workflow
+
+    Commits code changes with meaningful message and pushes to remote repository.
+    Includes staging, committing, and pushing with proper error handling.
+    """
+    return WorkflowTemplate(
+        name="git_commit_push",
+        title="Git Commit and Push",
+        description="Commit code changes with meaningful message and push to remote repository. Handles staging all changes, creating commit with descriptive message, and pushing to specified branch.",
+        category="development",
+        tags=["git", "version-control", "deployment", "automation"],
+        parameters={
+            "commit_message": {
+                "type": "string",
+                "required": True,
+                "description": "Meaningful commit message describing the changes made"
+            },
+            "repository_path": {
+                "type": "string",
+                "required": False,
+                "default": ".",
+                "description": "Path to git repository (defaults to current directory)"
+            },
+            "branch": {
+                "type": "string",
+                "required": False,
+                "default": "main",
+                "description": "Branch to push to (defaults to main)"
+            },
+            "add_all": {
+                "type": "boolean",
+                "required": False,
+                "default": True,
+                "description": "Whether to stage all changes (git add .) or only staged files"
+            }
+        },
+        outputs={
+            "commit_hash": {
+                "type": "string",
+                "description": "SHA hash of the created commit"
+            },
+            "push_result": {
+                "type": "object",
+                "description": "Result of the push operation"
+            }
+        },
+        steps=[
+            ConditionStep(
+                name="check_add_all",
+                title="Check if Should Stage All Changes",
+                type=WorkflowStepType.CONDITION,
+                condition="{{workflow.parameters.add_all}} == true",
+                on_true="git_add_all",
+                on_false="git_status",
+                description="Determine whether to stage all changes or check current status"
+            ),
+            ActionStep(
+                name="git_add_all",
+                title="Stage All Changes",
+                type=WorkflowStepType.ACTION,
+                tool_name="execute_shell_command",
+                parameters={
+                    "command": "git add .",
+                    "working_directory": "{{workflow.parameters.repository_path}}"
+                },
+                on_success="git_status",
+                description="Stage all changes for commit using git add ."
+            ),
+            ActionStep(
+                name="git_status",
+                title="Check Git Status",
+                type=WorkflowStepType.ACTION,
+                tool_name="execute_shell_command",
+                parameters={
+                    "command": "git status --porcelain",
+                    "working_directory": "{{workflow.parameters.repository_path}}"
+                },
+                on_success="check_changes",
+                description="Check current git status to verify staged changes"
+            ),
+            ConditionStep(
+                name="check_changes",
+                title="Verify Changes to Commit",
+                type=WorkflowStepType.CONDITION,
+                condition="{{steps.git_status.result.stdout}} != ''",
+                on_true="git_commit",
+                on_false="no_changes",
+                description="Check if there are any changes to commit"
+            ),
+            ActionStep(
+                name="no_changes",
+                title="No Changes to Commit",
+                type=WorkflowStepType.ACTION,
+                tool_name="session_info_archon",
+                parameters={},
+                description="Log that no changes were found to commit"
+            ),
+            ActionStep(
+                name="git_commit",
+                title="Commit Changes",
+                type=WorkflowStepType.ACTION,
+                tool_name="execute_shell_command",
+                parameters={
+                    "command": "git commit -m \"{{workflow.parameters.commit_message}}\"",
+                    "working_directory": "{{workflow.parameters.repository_path}}"
+                },
+                on_success="git_push",
+                description="Commit staged changes with the provided commit message"
+            ),
+            ActionStep(
+                name="git_push",
+                title="Push to Remote Repository",
+                type=WorkflowStepType.ACTION,
+                tool_name="execute_shell_command",
+                parameters={
+                    "command": "git push origin {{workflow.parameters.branch}}",
+                    "working_directory": "{{workflow.parameters.repository_path}}"
+                },
+                description="Push committed changes to the remote repository"
+            )
+        ],
+        timeout_minutes=10,
+        max_retries=2,
+        status=WorkflowStatus.ACTIVE,
+        is_public=True,
+        created_by="system"
+    )
+
+
 # Registry of MCP integration example workflows
 MCP_EXAMPLE_WORKFLOWS = {
     "project_research_workflow": create_project_research_workflow(),
     "task_automation_workflow": create_task_automation_workflow(),
-    "health_monitoring_workflow": create_health_monitoring_workflow()
+    "health_monitoring_workflow": create_health_monitoring_workflow(),
+    "git_commit_push_workflow": create_git_commit_push_workflow()
 }
 
 

@@ -381,21 +381,92 @@ async def update_workflow(workflow_id: str, request: UpdateWorkflowTemplateReque
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
+@router.post("/{workflow_id}/clone")
+async def clone_workflow(workflow_id: str, new_name: str = None, new_title: str = None):
+    """
+    Clone/copy a workflow template.
+
+    Creates a copy of an existing workflow template with a new name and title.
+    This allows users to create variations of existing workflows.
+    """
+    try:
+        logfire.info(f"Cloning workflow | source_id={workflow_id} | new_name={new_name}")
+
+        # Get the source workflow
+        repository = WorkflowRepository(get_supabase_client())
+        success, result = repository.get_workflow_template(workflow_id)
+
+        if not success:
+            if "not found" in result.get("error", "").lower():
+                logfire.warning(f"Source workflow not found | id={workflow_id}")
+                raise HTTPException(status_code=404, detail=result)
+            else:
+                logfire.error(f"Failed to get source workflow | error={result.get('error')}")
+                raise HTTPException(status_code=500, detail=result)
+
+        source_workflow = result["template"]
+
+        # Generate new name and title if not provided
+        if not new_name:
+            new_name = f"{source_workflow['name']}_copy"
+        if not new_title:
+            new_title = f"{source_workflow['title']} (Copy)"
+
+        # Prepare cloned workflow data
+        cloned_data = {
+            "name": new_name,
+            "title": new_title,
+            "description": f"Cloned from: {source_workflow['title']}\n\n{source_workflow['description']}",
+            "category": source_workflow["category"],
+            "tags": source_workflow["tags"] + ["cloned"],
+            "parameters": source_workflow["parameters"],
+            "outputs": source_workflow["outputs"],
+            "steps": source_workflow["steps"],
+            "timeout_minutes": source_workflow["timeout_minutes"],
+            "max_retries": source_workflow["max_retries"],
+            "is_public": False,  # Cloned workflows are private by default
+            "created_by": "api_user"  # TODO: Get from authentication context
+        }
+
+        # Create the cloned workflow
+        success, result = await repository.create_workflow_template(cloned_data)
+
+        if not success:
+            logfire.error(f"Failed to create cloned workflow | error={result.get('error')}")
+            raise HTTPException(status_code=400, detail=result)
+
+        cloned_workflow = result["workflow"]
+
+        logfire.info(f"Workflow cloned successfully | source_id={workflow_id} | clone_id={cloned_workflow['id']}")
+
+        return {
+            "message": "Workflow cloned successfully",
+            "source_workflow_id": workflow_id,
+            "cloned_workflow": cloned_workflow
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logfire.error(f"Error cloning workflow | id={workflow_id} | error={str(e)}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
 @router.delete("/{workflow_id}")
 async def delete_workflow(workflow_id: str):
     """
     Delete a workflow template.
-    
+
     Permanently deletes a workflow template and all associated data.
     This action cannot be undone.
     """
     try:
         logfire.info(f"Deleting workflow | id={workflow_id}")
-        
+
         # Use repository to delete workflow
         repository = WorkflowRepository(get_supabase_client())
         success, result = repository.delete_workflow_template(workflow_id)
-        
+
         if not success:
             if "not found" in result.get("error", "").lower():
                 logfire.warning(f"Workflow not found for deletion | id={workflow_id}")
@@ -403,11 +474,11 @@ async def delete_workflow(workflow_id: str):
             else:
                 logfire.error(f"Failed to delete workflow | error={result.get('error')}")
                 raise HTTPException(status_code=500, detail=result)
-        
+
         logfire.info(f"Workflow deleted successfully | id={workflow_id}")
-        
+
         return {"message": "Workflow deleted successfully"}
-        
+
     except HTTPException:
         raise
     except Exception as e:
