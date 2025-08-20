@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { Workflow, Activity, Plus, History, GitBranch, Users, Clock, BarChart3, Edit, Copy, Trash2 } from 'lucide-react';
+import { Workflow, Activity, Plus, History, GitBranch, Users, Clock, BarChart3, Edit, Copy, Trash2, Info, X } from 'lucide-react';
 import { WorkflowBuilder } from '../components/workflow/WorkflowBuilder';
 import { WorkflowExecutionDashboard } from '../components/workflow/WorkflowExecutionDashboard';
 import { WorkflowAnalytics } from '../components/workflow/WorkflowAnalytics';
@@ -55,6 +55,7 @@ const SimpleWorkflowDashboard: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [recentExecutions, setRecentExecutions] = useState<any[]>([]);
   const [showMCPWorkflowForm, setShowMCPWorkflowForm] = useState(false);
+  const [selectedWorkflowInfo, setSelectedWorkflowInfo] = useState<any>(null);
 
   useEffect(() => {
     // Test API connection
@@ -185,6 +186,14 @@ const SimpleWorkflowDashboard: React.FC = () => {
     }
   };
 
+  const handleShowWorkflowInfo = (workflow: any) => {
+    setSelectedWorkflowInfo(workflow);
+  };
+
+  const handleCloseWorkflowInfo = () => {
+    setSelectedWorkflowInfo(null);
+  };
+
   return (
     <div className="p-6">
       <div className="flex items-center gap-3 mb-6">
@@ -259,56 +268,60 @@ const SimpleWorkflowDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid gap-4">
+          <div className="grid gap-6">
             {workflows.map((workflow) => (
-              <div key={workflow.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
-                      {workflow.title}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {workflow.description}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-xs rounded">
-                        {workflow.category}
-                      </span>
-                      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs rounded">
-                        {workflow.status}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleEditWorkflow(workflow)}
-                      className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
-                    >
-                      <Edit className="w-3 h-3" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDesignWorkflow(workflow)}
-                      className="flex items-center gap-1 px-3 py-1 bg-purple-500 text-white text-sm rounded hover:bg-purple-600 transition-colors"
-                    >
-                      <GitBranch className="w-3 h-3" />
-                      Designer
-                    </button>
-                    <button
-                      onClick={() => handleCloneWorkflow(workflow)}
-                      className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-colors"
-                    >
-                      <Copy className="w-3 h-3" />
-                      Clone
-                    </button>
-                    <button
-                      onClick={() => handleDeleteWorkflow(workflow)}
-                      className="flex items-center gap-1 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      Delete
-                    </button>
-                  </div>
+              <div key={workflow.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
+                {/* Top section: Title and Info Icon */}
+                <div className="flex items-start justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white leading-tight">
+                    {workflow.title}
+                  </h3>
+                  <button
+                    onClick={() => handleShowWorkflowInfo(workflow)}
+                    className="flex items-center justify-center w-6 h-6 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                    title="View workflow details"
+                  >
+                    <Info className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Middle section: Status Badge */}
+                <div className="mb-4">
+                  <span className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-medium rounded-full">
+                    {workflow.status}
+                  </span>
+                </div>
+
+                {/* Bottom section: Action Buttons */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => handleEditWorkflow(workflow)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDesignWorkflow(workflow)}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white text-sm font-medium rounded-lg hover:bg-purple-600 transition-colors"
+                  >
+                    <GitBranch className="w-4 h-4" />
+                    Designer
+                  </button>
+                  <button
+                    onClick={() => handleCloneWorkflow(workflow)}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Clone
+                  </button>
+                  <button
+                    onClick={() => handleDeleteWorkflow(workflow)}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}
@@ -499,6 +512,118 @@ const SimpleWorkflowDashboard: React.FC = () => {
                 className="flex-1 px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
               >
                 Create MCP Workflow
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Workflow Info Modal */}
+      {selectedWorkflowInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Workflow Details
+              </h2>
+              <button
+                onClick={handleCloseWorkflowInfo}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Basic Information */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
+                  {selectedWorkflowInfo.title}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                  {selectedWorkflowInfo.description || 'No description provided.'}
+                </p>
+              </div>
+
+              {/* Metadata Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Category</label>
+                    <p className="text-gray-900 dark:text-white">{selectedWorkflowInfo.category || 'Uncategorized'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
+                    <p className="text-gray-900 dark:text-white">
+                      <span className="inline-flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm rounded-full">
+                        {selectedWorkflowInfo.status}
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Created By</label>
+                    <p className="text-gray-900 dark:text-white">{selectedWorkflowInfo.created_by || 'Unknown'}</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Step Count</label>
+                    <p className="text-gray-900 dark:text-white">{selectedWorkflowInfo.steps?.length || 0} steps</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Version</label>
+                    <p className="text-gray-900 dark:text-white">{selectedWorkflowInfo.version || '1.0.0'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Visibility</label>
+                    <p className="text-gray-900 dark:text-white">{selectedWorkflowInfo.is_public ? 'Public' : 'Private'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tags */}
+              {selectedWorkflowInfo.tags && selectedWorkflowInfo.tags.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-2">Tags</label>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedWorkflowInfo.tags.map((tag: string, index: number) => (
+                      <span
+                        key={index}
+                        className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Timestamps */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Created</label>
+                  <p className="text-gray-900 dark:text-white text-sm">
+                    {selectedWorkflowInfo.created_at ? new Date(selectedWorkflowInfo.created_at).toLocaleString() : 'Unknown'}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</label>
+                  <p className="text-gray-900 dark:text-white text-sm">
+                    {selectedWorkflowInfo.updated_at ? new Date(selectedWorkflowInfo.updated_at).toLocaleString() : 'Unknown'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end p-6 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={handleCloseWorkflowInfo}
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Close
               </button>
             </div>
           </div>
