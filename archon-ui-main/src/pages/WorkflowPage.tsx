@@ -190,7 +190,26 @@ const SimpleWorkflowDashboard: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  {/* Action buttons removed per user preference for minimal workflow UI */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => alert(`Edit workflow: ${workflow.title}`)}
+                      className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => alert(`Clone workflow: ${workflow.title}`)}
+                      className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-colors"
+                    >
+                      Clone
+                    </button>
+                    <button
+                      onClick={() => alert(`Delete workflow: ${workflow.title}`)}
+                      className="flex items-center gap-1 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
