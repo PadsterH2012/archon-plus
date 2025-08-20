@@ -1019,7 +1019,7 @@ async def get_logs(limit: int = 100):
             safe_set_attribute(span, "log_count", len(logs))
             return {"logs": logs}
         except Exception as e:
-            api_logger.error("MCP server logs API failed", error=str(e))
+            api_logger.error(f"MCP server logs API failed: {str(e)}")
             safe_set_attribute(span, "error", str(e))
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -1037,7 +1037,7 @@ async def clear_logs():
             safe_set_attribute(span, "success", True)
             return {"success": True, "message": "Logs cleared successfully"}
         except Exception as e:
-            api_logger.error("MCP server clear logs API failed", error=str(e))
+            api_logger.error(f"MCP server clear logs API failed: {str(e)}")
             safe_set_attribute(span, "success", False)
             safe_set_attribute(span, "error", str(e))
             raise HTTPException(status_code=500, detail=str(e))
@@ -1104,7 +1104,7 @@ async def get_mcp_config():
 
             return config
         except Exception as e:
-            api_logger.error("Failed to get MCP configuration", error=str(e))
+            api_logger.error(f"Failed to get MCP configuration: {str(e)}")
             safe_set_attribute(span, "error", str(e))
             raise HTTPException(status_code=500, detail={"error": str(e)})
 
@@ -1229,7 +1229,7 @@ async def get_mcp_tools():
                     }
 
             except Exception as e:
-                api_logger.error("Failed to debug MCP server tools", error=str(e))
+                api_logger.error(f"Failed to debug MCP server tools: {str(e)}")
 
                 return {
                     "tools": [],
@@ -1240,7 +1240,7 @@ async def get_mcp_tools():
                 }
 
         except Exception as e:
-            api_logger.error("Failed to get MCP tools", error=str(e))
+            api_logger.error(f"Failed to get MCP tools: {str(e)}")
             safe_set_attribute(span, "error", str(e))
             safe_set_attribute(span, "source", "general_error")
 
