@@ -162,6 +162,7 @@ export interface WorkflowListProps {
   onWorkflowEdit?: (workflow: WorkflowTemplate) => void;
   onWorkflowDelete?: (workflowId: string) => void;
   onWorkflowExecute?: (workflowId: string) => void;
+  onWorkflowClone?: (workflowId: string) => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
   categoryFilter?: string;
@@ -176,6 +177,7 @@ export interface WorkflowCardProps {
   onEdit?: (workflow: WorkflowTemplate) => void;
   onDelete?: (workflowId: string) => void;
   onExecute?: (workflowId: string) => void;
+  onClone?: (workflowId: string) => void;
   isSelected?: boolean;
   accentColor?: 'purple' | 'green' | 'pink' | 'blue' | 'cyan' | 'orange';
 }

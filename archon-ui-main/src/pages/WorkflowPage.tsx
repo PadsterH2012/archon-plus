@@ -190,39 +190,7 @@ const SimpleWorkflowDashboard: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => executeWorkflow(workflow.id)}
-                      disabled={executing === workflow.id}
-                      className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {executing === workflow.id ? (
-                        <>
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                          Executing...
-                        </>
-                      ) : (
-                        <>
-                          <Activity className="h-3 w-3" />
-                          Execute
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => alert(`Version History for ${workflow.title}\n\nComing soon: View workflow versions, compare changes, and rollback to previous versions.`)}
-                      className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
-                    >
-                      <History className="h-3 w-3" />
-                      Versions
-                    </button>
-                    <button
-                      onClick={() => alert(`Collaboration for ${workflow.title}\n\nComing soon: Share workflows, add comments, and collaborate with team members.`)}
-                      className="flex items-center gap-1 px-3 py-1 bg-purple-500 text-white text-sm rounded hover:bg-purple-600 transition-colors"
-                    >
-                      <Users className="h-3 w-3" />
-                      Share
-                    </button>
-                  </div>
+                  {/* Action buttons removed per user preference for minimal workflow UI */}
                 </div>
               </div>
             ))}

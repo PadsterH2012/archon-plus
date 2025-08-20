@@ -42,6 +42,7 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
   onWorkflowEdit,
   onWorkflowDelete,
   onWorkflowExecute,
+  onWorkflowClone,
   searchQuery: externalSearchQuery = '',
   onSearchChange,
   categoryFilter: externalCategoryFilter = '',
@@ -365,6 +366,7 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
               onEdit={handleWorkflowEdit}
               onDelete={handleWorkflowDelete}
               onExecute={handleWorkflowExecute}
+              onClone={onWorkflowClone}
               isSelected={selectedWorkflow?.id === workflow.id}
               accentColor={getCategoryColor(workflow.category)}
             />

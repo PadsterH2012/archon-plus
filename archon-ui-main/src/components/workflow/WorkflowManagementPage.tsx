@@ -149,6 +149,17 @@ export const WorkflowManagementPage: React.FC = () => {
     }
   }, [showToast]);
 
+  // Handle workflow clone
+  const handleWorkflowClone = useCallback(async (workflowId: string) => {
+    try {
+      // For now, just show a placeholder message
+      showToast('Clone functionality coming soon', 'info');
+    } catch (error) {
+      console.error('Failed to clone workflow:', error);
+      showToast('Failed to clone workflow', 'error');
+    }
+  }, [showToast]);
+
   // Render header based on view mode
   const renderHeader = () => {
     switch (viewMode) {
@@ -238,6 +249,7 @@ export const WorkflowManagementPage: React.FC = () => {
             onWorkflowEdit={handleWorkflowEdit}
             onWorkflowDelete={handleWorkflowDelete}
             onWorkflowExecute={handleWorkflowExecute}
+            onWorkflowClone={handleWorkflowClone}
           />
         );
 
