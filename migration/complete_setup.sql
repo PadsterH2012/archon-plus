@@ -55,6 +55,10 @@ CREATE TRIGGER update_archon_settings_updated_at
 -- Create RLS (Row Level Security) policies for settings
 ALTER TABLE archon_settings ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (for idempotent setup)
+DROP POLICY IF EXISTS "Allow service role full access" ON archon_settings;
+DROP POLICY IF EXISTS "Allow authenticated users to read and update" ON archon_settings;
+
 CREATE POLICY "Allow service role full access" ON archon_settings
     FOR ALL USING (auth.role() = 'service_role');
 
@@ -344,6 +348,11 @@ ALTER TABLE archon_crawled_pages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE archon_sources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE archon_code_examples ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (for idempotent setup)
+DROP POLICY IF EXISTS "Allow public read access to archon_crawled_pages" ON archon_crawled_pages;
+DROP POLICY IF EXISTS "Allow public read access to archon_sources" ON archon_sources;
+DROP POLICY IF EXISTS "Allow public read access to archon_code_examples" ON archon_code_examples;
+
 -- Create policies that allow anyone to read
 CREATE POLICY "Allow public read access to archon_crawled_pages"
   ON archon_crawled_pages
@@ -558,6 +567,13 @@ ALTER TABLE archon_project_sources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE archon_document_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE archon_prompts ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (for idempotent setup)
+DROP POLICY IF EXISTS "Allow service role full access to archon_projects" ON archon_projects;
+DROP POLICY IF EXISTS "Allow service role full access to archon_tasks" ON archon_tasks;
+DROP POLICY IF EXISTS "Allow service role full access to archon_project_sources" ON archon_project_sources;
+DROP POLICY IF EXISTS "Allow service role full access to archon_document_versions" ON archon_document_versions;
+DROP POLICY IF EXISTS "Allow service role full access to archon_prompts" ON archon_prompts;
+
 -- Create RLS policies for service role (full access)
 CREATE POLICY "Allow service role full access to archon_projects" ON archon_projects
     FOR ALL USING (auth.role() = 'service_role');
@@ -573,6 +589,13 @@ CREATE POLICY "Allow service role full access to archon_document_versions" ON ar
 
 CREATE POLICY "Allow service role full access to archon_prompts" ON archon_prompts
     FOR ALL USING (auth.role() = 'service_role');
+
+-- Drop existing authenticated user policies if they exist
+DROP POLICY IF EXISTS "Allow authenticated users to read and update archon_projects" ON archon_projects;
+DROP POLICY IF EXISTS "Allow authenticated users to read and update archon_tasks" ON archon_tasks;
+DROP POLICY IF EXISTS "Allow authenticated users to read and update archon_project_sources" ON archon_project_sources;
+DROP POLICY IF EXISTS "Allow authenticated users to read archon_document_versions" ON archon_document_versions;
+DROP POLICY IF EXISTS "Allow authenticated users to read archon_prompts" ON archon_prompts;
 
 -- Create RLS policies for authenticated users
 CREATE POLICY "Allow authenticated users to read and update archon_projects" ON archon_projects
