@@ -1,11 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Workflow, Activity, Plus, History, GitBranch, Users, Clock, BarChart3, Edit, Copy, Trash2 } from 'lucide-react';
 import { WorkflowBuilder } from '../components/workflow/WorkflowBuilder';
 import { WorkflowExecutionDashboard } from '../components/workflow/WorkflowExecutionDashboard';
 import { WorkflowAnalytics } from '../components/workflow/WorkflowAnalytics';
 import { WorkflowScheduler } from '../components/workflow/WorkflowScheduler';
 import { workflowService } from '../services/workflowService';
+
+// Wrapper component for WorkflowBuilder that handles route state
+const WorkflowBuilderWrapper: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const workflow = location.state?.workflow;
+  const initialTab = location.state?.tab || 'metadata';
+
+  const handleSave = async (workflowData: any) => {
+    try {
+      if (workflow?.id) {
+        // Update existing workflow
+        await workflowService.updateWorkflow(workflow.id, workflowData);
+        alert('✅ Workflow updated successfully!');
+      } else {
+        // Create new workflow
+        await workflowService.createWorkflow(workflowData);
+        alert('✅ Workflow created successfully!');
+      }
+      navigate('/workflows');
+    } catch (error) {
+      alert(`❌ Error saving workflow: ${error}`);
+    }
+  };
+
+  const handleCancel = () => {
+    navigate('/workflows');
+  };
+
+  return (
+    <WorkflowBuilder
+      workflow={workflow}
+      initialTab={initialTab as any}
+      onSave={handleSave}
+      onCancel={handleCancel}
+    />
+  );
+};
 
 // Enhanced workflow dashboard with navigation to advanced features
 const SimpleWorkflowDashboard: React.FC = () => {
@@ -100,10 +138,19 @@ const SimpleWorkflowDashboard: React.FC = () => {
   // Handler functions for workflow actions
   const handleEditWorkflow = async (workflow: any) => {
     try {
-      // For now, navigate to the builder with the workflow
-      navigate('/workflows/builder', { state: { workflow } });
+      // Navigate to the builder with the workflow (metadata tab)
+      navigate('/workflows/builder', { state: { workflow, tab: 'metadata' } });
     } catch (error) {
       alert(`❌ Error opening workflow editor: ${error}`);
+    }
+  };
+
+  const handleDesignWorkflow = async (workflow: any) => {
+    try {
+      // Navigate to the builder with the workflow (designer tab)
+      navigate('/workflows/builder', { state: { workflow, tab: 'designer' } });
+    } catch (error) {
+      alert(`❌ Error opening workflow designer: ${error}`);
     }
   };
 
@@ -239,6 +286,13 @@ const SimpleWorkflowDashboard: React.FC = () => {
                     >
                       <Edit className="w-3 h-3" />
                       Edit
+                    </button>
+                    <button
+                      onClick={() => handleDesignWorkflow(workflow)}
+                      className="flex items-center gap-1 px-3 py-1 bg-purple-500 text-white text-sm rounded hover:bg-purple-600 transition-colors"
+                    >
+                      <GitBranch className="w-3 h-3" />
+                      Designer
                     </button>
                     <button
                       onClick={() => handleCloneWorkflow(workflow)}
@@ -469,7 +523,7 @@ export const WorkflowPage: React.FC = () => {
     <div className="workflow-page">
       <Routes>
         <Route index element={<SimpleWorkflowDashboard />} />
-        <Route path="builder" element={<WorkflowBuilder />} />
+        <Route path="builder" element={<WorkflowBuilderWrapper />} />
         <Route path="executions" element={<WorkflowExecutionDashboard />} />
         <Route path="analytics" element={<WorkflowAnalytics />} />
         <Route path="scheduler" element={<WorkflowScheduler />} />

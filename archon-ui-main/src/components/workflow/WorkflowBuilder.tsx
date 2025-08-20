@@ -41,6 +41,7 @@ interface WorkflowBuilderProps {
   onTest?: (workflow: Partial<WorkflowTemplate>) => void;
   isLoading?: boolean;
   isDarkMode?: boolean;
+  initialTab?: BuilderTab;
 }
 
 type BuilderTab = 'metadata' | 'designer' | 'validation';
@@ -52,10 +53,11 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   onPreview,
   onTest,
   isLoading = false,
-  isDarkMode = false
+  isDarkMode = false,
+  initialTab = 'metadata'
 }) => {
   // State management
-  const [activeTab, setActiveTab] = useState<BuilderTab>('metadata');
+  const [activeTab, setActiveTab] = useState<BuilderTab>(initialTab);
   const [workflowData, setWorkflowData] = useState<Partial<WorkflowTemplate>>(
     workflow || {
       name: '',
