@@ -6,20 +6,21 @@
  */
 
 import React, { useState } from 'react';
-import { 
-  Play, 
-  Edit, 
-  Trash2, 
-  Eye, 
-  Clock, 
-  User, 
-  Tag, 
+import {
+  Play,
+  Edit,
+  Trash2,
+  Eye,
+  Clock,
+  User,
+  Tag,
   Calendar,
   MoreVertical,
   CheckCircle,
   AlertCircle,
   Archive,
-  FileText
+  FileText,
+  Copy
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -37,6 +38,7 @@ export const WorkflowCard: React.FC<WorkflowCardProps> = ({
   onEdit,
   onDelete,
   onExecute,
+  onClone,
   isSelected = false,
   accentColor = 'purple'
 }) => {
@@ -126,6 +128,11 @@ export const WorkflowCard: React.FC<WorkflowCardProps> = ({
       label: 'Edit',
       icon: <Edit className="w-4 h-4" />,
       onClick: () => onEdit?.(workflow)
+    },
+    {
+      label: 'Clone',
+      icon: <Copy className="w-4 h-4" />,
+      onClick: () => onClone?.(workflow.id)
     },
     {
       label: 'Delete',

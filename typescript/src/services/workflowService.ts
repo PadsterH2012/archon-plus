@@ -96,13 +96,35 @@ class WorkflowService {
   }
 
   /**
+   * Clone/copy a workflow template
+   */
+  async cloneWorkflow(workflowId: string, newName?: string, newTitle?: string): Promise<{ message: string; cloned_workflow: WorkflowTemplate }> {
+    const response = await fetch(`${API_BASE}/${workflowId}/clone`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        new_name: newName,
+        new_title: newTitle
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to clone workflow: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  /**
    * Delete a workflow template
    */
   async deleteWorkflow(workflowId: string): Promise<{ message: string }> {
     const response = await fetch(`${API_BASE}/${workflowId}`, {
       method: 'DELETE',
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || `Failed to delete workflow: ${response.statusText}`);
