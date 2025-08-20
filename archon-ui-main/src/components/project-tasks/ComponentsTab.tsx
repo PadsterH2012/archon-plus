@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Package, AlertCircle, Settings, Layers, GitBranch } from 'lucide-react';
-import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import type { Project } from '../../types/project';
 

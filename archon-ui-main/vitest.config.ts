@@ -14,7 +14,8 @@ export default defineConfig({
       'test/pages.test.tsx',
       'test/user_flows.test.tsx',
       'test/errors.test.tsx',
-      'test/mcp-env-vars.test.ts'
+      'test/mcp-env-vars.test.ts',
+      'test/components/project-tasks/ComponentsTab.test.tsx'
     ],
     exclude: ['node_modules', 'dist', '.git', '.cache', 'test.backup', '*.backup/**', 'test-backups'],
     reporters: ['dot', 'json'],
