@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, Package, AlertCircle, Settings, Layers, GitBranch } from 'lucide-react';
+import { Plus, Package, AlertCircle, Settings, Layers, GitBranch, Workflow } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+import { WorkflowTaskGroups } from './WorkflowTaskGroups';
 import type { Project } from '../../types/project';
 
 interface ComponentsTabProps {
@@ -47,6 +48,7 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
 }) => {
   const [selectedComponent, setSelectedComponent] = useState<any>(null);
   const [activeView, setActiveView] = useState<'hierarchy' | 'graph'>('hierarchy');
+  const [activeTab, setActiveTab] = useState<'components' | 'workflows'>('workflows');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -122,7 +124,51 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('workflows')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'workflows'
+                ? 'border-purple-500 text-purple-600 dark:text-purple-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Workflow className="h-4 w-4" />
+              Workflow Task Groups
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('components')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'components'
+                ? 'border-purple-500 text-purple-600 dark:text-purple-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              Component Hierarchy
+            </div>
+          </button>
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'workflows' ? (
+        <WorkflowTaskGroups
+          project={project}
+          onTaskGroupExecute={(taskGroup, execution) => {
+            console.log('Task group executed:', taskGroup.name, execution);
+            // Here you could integrate with the Archon task system
+            // to create actual tasks from the workflow
+          }}
+        />
+      ) : (
+        <div className="space-y-6">
+          {/* Original Components Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Panel - Component List/Graph */}
         <div className="lg:col-span-2">
@@ -307,8 +353,8 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
         </div>
       </div>
 
-      {/* Coming Soon Notice */}
-      <Card className="mt-6" accentColor="blue">
+          {/* Coming Soon Notice */}
+          <Card className="mt-6" accentColor="blue">
         <div className="p-4">
           <div className="flex items-center gap-3">
             <AlertCircle className="h-5 w-5 text-blue-500" />
@@ -324,6 +370,8 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
           </div>
         </div>
       </Card>
+        </div>
+      )}
     </div>
   );
 };
