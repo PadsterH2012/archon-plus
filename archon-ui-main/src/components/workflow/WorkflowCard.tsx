@@ -258,7 +258,45 @@ export const WorkflowCard: React.FC<WorkflowCardProps> = ({
           </div>
         </div>
 
-        {/* Actions - Removed per user preference for minimal workflow UI */}
+        {/* Actions */}
+        <div className="flex items-center space-x-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit?.(workflow);
+            }}
+            icon={<Edit className="w-4 h-4" />}
+          >
+            Edit
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClone?.(workflow.id);
+            }}
+            icon={<Copy className="w-4 h-4" />}
+          >
+            Clone
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete?.(workflow.id);
+            }}
+            icon={<Trash2 className="w-4 h-4" />}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+          >
+            Delete
+          </Button>
+        </div>
       </div>
     </Card>
   );
