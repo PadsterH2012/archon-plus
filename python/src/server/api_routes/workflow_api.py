@@ -396,6 +396,10 @@ async def clone_workflow(workflow_id: str, request: CloneWorkflowRequest = None)
     This allows users to create variations of existing workflows.
     """
     try:
+        # Extract parameters from request first
+        new_name = request.new_name if request else None
+        new_title = request.new_title if request else None
+
         logfire.info(f"Cloning workflow | source_id={workflow_id} | new_name={new_name}")
 
         # Get the source workflow
@@ -411,10 +415,6 @@ async def clone_workflow(workflow_id: str, request: CloneWorkflowRequest = None)
                 raise HTTPException(status_code=500, detail=result)
 
         source_workflow = result["template"]
-
-        # Extract parameters from request
-        new_name = request.new_name if request else None
-        new_title = request.new_title if request else None
 
         # Generate new name and title if not provided
         if not new_name:
