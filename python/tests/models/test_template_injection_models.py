@@ -14,31 +14,24 @@ from datetime import datetime
 from uuid import uuid4, UUID
 from pydantic import ValidationError
 
-from python.src.server.models.template_injection_models import (
+from src.server.models.template_injection_models import (
     # Enums
-    TemplateInjectionType, TemplateInjectionLevel, TemplateComponentType, TemplateHierarchyType,
+    TemplateComponentType, TemplateInjectionLevel, TemplateDefinitionType, HierarchyType,
 
     # Core Models
-    WorkflowTemplate, TemplateComponent, TemplateAssignment, TemplateExpansionResult,
+    TemplateComponent, TemplateDefinition, TemplateAssignment, TemplateExpansionResult,
 
     # Request Models
-    CreateWorkflowTemplateRequest, CreateTemplateComponentRequest,
+    CreateTemplateDefinitionRequest, CreateTemplateComponentRequest,
     CreateTemplateAssignmentRequest, TemplateExpansionRequest,
 
     # Utility Functions
-    validate_template_placeholders, extract_template_placeholders,
-    calculate_template_duration, validate_template_hierarchy_assignment
+    validate_template_hierarchy_assignment, calculate_total_template_duration
 )
 
 
 class TestEnums:
     """Test enum definitions and values"""
-    
-    def test_template_injection_type_enum(self):
-        """Test TemplateInjectionType enum values"""
-        assert TemplateInjectionType.WORKFLOW == "workflow"
-        assert TemplateInjectionType.SEQUENCE == "sequence"
-        assert TemplateInjectionType.ACTION == "action"
 
     def test_template_injection_level_enum(self):
         """Test TemplateInjectionLevel enum values"""
@@ -54,13 +47,19 @@ class TestEnums:
         assert TemplateComponentType.GROUP == "group"
         assert TemplateComponentType.SEQUENCE == "sequence"
 
-    def test_template_hierarchy_type_enum(self):
-        """Test TemplateHierarchyType enum values"""
-        assert TemplateHierarchyType.PROJECT == "project"
-        assert TemplateHierarchyType.MILESTONE == "milestone"
-        assert TemplateHierarchyType.PHASE == "phase"
-        assert TemplateHierarchyType.TASK == "task"
-        assert TemplateHierarchyType.SUBTASK == "subtask"
+    def test_template_definition_type_enum(self):
+        """Test TemplateDefinitionType enum values"""
+        assert TemplateDefinitionType.PROJECT == "project"
+        assert TemplateDefinitionType.TASK == "task"
+        assert TemplateDefinitionType.COMPONENT == "component"
+
+    def test_hierarchy_type_enum(self):
+        """Test HierarchyType enum values"""
+        assert HierarchyType.PROJECT == "project"
+        assert HierarchyType.MILESTONE == "milestone"
+        assert HierarchyType.PHASE == "phase"
+        assert HierarchyType.TASK == "task"
+        assert HierarchyType.SUBTASK == "subtask"
 
 
 class TestWorkflowTemplate:

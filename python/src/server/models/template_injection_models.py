@@ -1,10 +1,10 @@
 """
 Pydantic Models for Archon Template Injection System
 
-This module defines Pydantic models for:
-- Workflow templates with placeholder expansion
-- Template components for instruction building blocks
-- Template assignments for hierarchy-level injection
+This module defines Pydantic models that match the existing Archon database structure:
+- Template components (using existing archon_template_components table)
+- Template definitions (using existing archon_template_definitions table)
+- Template assignments (using existing archon_template_assignments table)
 - Template expansion results and metadata
 - Integration with existing Archon task system
 """
@@ -14,22 +14,22 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Field, validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 # =====================================================
-# ENUMS - Match database enum definitions
+# ENUMS - Match existing database enum definitions
 # =====================================================
 
-class TemplateInjectionType(str, Enum):
-    """Template injection types for different scenarios"""
-    WORKFLOW = "workflow"    # Complete workflow templates (e.g., workflow::default)
-    SEQUENCE = "sequence"    # Ordered sequence of related actions
-    ACTION = "action"        # Single atomic operation
+class TemplateComponentType(str, Enum):
+    """Template component types (matches existing template_component_type enum)"""
+    ACTION = "action"       # Single atomic instruction (e.g., action::git_commit)
+    GROUP = "group"         # Related set of instructions (e.g., group::testing_strategy)
+    SEQUENCE = "sequence"   # Ordered workflow segment (e.g., sequence::deployment)
 
 
 class TemplateInjectionLevel(str, Enum):
-    """Template injection levels in the hierarchy"""
+    """Template injection levels in the hierarchy (matches template_injection_level enum)"""
     PROJECT = "project"      # Applied to all tasks in project
     MILESTONE = "milestone"  # Applied to milestone completion tasks
     PHASE = "phase"         # Applied to development phase tasks
@@ -37,15 +37,15 @@ class TemplateInjectionLevel(str, Enum):
     SUBTASK = "subtask"     # Applied to granular operations
 
 
-class TemplateComponentType(str, Enum):
-    """Template component types for building blocks"""
-    ACTION = "action"       # Single atomic instruction (e.g., action::git_commit)
-    GROUP = "group"         # Related set of instructions (e.g., group::testing_strategy)
-    SEQUENCE = "sequence"   # Ordered workflow segment (e.g., sequence::deployment)
+class TemplateDefinitionType(str, Enum):
+    """Template definition types (matches existing template_type_enum)"""
+    PROJECT = "project"     # Project-level templates
+    TASK = "task"          # Task-level templates
+    COMPONENT = "component" # Component templates
 
 
-class TemplateHierarchyType(str, Enum):
-    """Template hierarchy types for polymorphic references"""
+class HierarchyType(str, Enum):
+    """Hierarchy types for template assignments (matches existing hierarchy_type_enum)"""
     PROJECT = "project"
     MILESTONE = "milestone"
     PHASE = "phase"
@@ -54,123 +54,51 @@ class TemplateHierarchyType(str, Enum):
 
 
 # =====================================================
-# CORE TEMPLATE MODELS
+# CORE TEMPLATE MODELS - Match existing database structure
 # =====================================================
 
-class WorkflowTemplate(BaseModel):
-    """Workflow template definition with placeholder expansion"""
-    
-    # Basic Information
-    id: Optional[UUID] = Field(None, description="Template UUID")
-    name: str = Field(..., min_length=1, max_length=255, description="Unique template name (e.g., workflow::default)")
-    description: str = Field(default="", description="Template description")
-    template_type: TemplateInjectionType = Field(
-        default=TemplateInjectionType.WORKFLOW, description="Type of template"
-    )
-    injection_level: TemplateInjectionLevel = Field(
-        default=TemplateInjectionLevel.TASK, description="Hierarchy level for injection"
-    )
-    
-    # Template Content
-    template_content: str = Field(..., min_length=1, description="Template with {{placeholder}} variables")
-    user_task_position: int = Field(default=6, ge=1, description="Position where {{USER_TASK}} appears")
-    
-    # Metadata and Configuration
-    estimated_duration: int = Field(default=30, ge=1, description="Total estimated duration in minutes")
-    required_tools: List[str] = Field(default_factory=list, description="MCP tools needed for this template")
-    applicable_phases: List[str] = Field(
-        default_factory=lambda: ["development", "testing", "deployment"],
-        description="Project phases where this template applies"
-    )
-    
-    # Status and Versioning
-    is_active: bool = Field(default=True, description="Whether template is active")
-    version: str = Field(default="1.0.0", description="Semantic version")
-    author: str = Field(default="archon-system", description="Template author")
-    
-    # Timestamps
-    created_at: Optional[datetime] = Field(None, description="Creation timestamp")
-    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
-    
-    @validator("name")
-    def validate_name_format(cls, v):
-        """Validate template name follows type::name format"""
-        if not v.startswith(("workflow::", "sequence::", "action::")):
-            raise ValueError("Template name must start with workflow::, sequence::, or action::")
-        
-        # Check for valid characters after prefix
-        suffix = v.split("::", 1)[1] if "::" in v else ""
-        if not suffix.replace("_", "").replace("-", "").isalnum():
-            raise ValueError("Template name suffix must contain only alphanumeric characters, underscores, and hyphens")
-        
-        return v.lower()
-    
-    @validator("template_content")
-    def validate_template_content(cls, v):
-        """Validate template content has required placeholders"""
-        if "{{USER_TASK}}" not in v:
-            raise ValueError("Template content must contain {{USER_TASK}} placeholder")
-        
-        # Check for valid placeholder format
-        import re
-        placeholders = re.findall(r'\{\{([^}]+)\}\}', v)
-        for placeholder in placeholders:
-            if not re.match(r'^[a-zA-Z0-9_:]+$', placeholder):
-                raise ValueError(f"Invalid placeholder format: {{{{{placeholder}}}}}. Must contain only alphanumeric characters, underscores, and colons")
-        
-        return v
-    
-    @validator("version")
-    def validate_version_format(cls, v):
-        """Validate semantic version format"""
-        import re
-        if not re.match(r'^\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?$', v):
-            raise ValueError("Version must follow semantic versioning (e.g., '1.0.0' or '1.0.0-beta')")
-        return v
-
-
 class TemplateComponent(BaseModel):
-    """Template component for instruction building blocks"""
-    
+    """Template component model (matches archon_template_components table)"""
+
     # Basic Information
     id: Optional[UUID] = Field(None, description="Component UUID")
     name: str = Field(..., min_length=1, max_length=255, description="Unique component name (e.g., group::understand_homelab_env)")
     description: str = Field(default="", description="Component description")
-    component_type: TemplateComponentType = Field(
-        default=TemplateComponentType.GROUP, description="Type of component"
-    )
-    
+    component_type: TemplateComponentType = Field(default=TemplateComponentType.GROUP, description="Type of component")
+
     # Component Content
     instruction_text: str = Field(..., min_length=1, description="Full expanded instruction text")
-    
+
     # Requirements and Metadata
     required_tools: List[str] = Field(default_factory=list, description="MCP tools needed (e.g., ['homelab-vault', 'view'])")
     estimated_duration: int = Field(default=5, ge=1, description="Estimated duration in minutes")
     input_requirements: Dict[str, Any] = Field(default_factory=dict, description="What context/data this component needs")
     output_expectations: Dict[str, Any] = Field(default_factory=dict, description="What this component should produce")
     validation_criteria: List[str] = Field(default_factory=list, description="How to verify successful completion")
-    
+
     # Categorization and Metadata
     category: str = Field(default="general", max_length=100, description="Component category (e.g., 'documentation', 'testing')")
     priority: str = Field(default="medium", description="Priority level (low, medium, high, critical)")
     tags: List[str] = Field(default_factory=list, description="Flexible tagging for search and organization")
-    
+
     # Status
     is_active: bool = Field(default=True, description="Whether component is active")
-    
+
     # Timestamps
     created_at: Optional[datetime] = Field(None, description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
-    
-    @validator("name")
+
+    @field_validator("name")
+    @classmethod
     def validate_name_format(cls, v):
         """Validate component name follows type::name format"""
         import re
         if not re.match(r'^(action|group|sequence)::[a-zA-Z0-9_]+$', v):
             raise ValueError("Component name must follow format: type::name (e.g., group::understand_homelab_env)")
         return v.lower()
-    
-    @validator("priority")
+
+    @field_validator("priority")
+    @classmethod
     def validate_priority(cls, v):
         """Validate priority is one of allowed values"""
         allowed_priorities = ["low", "medium", "high", "critical"]
@@ -179,29 +107,73 @@ class TemplateComponent(BaseModel):
         return v.lower()
 
 
+class TemplateDefinition(BaseModel):
+    """Template definition model (matches archon_template_definitions table)"""
+
+    # Basic Information
+    id: Optional[UUID] = Field(None, description="Template UUID")
+    name: str = Field(..., min_length=1, max_length=255, description="Unique template name (e.g., workflow_default)")
+    title: str = Field(..., min_length=1, description="Human-readable template title")
+    description: str = Field(default="", description="Template description")
+    template_type: TemplateDefinitionType = Field(default=TemplateDefinitionType.PROJECT, description="Type of template")
+
+    # Template Content and Configuration
+    template_data: Dict[str, Any] = Field(..., description="Template configuration and content as JSONB")
+    parent_template_id: Optional[UUID] = Field(None, description="Parent template for inheritance")
+    inheritance_level: int = Field(default=0, ge=0, le=3, description="Inheritance level (0-3)")
+
+    # Categorization
+    category: str = Field(default="general", description="Template category")
+    tags: List[str] = Field(default_factory=list, description="Template tags")
+
+    # Status and Access
+    is_public: bool = Field(default=True, description="Whether template is publicly accessible")
+    is_active: bool = Field(default=True, description="Whether template is active")
+
+    # Metadata
+    created_by: str = Field(..., description="Creator of the template")
+
+    # Timestamps
+    created_at: Optional[datetime] = Field(None, description="Creation timestamp")
+    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+
+    @field_validator("name")
+    @classmethod
+    def validate_name_format(cls, v):
+        """Validate template name follows database constraint (lowercase, alphanumeric, underscores, hyphens only)"""
+        import re
+        if not re.match(r'^[a-z0-9_-]+$', v):
+            raise ValueError("Template name must contain only lowercase letters, numbers, underscores, and hyphens")
+        return v
+
+
+
+
+
 class TemplateAssignment(BaseModel):
-    """Template assignment for hierarchy-level injection"""
-    
+    """Template assignment model (matches archon_template_assignments table)"""
+
     # Basic Information
     id: Optional[UUID] = Field(None, description="Assignment UUID")
-    
+
     # Polymorphic Reference
-    hierarchy_type: TemplateHierarchyType = Field(..., description="Type of hierarchy level")
+    hierarchy_type: HierarchyType = Field(..., description="Type of hierarchy level")
     hierarchy_id: UUID = Field(..., description="UUID of the hierarchy entity")
-    
+
     # Template Assignment
-    template_id: UUID = Field(..., description="UUID of the assigned template")
-    
+    template_id: Optional[UUID] = Field(None, description="UUID of the assigned template")
+
     # Assignment Configuration
     assignment_context: Dict[str, Any] = Field(default_factory=dict, description="Conditions and context for assignment")
     priority: int = Field(default=0, description="Priority for conflict resolution (higher = more priority)")
     conditional_logic: Dict[str, Any] = Field(default_factory=dict, description="Conditions for when this assignment applies")
-    
+    injection_level: TemplateInjectionLevel = Field(default=TemplateInjectionLevel.TASK, description="Template injection level")
+
     # Status and Metadata
     is_active: bool = Field(default=True, description="Whether assignment is active")
     assigned_at: Optional[datetime] = Field(None, description="When assignment was created")
     assigned_by: str = Field(default="system", description="User or system that made the assignment")
-    
+
     # Timestamps
     created_at: Optional[datetime] = Field(None, description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
@@ -233,7 +205,8 @@ class TemplateExpansionResult(BaseModel):
     # Timestamp
     expanded_at: datetime = Field(default_factory=datetime.now, description="When expansion was performed")
     
-    @validator("expansion_time_ms")
+    @field_validator("expansion_time_ms")
+    @classmethod
     def validate_expansion_time(cls, v):
         """Validate expansion time is reasonable"""
         if v > 10000:  # 10 seconds
@@ -245,31 +218,32 @@ class TemplateExpansionResult(BaseModel):
 # REQUEST/RESPONSE MODELS FOR API
 # =====================================================
 
-class CreateWorkflowTemplateRequest(BaseModel):
-    """Request model for creating workflow templates"""
+class CreateTemplateDefinitionRequest(BaseModel):
+    """Request model for creating template definitions"""
     name: str = Field(..., min_length=1, max_length=255)
+    title: str = Field(..., min_length=1)
     description: str = ""
-    template_type: TemplateInjectionType = TemplateInjectionType.WORKFLOW
-    injection_level: TemplateInjectionLevel = TemplateInjectionLevel.TASK
-    template_content: str = Field(..., min_length=1)
-    user_task_position: int = Field(default=6, ge=1)
-    estimated_duration: int = Field(default=30, ge=1)
-    required_tools: List[str] = []
-    applicable_phases: List[str] = ["development", "testing", "deployment"]
-    version: str = "1.0.0"
-    author: str = "archon-system"
+    template_type: TemplateDefinitionType = TemplateDefinitionType.PROJECT
+    template_data: Dict[str, Any] = Field(..., description="Template configuration and content")
+    parent_template_id: Optional[UUID] = None
+    inheritance_level: int = Field(default=0, ge=0, le=3)
+    category: str = "general"
+    tags: List[str] = []
+    is_public: bool = True
+    created_by: str = "archon-system"
 
 
-class UpdateWorkflowTemplateRequest(BaseModel):
-    """Request model for updating workflow templates"""
+class UpdateTemplateDefinitionRequest(BaseModel):
+    """Request model for updating template definitions"""
+    title: Optional[str] = None
     description: Optional[str] = None
-    template_content: Optional[str] = None
-    user_task_position: Optional[int] = Field(None, ge=1)
-    estimated_duration: Optional[int] = Field(None, ge=1)
-    required_tools: Optional[List[str]] = None
-    applicable_phases: Optional[List[str]] = None
+    template_data: Optional[Dict[str, Any]] = None
+    parent_template_id: Optional[UUID] = None
+    inheritance_level: Optional[int] = Field(None, ge=0, le=3)
+    category: Optional[str] = None
+    tags: Optional[List[str]] = None
+    is_public: Optional[bool] = None
     is_active: Optional[bool] = None
-    version: Optional[str] = None
 
 
 class CreateTemplateComponentRequest(BaseModel):
@@ -305,12 +279,13 @@ class UpdateTemplateComponentRequest(BaseModel):
 
 class CreateTemplateAssignmentRequest(BaseModel):
     """Request model for creating template assignments"""
-    hierarchy_type: TemplateHierarchyType
+    hierarchy_type: HierarchyType
     hierarchy_id: UUID
     template_id: UUID
     assignment_context: Dict[str, Any] = {}
     priority: int = 0
     conditional_logic: Dict[str, Any] = {}
+    injection_level: TemplateInjectionLevel = TemplateInjectionLevel.TASK
     assigned_by: str = "system"
 
 
@@ -323,10 +298,10 @@ class TemplateExpansionRequest(BaseModel):
     context_data: Dict[str, Any] = {}
 
 
-class WorkflowTemplateResponse(BaseModel):
-    """Response model for workflow template operations"""
+class TemplateDefinitionResponse(BaseModel):
+    """Response model for template definition operations"""
     success: bool
-    template: Optional[WorkflowTemplate] = None
+    template: Optional[TemplateDefinition] = None
     message: str
     error: Optional[str] = None
 
@@ -424,8 +399,8 @@ def calculate_template_duration(template_content: str, component_durations: Dict
 
 
 def validate_template_hierarchy_assignment(
-    hierarchy_type: TemplateHierarchyType,
-    hierarchy_id: UUID,
+    hierarchy_type: HierarchyType,
+    hierarchy_id: UUID,  # noqa: ARG001 - Reserved for future validation
     template_injection_level: TemplateInjectionLevel
 ) -> bool:
     """
@@ -433,7 +408,7 @@ def validate_template_hierarchy_assignment(
 
     Args:
         hierarchy_type: Type of hierarchy entity
-        hierarchy_id: UUID of hierarchy entity
+        hierarchy_id: UUID of hierarchy entity (reserved for future validation)
         template_injection_level: Template's intended injection level
 
     Returns:
@@ -441,11 +416,11 @@ def validate_template_hierarchy_assignment(
     """
     # Define valid combinations
     valid_combinations = {
-        TemplateHierarchyType.PROJECT: [TemplateInjectionLevel.PROJECT, TemplateInjectionLevel.TASK],
-        TemplateHierarchyType.MILESTONE: [TemplateInjectionLevel.MILESTONE, TemplateInjectionLevel.TASK],
-        TemplateHierarchyType.PHASE: [TemplateInjectionLevel.PHASE, TemplateInjectionLevel.TASK],
-        TemplateHierarchyType.TASK: [TemplateInjectionLevel.TASK, TemplateInjectionLevel.SUBTASK],
-        TemplateHierarchyType.SUBTASK: [TemplateInjectionLevel.SUBTASK]
+        HierarchyType.PROJECT: [TemplateInjectionLevel.PROJECT, TemplateInjectionLevel.TASK],
+        HierarchyType.MILESTONE: [TemplateInjectionLevel.MILESTONE, TemplateInjectionLevel.TASK],
+        HierarchyType.PHASE: [TemplateInjectionLevel.PHASE, TemplateInjectionLevel.TASK],
+        HierarchyType.TASK: [TemplateInjectionLevel.TASK, TemplateInjectionLevel.SUBTASK],
+        HierarchyType.SUBTASK: [TemplateInjectionLevel.SUBTASK]
     }
 
     return template_injection_level in valid_combinations.get(hierarchy_type, [])
