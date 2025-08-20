@@ -292,7 +292,7 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
               </div>
             </Card>
           ) : (
-            <Card className="h-full" accentColor="gray">
+            <Card className="h-full" accentColor="none">
               <div className="p-8 text-center">
                 <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-600 dark:text-gray-400">
