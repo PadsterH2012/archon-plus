@@ -2,84 +2,159 @@
 
 ## Executive Summary
 
-A hierarchical workflow orchestration system that enables agents to dynamically compile contextual instructions from modular, reusable components. The framework bridges traditional project management structures with intelligent agent execution through a composable action/workflow library.
+A hierarchical workflow orchestration system that injects standardized operational tasks directly into agent instruction sets through template expansion. The framework uses **Workflows, Sequences, Actions** that are dynamically injected around user tasks, ensuring consistent operational procedures while maintaining the original task context.
 
 ## Core Concepts
 
 ### Hierarchical Task Structure
 - **Projects** → **Milestones** → **Phases** → **Tasks** → **Subtasks**
-- Each level can have attached workflows, groups, and actions
-- Context flows down the hierarchy, enriching agent instructions
+- Each level can have attached workflows, sequences, and actions
+- Template injection occurs at any hierarchy level with configurable frequency
 - Reference system: `ProjectName::MilestoneName::TaskId`
 
-### Workflow Components
-- **Actions**: Atomic operations with natural language instructions
-- **Sequences**: Ordered steps of related actions (cannot contain workflows)
-- **Workflows**: Orchestrated processes that can contain actions, sequences, or other workflows
+### Template Injection System
+The system transforms user instructions through template expansion:
 
-### Dynamic Compilation
-Agent receives a hierarchical reference and automatically builds comprehensive, contextual instructions by traversing the hierarchy and assembling applicable workflows.
+```
+User Input: "Creating a Dockerfile for a website"
+
+Template Applied: workflow::default
+
+Agent Receives:
+{{group::understand_homelab_env}}
+{{group::guidelines_coding}}
+{{group::naming_conventions}}
+{{group::testing_strategy}}
+{{group::documentation_strategy}}
+
+Creating a Dockerfile for a website  <<<< Original task preserved
+
+{{group::create_tests}}
+{{group::test_locally}}
+{{group::commit_push_to_git}}
+{{group::check_jenkins_build}}
+{{group::send_task_to_review}}
+```
+
+### Workflow Components
+- **Actions**: Atomic operations with natural language instructions (e.g., `{{action::git_commit}}`)
+- **Sequences**: Ordered groups of related actions (e.g., `{{sequence::testing_pipeline}}`)
+- **Workflows**: Complete operational templates that inject around user tasks (e.g., `workflow::default`, `workflow::milestone_pass`)
+
+### Template Expansion
+- All `{{group::name}}`, `{{sequence::name}}`, `{{action::name}}` variables expand to full instruction text
+- Original user task remains intact and central
+- Injection order is consistent regardless of user task content
+- Different workflows can be applied based on context (project type, phase, milestone)
 
 ---
 
-## Template System Architecture
+## Template Injection Architecture
 
-### Template Inheritance Hierarchy
+### Injection Level Hierarchy
 ```
-Global Default Template
-├── Industry Templates (Web Dev, Mobile, Research, etc.)
-│   └── Team Templates (Frontend Team, Backend Team)
-│       └── Project-Specific Customizations
+Project Level: workflow::project_setup (applied once per project)
+├── Milestone Level: workflow::milestone_pass (applied per milestone)
+│   ├── Phase Level: workflow::phase_complete (applied per phase)
+│   │   ├── Task Level: workflow::default (applied per task)
+│   │   │   └── Subtask Level: sequence::validation (applied per subtask)
 ```
 
-### Template Categories
-- **Global Default**: Applied to ALL new projects automatically
-- **Industry Templates**: Specialized for project types (inherits from Global + adds specific workflows)
-- **Team Templates**: Department/role-specific workflows
-- **Personal Templates**: User-created custom templates
-- **Community Templates**: Shared templates from other users
+### Template Categories by Frequency
+- **Project Level**: Applied once during project initialization (`workflow::project_setup`)
+- **Milestone Level**: Applied at milestone boundaries (`workflow::milestone_pass`, `workflow::release_actions`)
+- **Phase Level**: Applied during phase transitions (`workflow::phase_complete`)
+- **Task Level**: Applied to every task (`workflow::default`, `workflow::hotfix`)
+- **Subtask Level**: Applied to granular operations (`sequence::validation`, `action::commit`)
 
-### Template Application Rules
-1. **Inheritance**: Lower levels inherit from higher levels
-2. **Override Capability**: Can add/modify workflows, add skip conditions
-3. **Protection**: Cannot remove "Important" workflows (safety mechanism)
-4. **Dynamic Application**: Context-aware template selection based on project parameters
+### Template Injection Rules
+1. **Preservation**: Original user task always preserved in center of injection
+2. **Order Consistency**: Group/sequence order remains constant regardless of user task
+3. **Level Specificity**: Higher frequency = more granular operational tasks
+4. **Context Awareness**: Template selection based on project type, phase, urgency
+5. **Non-Interference**: Injected instructions designed not to conflict with user task
+
+### Template Variable Expansion
+```
+Template Definition:
+workflow::default = [
+  "{{group::understand_homelab_env}}",
+  "{{group::guidelines_coding}}",
+  "{{group::naming_conventions}}",
+  "{{group::testing_strategy}}",
+  "{{group::documentation_strategy}}",
+  "{{USER_TASK}}",  // Placeholder for original task
+  "{{group::create_tests}}",
+  "{{group::test_locally}}",
+  "{{group::commit_push_to_git}}",
+  "{{group::check_jenkins_build}}",
+  "{{group::send_task_to_review}}"
+]
+
+Expanded to Agent:
+- Understand the homelab environment and available services
+- Follow coding guidelines and best practices for this project
+- Use consistent naming conventions across all code
+- Implement comprehensive testing strategy
+- Document all changes and decisions
+
+Creating a Dockerfile for a website  <<<< USER TASK
+
+- Create appropriate unit and integration tests
+- Test the implementation locally before committing
+- Commit changes with descriptive messages and push to git
+- Monitor Jenkins build status and handle any failures
+- Send completed task for review and validation
+```
 
 ---
 
 ## Database Schema Design
 
-### Template Tables
+### Template Injection Tables
 
-#### template_definitions
+#### workflow_templates
 ```sql
 id (UUID, primary key)
-name (VARCHAR, unique)
+name (VARCHAR, unique) -- e.g., "workflow::default", "workflow::milestone_pass"
 description (TEXT)
-template_type (ENUM: global_default, industry, team, personal, community)
-parent_template_id (UUID, foreign key → template_definitions.id)
+template_type (ENUM: workflow, sequence, action)
+injection_level (ENUM: project, milestone, phase, task, subtask)
+template_content (TEXT) -- Template with {{group::name}} placeholders
+user_task_position (INTEGER) -- Where {{USER_TASK}} appears in sequence
 is_active (BOOLEAN)
-is_public (BOOLEAN) -- for community sharing
-created_by (UUID) -- user who created it
-usage_count (INTEGER) -- popularity tracking
+created_by (UUID)
+usage_count (INTEGER)
 created_at (TIMESTAMP)
 updated_at (TIMESTAMP)
 ```
 
-#### template_workflows
+#### template_components
 ```sql
 id (UUID, primary key)
-template_id (UUID, foreign key → template_definitions.id)
-workflow_type (ENUM: action, group, workflow)
-workflow_id (UUID) -- polymorphic reference
-hierarchy_level (ENUM: project, milestone, phase, task, subtask)
-execution_trigger (ENUM: on_start, on_completion, repeating, conditional)
-repeat_pattern (JSONB)
-condition_logic (JSONB)
-is_required (BOOLEAN) -- "Important" workflows
-is_inherited (BOOLEAN) -- inherited from parent template
-override_allowed (BOOLEAN)
-order_index (INTEGER)
+name (VARCHAR, unique) -- e.g., "group::understand_homelab_env"
+component_type (ENUM: action, group, sequence)
+instruction_text (TEXT) -- Full expanded instruction text
+input_requirements (JSONB) -- What context/data this component needs
+output_expectations (JSONB) -- What this component should produce
+validation_criteria (JSONB) -- How to verify successful completion
+estimated_duration (INTEGER) -- Minutes
+required_tools (JSONB) -- MCP tools or external tools needed
+is_active (BOOLEAN)
+created_at (TIMESTAMP)
+updated_at (TIMESTAMP)
+```
+
+#### template_assignments
+```sql
+id (UUID, primary key)
+hierarchy_type (ENUM: project, milestone, phase, task, subtask)
+hierarchy_id (UUID) -- polymorphic reference to project/milestone/phase/task/subtask
+template_id (UUID, foreign key → workflow_templates.id)
+assignment_context (JSONB) -- Conditions for when this template applies
+is_active (BOOLEAN)
+assigned_at (TIMESTAMP)
+assigned_by (UUID) -- user who made the assignment
 ```
 
 #### template_customizations
@@ -244,57 +319,201 @@ error_handling (JSONB) -- what to do on failure
 
 ---
 
-## Dynamic Compilation Algorithm
+## Template Injection Algorithm
 
-### 1. Reference Resolution
+### 1. Task Reception and Context Resolution
 ```
-Input: "Website Redesign::Design Phase::1.1"
+Input: User Task = "Creating a Dockerfile for a website"
+Context: Project="Website Redesign", Milestone="Design Phase", Task="1.1"
 
 Parse hierarchy path:
-- Project: "Website Redesign"
-- Milestone: "Design Phase" 
-- Task: "1.1"
+- Project: "Website Redesign" (ID: proj_123)
+- Milestone: "Design Phase" (ID: milestone_456)
+- Task: "1.1" (ID: task_789)
 
-Resolve to database IDs through cascade lookups
-```
-
-### 2. Context Aggregation
-```
-Traverse hierarchy upward, collecting:
-- Project context_data
-- Milestone context_data  
-- Phase context_data
-- Task context_data
-
-Merge with inheritance (lower levels override higher)
+Resolve hierarchy context and determine injection level (Task Level)
 ```
 
-### 3. Workflow Collection
+### 2. Template Selection
 ```
-For each hierarchy level (project → task):
-  Query hierarchy_workflows WHERE hierarchy_id = level_id
-  Collect all attached workflows, groups, actions
-  Apply execution_trigger filters (what should run now?)
+Query template_assignments WHERE:
+  hierarchy_type = 'task' AND
+  hierarchy_id = task_789 AND
+  is_active = true
+
+If no specific assignment found, fall back to:
+  - Phase level template
+  - Milestone level template
+  - Project level template
+  - Global default template (workflow::default)
+
+Selected: workflow::default
 ```
 
-### 4. Instruction Compilation
+### 3. Template Expansion
 ```
-For each collected workflow component:
-  1. Resolve component definition
-  2. Apply context data to instruction_template
-  3. Check input/output schema compatibility
-  4. Build execution graph (handle dependencies)
-  5. Generate final natural language instructions
+Retrieve template_content from workflow_templates:
+"{{group::understand_homelab_env}}
+{{group::guidelines_coding}}
+{{group::naming_conventions}}
+{{group::testing_strategy}}
+{{group::documentation_strategy}}
+{{USER_TASK}}
+{{group::create_tests}}
+{{group::test_locally}}
+{{group::commit_push_to_git}}
+{{group::check_jenkins_build}}
+{{group::send_task_to_review}}"
+
+Replace {{USER_TASK}} with: "Creating a Dockerfile for a website"
 ```
 
-### 5. Agent Instruction Generation
+### 4. Component Resolution and Expansion
 ```
-Output comprehensive instruction set:
-- Contextual background (why this task matters)
-- Specific actions to take (step-by-step)
-- Success criteria (how to know it's done)
-- Error handling (what to do if things go wrong)
-- Next steps (what comes after)
+For each {{group::name}} placeholder:
+  1. Query template_components WHERE name = 'group::name'
+  2. Retrieve instruction_text
+  3. Apply project context to instruction template
+  4. Validate required_tools are available
+  5. Replace placeholder with expanded instruction
+
+Example:
+{{group::understand_homelab_env}} →
+"Review the homelab documentation at /docs/homelab/ to understand
+available services, network topology, and deployment targets.
+Identify which services this Dockerfile will interact with."
+```
+
+### 5. Final Agent Instruction Assembly
+```
+Output complete instruction set:
+
+1. Review the homelab documentation at /docs/homelab/...
+2. Follow coding guidelines and best practices...
+3. Use consistent naming conventions...
+4. Implement comprehensive testing strategy...
+5. Document all changes and decisions...
+
+6. Creating a Dockerfile for a website  <<<< ORIGINAL TASK
+
+7. Create appropriate unit and integration tests...
+8. Test the implementation locally...
+9. Commit changes with descriptive messages...
+10. Monitor Jenkins build status...
+11. Send completed task for review...
+
+Total: Original task + 10 operational tasks = Complete workflow
+```
+
+### 6. Execution Tracking
+```
+Agent processes instruction set sequentially:
+- Pre-task operations (steps 1-5): Setup and preparation
+- Core task (step 6): User's original objective
+- Post-task operations (steps 7-11): Validation and integration
+
+System tracks completion of each component for:
+- Progress reporting
+- Workflow optimization
+- Template effectiveness analysis
+```
+
+---
+
+## Workflow Template Examples
+
+### workflow::default (Task Level)
+Applied to every task to ensure consistent operational procedures:
+
+```
+Template Definition:
+{{group::understand_homelab_env}}
+{{group::guidelines_coding}}
+{{group::naming_conventions}}
+{{group::testing_strategy}}
+{{group::documentation_strategy}}
+{{USER_TASK}}
+{{group::create_tests}}
+{{group::test_locally}}
+{{group::commit_push_to_git}}
+{{group::check_jenkins_build}}
+{{group::send_task_to_review}}
+```
+
+### workflow::milestone_pass (Milestone Level)
+Applied when completing milestones for comprehensive validation:
+
+```
+Template Definition:
+{{group::milestone_review_checklist}}
+{{group::stakeholder_communication}}
+{{group::documentation_update}}
+{{USER_TASK}}
+{{group::integration_testing}}
+{{group::performance_validation}}
+{{group::security_audit}}
+{{group::deployment_preparation}}
+{{group::milestone_signoff}}
+```
+
+### workflow::hotfix (Task Level - Conditional)
+Applied for urgent fixes that need expedited but safe procedures:
+
+```
+Template Definition:
+{{group::incident_assessment}}
+{{group::minimal_viable_fix}}
+{{USER_TASK}}
+{{group::immediate_testing}}
+{{group::emergency_deployment}}
+{{group::post_incident_review}}
+```
+
+### sequence::testing_pipeline (Reusable Sequence)
+Can be embedded in multiple workflows:
+
+```
+Sequence Definition:
+{{action::run_unit_tests}}
+{{action::run_integration_tests}}
+{{action::check_code_coverage}}
+{{action::validate_performance}}
+{{action::security_scan}}
+```
+
+### Component Examples
+
+#### group::understand_homelab_env
+```
+Instruction Text:
+"Review the homelab documentation at /docs/homelab/ to understand:
+- Available services and their endpoints
+- Network topology and access patterns
+- Deployment targets and resource constraints
+- Service dependencies and integration points
+- Monitoring and logging infrastructure
+Use the homelab-vault MCP tool to retrieve any necessary credentials."
+
+Required Tools: ["homelab-vault", "view", "web-fetch"]
+Estimated Duration: 10 minutes
+```
+
+#### action::git_commit
+```
+Instruction Text:
+"Commit your changes with a descriptive commit message following
+conventional commit format:
+- feat: for new features
+- fix: for bug fixes
+- docs: for documentation changes
+- refactor: for code refactoring
+- test: for test additions/changes
+
+Include the task reference in the commit message.
+Use 'git add .' followed by 'git commit -m \"type: description\"'"
+
+Required Tools: ["launch-process"]
+Estimated Duration: 2 minutes
 ```
 
 ---
@@ -458,48 +677,166 @@ Every component must define:
 
 ## Agent Integration Points
 
-### 1. Task Request Processing
+### 1. Task Injection and Processing
 ```
-Agent Request: "What should I do for Website Redesign::Design Phase::1.1?"
-
-System Response:
-1. Resolve hierarchy reference
-2. Compile contextual instructions
-3. Return comprehensive task definition
-```
-
-### 2. Progress Tracking
-```
-Agent Reports: "Completed action X with result Y"
+User Input: "Creating a Dockerfile for a website"
 
 System Processing:
-1. Update task/subtask status
-2. Check completion triggers
-3. Activate next workflow components
-4. Update project timeline
+1. Identify hierarchy context (Project::Milestone::Task)
+2. Select appropriate workflow template (workflow::default)
+3. Expand template with component instructions
+4. Inject user task at designated position
+5. Return complete instruction set to agent
+
+Agent Receives:
+- 5 pre-task operational instructions
+- 1 original user task (preserved exactly)
+- 5 post-task operational instructions
+- Total: 11-step comprehensive workflow
 ```
 
-### 3. Context Queries
+### 2. Component-Level Progress Tracking
 ```
-Agent Request: "What's the background context for this task?"
+Agent Reports: "Completed group::understand_homelab_env"
+
+System Processing:
+1. Mark component as completed in execution tracking
+2. Update overall task progress (1/11 steps complete)
+3. Prepare next component for execution
+4. Log component completion time for optimization
+
+Agent Reports: "Completed USER_TASK: Creating a Dockerfile for a website"
+
+System Processing:
+1. Mark core task as completed (6/11 steps complete)
+2. Activate post-task operational components
+3. Update project milestone progress
+4. Trigger any dependent tasks
+```
+
+### 3. Template Context Queries
+```
+Agent Request: "What's the purpose of group::check_jenkins_build?"
 
 System Response:
-1. Aggregate hierarchy context
-2. Include relevant project constraints
-3. Provide stakeholder information
-4. Surface related completed work
+"This component ensures deployment readiness by:
+- Monitoring the Jenkins CI/CD pipeline status
+- Validating that all tests pass in the build environment
+- Checking for any deployment blockers or failures
+- Providing early warning of integration issues
+- Required tools: web-fetch, launch-process
+- Estimated duration: 5 minutes"
 ```
 
-### 4. Dynamic Adaptation
+### 4. Workflow Adaptation and Alternatives
 ```
-Agent Request: "This approach isn't working, what are alternatives?"
+Agent Request: "Jenkins is down, can I skip group::check_jenkins_build?"
 
 System Response:
-1. Query alternative workflows for same outcome
-2. Suggest fallback actions from error_patterns
-3. Escalate to higher hierarchy level if needed
-4. Provide troubleshooting workflows
+1. Check component requirements and dependencies
+2. Identify alternative validation methods
+3. Suggest workflow modifications:
+   "You can substitute with sequence::local_validation:
+   - Run full test suite locally
+   - Perform manual integration checks
+   - Document Jenkins bypass in commit message
+   - Schedule Jenkins validation for when service returns"
 ```
+
+### 5. Template Override and Customization
+```
+Agent Request: "This task needs workflow::hotfix instead of workflow::default"
+
+System Processing:
+1. Validate hotfix workflow applicability
+2. Re-expand instruction set with hotfix template
+3. Preserve original user task in new template
+4. Update execution tracking for new workflow
+5. Notify of template change and adjusted expectations
+
+New Instruction Set:
+- 3 pre-task operational instructions (expedited)
+- 1 original user task (unchanged)
+- 3 post-task operational instructions (streamlined)
+- Total: 7-step expedited workflow
+```
+
+---
+
+## Key Benefits of Template Injection System
+
+### 1. Task Preservation
+- **Original Intent Maintained**: User tasks remain exactly as specified
+- **Context Preservation**: Core task meaning never altered by operational procedures
+- **Natural Flow**: Agent sees unified instruction set, not fragmented workflows
+- **Debugging Clarity**: Easy to identify user task vs. operational overhead
+
+### 2. Operational Consistency
+- **Standardized Procedures**: Every task follows proven operational patterns
+- **Reduced Cognitive Load**: Agents don't need to remember operational steps
+- **Quality Assurance**: Built-in validation and testing procedures
+- **Compliance Automation**: Regulatory and security requirements automatically included
+
+### 3. Flexible Application
+- **Multi-Level Injection**: Apply workflows at Project, Milestone, Phase, Task, or Subtask level
+- **Frequency Control**: High-frequency (every task) vs. low-frequency (per milestone) workflows
+- **Context-Aware Selection**: Different workflows for different project types or urgency levels
+- **Dynamic Adaptation**: Switch workflows mid-project based on changing requirements
+
+### 4. Scalable Workflow Management
+- **Reusable Components**: Groups, sequences, and actions can be shared across workflows
+- **Template Evolution**: Workflows improve over time based on project outcomes
+- **Organizational Learning**: Successful patterns automatically propagated to new projects
+- **Tool Integration**: Seamless integration with MCP tools and external services
+
+### 5. Agent Experience Optimization
+- **Single Instruction Stream**: Agent receives one coherent task list
+- **Clear Dependencies**: Operational steps properly sequenced around user task
+- **Progress Tracking**: Component-level completion tracking for detailed progress
+- **Error Handling**: Built-in fallback procedures for common failure scenarios
+
+## Implementation Considerations
+
+### 1. Template Design Principles
+- **Non-Interference**: Operational instructions must not conflict with user task execution
+- **Contextual Relevance**: Components should enhance rather than distract from core task
+- **Tool Availability**: Validate required MCP tools are accessible before injection
+- **Time Management**: Balance thoroughness with execution speed
+
+### 2. Component Granularity
+```
+Action Level (1-3 minutes):
+- Single atomic operation
+- Minimal context switching
+- Clear success criteria
+
+Group Level (5-15 minutes):
+- Related set of actions
+- Logical operational unit
+- Shared context and tools
+
+Sequence Level (10-30 minutes):
+- Ordered workflow segment
+- Multiple groups or actions
+- Specific outcome focus
+
+Workflow Level (30+ minutes):
+- Complete operational template
+- Multiple sequences and groups
+- End-to-end process coverage
+```
+
+### 3. Performance Optimization
+- **Template Caching**: Pre-compile frequently used templates
+- **Lazy Expansion**: Only expand components when needed
+- **Parallel Processing**: Execute independent components concurrently
+- **Resource Management**: Monitor tool usage and availability
+
+### 4. Quality Assurance
+- **Template Validation**: Verify component compatibility before deployment
+- **Execution Monitoring**: Track component success rates and failure patterns
+- **Feedback Integration**: Use agent feedback to improve template effectiveness
+- **A/B Testing**: Compare different workflow approaches for optimization
 
 ---
 
