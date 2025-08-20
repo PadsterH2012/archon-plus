@@ -381,8 +381,14 @@ async def update_workflow(workflow_id: str, request: UpdateWorkflowTemplateReque
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
+class CloneWorkflowRequest(BaseModel):
+    """Request model for cloning workflows"""
+    new_name: Optional[str] = None
+    new_title: Optional[str] = None
+
+
 @router.post("/{workflow_id}/clone")
-async def clone_workflow(workflow_id: str, new_name: str = None, new_title: str = None):
+async def clone_workflow(workflow_id: str, request: CloneWorkflowRequest = None):
     """
     Clone/copy a workflow template.
 
@@ -405,6 +411,10 @@ async def clone_workflow(workflow_id: str, new_name: str = None, new_title: str 
                 raise HTTPException(status_code=500, detail=result)
 
         source_workflow = result["template"]
+
+        # Extract parameters from request
+        new_name = request.new_name if request else None
+        new_title = request.new_title if request else None
 
         # Generate new name and title if not provided
         if not new_name:
