@@ -332,6 +332,22 @@ def register_modules():
     else:
         logger.info("⚠ Project module skipped - Projects are disabled")
 
+    # Import and register Component module - only if Projects are enabled
+    if projects_enabled:
+        try:
+            from src.mcp.modules.component_module import register_component_tools
+
+            register_component_tools(mcp)
+            modules_registered += 1
+            logger.info("✓ Component module registered (HTTP-based)")
+        except ImportError as e:
+            logger.warning(f"⚠ Component module not available: {e}")
+        except Exception as e:
+            logger.error(f"✗ Error registering Component module: {e}")
+            logger.error(traceback.format_exc())
+    else:
+        logger.info("⚠ Component module skipped - Projects are disabled")
+
     # Import and register Shell module for command execution
     try:
         from src.mcp.modules.shell_module import register_shell_tools
