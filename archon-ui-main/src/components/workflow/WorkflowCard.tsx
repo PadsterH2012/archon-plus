@@ -165,13 +165,14 @@ export const WorkflowCard: React.FC<WorkflowCardProps> = ({
 
           <div className="relative ml-4">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
               icon={<MoreVertical className="w-4 h-4" />}
+              className="hover:bg-gray-100 dark:hover:bg-gray-700"
             />
             
             {showMenu && (
