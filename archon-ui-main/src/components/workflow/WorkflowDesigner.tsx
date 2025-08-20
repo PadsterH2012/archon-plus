@@ -79,207 +79,102 @@ interface WorkflowDesignerProps {
   isDarkMode?: boolean;
 }
 
-// Custom node components
-const ActionNode: React.FC<NodeProps<WorkflowNodeData>> = ({ data, id, selected }) => {
+// Standardized node component for all step types
+const StandardNode: React.FC<NodeProps<WorkflowNodeData>> = ({ data, id, selected }) => {
   const isValid = data.isValid !== false;
-  
+
   return (
     <div className={`
-      relative group min-w-[200px] p-4 rounded-lg border-2 transition-all duration-200
-      ${selected ? 'border-purple-500 shadow-lg' : 'border-gray-300 dark:border-gray-600'}
+      relative group w-[240px] h-[80px] p-4 rounded-lg border-2 transition-all duration-200 flex items-center justify-center
+      ${selected ? 'border-blue-500 shadow-lg' : 'border-gray-300 dark:border-gray-600'}
       ${isValid ? 'bg-white dark:bg-gray-800' : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-600'}
       hover:shadow-md cursor-pointer
     `}>
       <Handle
         type="target"
         position={Position.Top}
-        className="w-3 h-3 !bg-purple-500 !border-2 !border-white"
+        className="w-3 h-3 !bg-blue-500 !border-2 !border-white"
       />
-      
-      <div className="flex items-center space-x-2 mb-2">
-        <Zap className="w-4 h-4 text-purple-500" />
-        <span className="font-medium text-gray-900 dark:text-white">
-          {data.label}
-        </span>
-      </div>
-      
-      {data.toolName && (
-        <Badge color="blue" size="sm" className="mb-2">
-          {data.toolName}
-        </Badge>
+
+      {/* Only display the step title */}
+      <span className="font-medium text-gray-900 dark:text-white text-center text-sm leading-tight">
+        {data.label}
+      </span>
+
+      {/* Error indicator for invalid steps */}
+      {!isValid && (
+        <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></div>
       )}
-      
-      {data.description && (
-        <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-          {data.description}
-        </p>
-      )}
-      
-      {!isValid && data.errors && (
-        <div className="text-xs text-red-600 dark:text-red-400">
-          {data.errors.join(', ')}
-        </div>
-      )}
-      
+
       <Handle
         type="source"
         position={Position.Bottom}
-        className="w-3 h-3 !bg-purple-500 !border-2 !border-white"
+        className="w-3 h-3 !bg-blue-500 !border-2 !border-white"
       />
     </div>
   );
 };
 
+// Action node using standard shape
+const ActionNode: React.FC<NodeProps<WorkflowNodeData>> = (props) => {
+  return <StandardNode {...props} />;
+};
+
 const ConditionNode: React.FC<NodeProps<WorkflowNodeData>> = ({ data, id, selected }) => {
   const isValid = data.isValid !== false;
-  
+
   return (
     <div className={`
-      relative group min-w-[180px] p-4 rounded-lg border-2 transition-all duration-200
-      ${selected ? 'border-orange-500 shadow-lg' : 'border-gray-300 dark:border-gray-600'}
+      relative group w-[240px] h-[80px] p-4 rounded-lg border-2 transition-all duration-200 flex items-center justify-center
+      ${selected ? 'border-blue-500 shadow-lg' : 'border-gray-300 dark:border-gray-600'}
       ${isValid ? 'bg-white dark:bg-gray-800' : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-600'}
-      hover:shadow-md cursor-pointer transform rotate-45 origin-center
+      hover:shadow-md cursor-pointer
     `}>
       <Handle
         type="target"
         position={Position.Top}
-        className="w-3 h-3 !bg-orange-500 !border-2 !border-white"
+        className="w-3 h-3 !bg-blue-500 !border-2 !border-white"
       />
-      
-      <div className="transform -rotate-45 text-center">
-        <div className="flex items-center justify-center space-x-1 mb-1">
-          <GitBranch className="w-4 h-4 text-orange-500" />
-          <span className="font-medium text-gray-900 dark:text-white text-sm">
-            {data.label}
-          </span>
-        </div>
-        
-        {data.description && (
-          <p className="text-xs text-gray-600 dark:text-gray-400">
-            {data.description}
-          </p>
-        )}
-      </div>
-      
+
+      {/* Only display the step title */}
+      <span className="font-medium text-gray-900 dark:text-white text-center text-sm leading-tight">
+        {data.label}
+      </span>
+
+      {/* Error indicator for invalid steps */}
+      {!isValid && (
+        <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+      )}
+
+      {/* Dual outputs for conditional logic - positioned at bottom corners */}
       <Handle
         type="source"
-        position={Position.Right}
+        position={Position.Bottom}
         id="success"
+        style={{ left: '25%' }}
         className="w-3 h-3 !bg-green-500 !border-2 !border-white"
       />
       <Handle
         type="source"
-        position={Position.Left}
+        position={Position.Bottom}
         id="failure"
+        style={{ left: '75%' }}
         className="w-3 h-3 !bg-red-500 !border-2 !border-white"
       />
     </div>
   );
 };
 
-const ParallelNode: React.FC<NodeProps<WorkflowNodeData>> = ({ data, id, selected }) => {
-  return (
-    <div className={`
-      relative group min-w-[200px] p-4 rounded-lg border-2 transition-all duration-200
-      ${selected ? 'border-blue-500 shadow-lg' : 'border-gray-300 dark:border-gray-600'}
-      bg-white dark:bg-gray-800 hover:shadow-md cursor-pointer
-    `}>
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="w-3 h-3 !bg-blue-500 !border-2 !border-white"
-      />
-      
-      <div className="flex items-center space-x-2 mb-2">
-        <List className="w-4 h-4 text-blue-500" />
-        <span className="font-medium text-gray-900 dark:text-white">
-          {data.label}
-        </span>
-      </div>
-      
-      <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-        Parallel Execution
-      </div>
-      
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="w-3 h-3 !bg-blue-500 !border-2 !border-white"
-      />
-    </div>
-  );
+const ParallelNode: React.FC<NodeProps<WorkflowNodeData>> = (props) => {
+  return <StandardNode {...props} />;
 };
 
-const LoopNode: React.FC<NodeProps<WorkflowNodeData>> = ({ data, id, selected }) => {
-  return (
-    <div className={`
-      relative group min-w-[200px] p-4 rounded-lg border-2 transition-all duration-200
-      ${selected ? 'border-green-500 shadow-lg' : 'border-gray-300 dark:border-gray-600'}
-      bg-white dark:bg-gray-800 hover:shadow-md cursor-pointer
-    `}>
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="w-3 h-3 !bg-green-500 !border-2 !border-white"
-      />
-      
-      <div className="flex items-center space-x-2 mb-2">
-        <RotateCcw className="w-4 h-4 text-green-500" />
-        <span className="font-medium text-gray-900 dark:text-white">
-          {data.label}
-        </span>
-      </div>
-      
-      <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-        Loop Iteration
-      </div>
-      
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="w-3 h-3 !bg-green-500 !border-2 !border-white"
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="loop"
-        className="w-3 h-3 !bg-green-500 !border-2 !border-white"
-      />
-    </div>
-  );
+const LoopNode: React.FC<NodeProps<WorkflowNodeData>> = (props) => {
+  return <StandardNode {...props} />;
 };
 
-const WorkflowLinkNode: React.FC<NodeProps<WorkflowNodeData>> = ({ data, id, selected }) => {
-  return (
-    <div className={`
-      relative group min-w-[200px] p-4 rounded-lg border-2 transition-all duration-200
-      ${selected ? 'border-cyan-500 shadow-lg' : 'border-gray-300 dark:border-gray-600'}
-      bg-white dark:bg-gray-800 hover:shadow-md cursor-pointer
-    `}>
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="w-3 h-3 !bg-cyan-500 !border-2 !border-white"
-      />
-      
-      <div className="flex items-center space-x-2 mb-2">
-        <Link className="w-4 h-4 text-cyan-500" />
-        <span className="font-medium text-gray-900 dark:text-white">
-          {data.label}
-        </span>
-      </div>
-      
-      <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-        Sub-workflow
-      </div>
-      
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="w-3 h-3 !bg-cyan-500 !border-2 !border-white"
-      />
-    </div>
-  );
+const WorkflowLinkNode: React.FC<NodeProps<WorkflowNodeData>> = (props) => {
+  return <StandardNode {...props} />;
 };
 
 // Node types mapping
@@ -406,7 +301,8 @@ const WorkflowDesignerInner: React.FC<WorkflowDesignerProps> = ({
         newNodes.push({
           id: nodeId,
           type: step.type,
-          position: { x: 100 + (index % 3) * 250, y: 100 + Math.floor(index / 3) * 150 },
+          // Vertical top-down layout: centered horizontally, spaced vertically
+          position: { x: 300, y: 100 + index * 180 },
           data: {
             label: step.title,
             stepType: step.type,
@@ -468,7 +364,8 @@ const WorkflowDesignerInner: React.FC<WorkflowDesignerProps> = ({
     const newNode: Node<WorkflowNodeData> = {
       id: nodeId,
       type: stepType,
-      position: { x: 100 + (nodes.length % 3) * 250, y: 100 + Math.floor(nodes.length / 3) * 150 },
+      // Vertical top-down layout: centered horizontally, positioned below existing nodes
+      position: { x: 300, y: 100 + nodes.length * 180 },
       data: {
         label: `New ${stepType}`,
         stepType,
@@ -476,7 +373,7 @@ const WorkflowDesignerInner: React.FC<WorkflowDesignerProps> = ({
         errors: ['Step needs configuration']
       }
     };
-    
+
     setNodes((nds) => [...nds, newNode]);
     setSelectedNode(newNode);
   }, [nodes.length]);
