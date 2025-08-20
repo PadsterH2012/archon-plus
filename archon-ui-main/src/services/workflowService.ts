@@ -111,13 +111,35 @@ class WorkflowService {
   }
 
   /**
+   * Clone/copy a workflow template
+   */
+  async cloneWorkflow(workflowId: string, newName?: string, newTitle?: string): Promise<{ message: string; cloned_workflow: WorkflowTemplate }> {
+    const response = await fetch(`${API_BASE}/${workflowId}/clone`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        new_name: newName,
+        new_title: newTitle
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to clone workflow: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  /**
    * Validate a workflow template
    */
   async validateWorkflow(workflowId: string): Promise<WorkflowValidationResult> {
     const response = await fetch(`${API_BASE}/${workflowId}/validate`, {
       method: 'POST',
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to validate workflow: ${response.statusText}`);
     }

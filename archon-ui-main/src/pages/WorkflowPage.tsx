@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { Workflow, Activity, Plus, History, GitBranch, Users, Clock, BarChart3 } from 'lucide-react';
+import { Workflow, Activity, Plus, History, GitBranch, Users, Clock, BarChart3, Edit, Copy, Trash2 } from 'lucide-react';
 import { WorkflowBuilder } from '../components/workflow/WorkflowBuilder';
 import { WorkflowExecutionDashboard } from '../components/workflow/WorkflowExecutionDashboard';
 import { WorkflowAnalytics } from '../components/workflow/WorkflowAnalytics';
 import { WorkflowScheduler } from '../components/workflow/WorkflowScheduler';
+import { workflowService } from '../services/workflowService';
 
 // Enhanced workflow dashboard with navigation to advanced features
 const SimpleWorkflowDashboard: React.FC = () => {
@@ -93,6 +94,47 @@ const SimpleWorkflowDashboard: React.FC = () => {
       }
     } catch (err) {
       alert(`❌ Error creating workflow: ${err}`);
+    }
+  };
+
+  // Handler functions for workflow actions
+  const handleEditWorkflow = async (workflow: any) => {
+    try {
+      // For now, navigate to the builder with the workflow
+      navigate('/workflows/builder', { state: { workflow } });
+    } catch (error) {
+      alert(`❌ Error opening workflow editor: ${error}`);
+    }
+  };
+
+  const handleCloneWorkflow = async (workflow: any) => {
+    try {
+      const newTitle = `${workflow.title} (Copy)`;
+      const newName = `${workflow.name}_copy_${Date.now()}`;
+
+      const result = await workflowService.cloneWorkflow(workflow.id, newName, newTitle);
+      alert(`✅ Workflow cloned successfully!\n\n📋 New Workflow: ${result.cloned_workflow.title}`);
+
+      // Refresh the workflows list
+      window.location.reload();
+    } catch (error) {
+      alert(`❌ Error cloning workflow: ${error}`);
+    }
+  };
+
+  const handleDeleteWorkflow = async (workflow: any) => {
+    if (!confirm(`⚠️ Are you sure you want to delete "${workflow.title}"?\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await workflowService.deleteWorkflow(workflow.id);
+      alert(`✅ Workflow "${workflow.title}" deleted successfully!`);
+
+      // Refresh the workflows list
+      window.location.reload();
+    } catch (error) {
+      alert(`❌ Error deleting workflow: ${error}`);
     }
   };
 
@@ -192,21 +234,24 @@ const SimpleWorkflowDashboard: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => alert(`Edit workflow: ${workflow.title}`)}
+                      onClick={() => handleEditWorkflow(workflow)}
                       className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
                     >
+                      <Edit className="w-3 h-3" />
                       Edit
                     </button>
                     <button
-                      onClick={() => alert(`Clone workflow: ${workflow.title}`)}
+                      onClick={() => handleCloneWorkflow(workflow)}
                       className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-colors"
                     >
+                      <Copy className="w-3 h-3" />
                       Clone
                     </button>
                     <button
-                      onClick={() => alert(`Delete workflow: ${workflow.title}`)}
+                      onClick={() => handleDeleteWorkflow(workflow)}
                       className="flex items-center gap-1 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
                     >
+                      <Trash2 className="w-3 h-3" />
                       Delete
                     </button>
                   </div>
