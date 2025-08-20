@@ -7,10 +7,8 @@
 
 import React, { useState } from 'react';
 import {
-  Play,
   Edit,
   Trash2,
-  Eye,
   Clock,
   User,
   Tag,
@@ -113,17 +111,6 @@ export const WorkflowCard: React.FC<WorkflowCardProps> = ({
   const complexity = getComplexity();
 
   const menuItems = [
-    {
-      label: 'View Details',
-      icon: <Eye className="w-4 h-4" />,
-      onClick: () => onSelect?.(workflow)
-    },
-    {
-      label: 'Execute',
-      icon: <Play className="w-4 h-4" />,
-      onClick: () => onExecute?.(workflow.id),
-      disabled: workflow.status !== WorkflowStatus.ACTIVE
-    },
     {
       label: 'Edit',
       icon: <Edit className="w-4 h-4" />,
@@ -270,47 +257,7 @@ export const WorkflowCard: React.FC<WorkflowCardProps> = ({
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center space-x-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onExecute?.(workflow.id);
-            }}
-            icon={<Play className="w-4 h-4" />}
-            accentColor={accentColor}
-            disabled={workflow.status !== WorkflowStatus.ACTIVE}
-            className="flex-1"
-          >
-            Execute
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit?.(workflow);
-            }}
-            icon={<Edit className="w-4 h-4" />}
-          >
-            Edit
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect?.(workflow);
-            }}
-            icon={<Eye className="w-4 h-4" />}
-          >
-            View
-          </Button>
-        </div>
+
       </div>
     </Card>
   );
