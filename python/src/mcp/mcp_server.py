@@ -348,6 +348,22 @@ def register_modules():
     else:
         logger.info("⚠ Component module skipped - Projects are disabled")
 
+    # Import and register Template module - only if Projects are enabled
+    if projects_enabled:
+        try:
+            from src.mcp.modules.template_module import register_template_tools
+
+            register_template_tools(mcp)
+            modules_registered += 1
+            logger.info("✓ Template module registered (HTTP-based)")
+        except ImportError as e:
+            logger.warning(f"⚠ Template module not available: {e}")
+        except Exception as e:
+            logger.error(f"✗ Error registering Template module: {e}")
+            logger.error(traceback.format_exc())
+    else:
+        logger.info("⚠ Template module skipped - Projects are disabled")
+
     # Import and register Shell module for command execution
     try:
         from src.mcp.modules.shell_module import register_shell_tools
