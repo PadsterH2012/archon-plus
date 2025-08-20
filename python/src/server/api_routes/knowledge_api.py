@@ -262,13 +262,17 @@ async def get_knowledge_item_code_examples(source_id: str):
 async def refresh_knowledge_item(source_id: str):
     """Refresh a knowledge item by re-crawling its URL with the same metadata."""
     try:
+        safe_logfire_info(f"🚀 REFRESH ENDPOINT CALLED | source_id={source_id}")
         safe_logfire_info(f"Starting knowledge item refresh | source_id={source_id}")
 
         # Get the existing knowledge item
         service = KnowledgeItemService(get_supabase_client())
+        safe_logfire_info(f"🔍 Getting existing item | source_id={source_id}")
         existing_item = await service.get_item(source_id)
+        safe_logfire_info(f"📋 Got existing item | source_id={source_id} | found={existing_item is not None}")
 
         if not existing_item:
+            safe_logfire_error(f"❌ Knowledge item not found | source_id={source_id}")
             raise HTTPException(
                 status_code=404, detail={"error": f"Knowledge item {source_id} not found"}
             )
