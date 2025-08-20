@@ -260,42 +260,38 @@ export const WorkflowCard: React.FC<WorkflowCardProps> = ({
 
         {/* Actions */}
         <div className="flex items-center space-x-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onEdit?.(workflow);
             }}
-            icon={<Edit className="w-4 h-4" />}
+            className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
           >
+            <Edit className="w-4 h-4" />
             Edit
-          </Button>
+          </button>
 
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onClone?.(workflow.id);
             }}
-            icon={<Copy className="w-4 h-4" />}
+            className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-colors"
           >
+            <Copy className="w-4 h-4" />
             Clone
-          </Button>
+          </button>
 
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onDelete?.(workflow.id);
             }}
-            icon={<Trash2 className="w-4 h-4" />}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+            className="flex items-center gap-1 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
           >
+            <Trash2 className="w-4 h-4" />
             Delete
-          </Button>
+          </button>
         </div>
       </div>
     </Card>
