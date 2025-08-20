@@ -6,14 +6,27 @@ shared between MCP tools and FastAPI endpoints.
 """
 
 # Removed direct logging import - using unified config
+import os
+import time
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
+from uuid import UUID
 
 from src.server.utils import get_supabase_client
 
 from ...config.logfire_config import get_logger
 
 logger = get_logger(__name__)
+
+# Import template injection service for task description expansion
+try:
+    from ..template_injection_service import get_template_injection_service
+    _template_injection_available = True
+    logger.info("✅ Template injection service is AVAILABLE")
+except ImportError as e:
+    logger.warning(f"❌ Template injection service not available - ImportError: {e}")
+    _template_injection_available = False
+    get_template_injection_service = None
 
 # Import Socket.IO instance directly to avoid circular imports
 try:
@@ -78,6 +91,40 @@ class TaskService:
             return False, "Assignee must be a non-empty string"
         return True, ""
 
+    def _is_template_injection_enabled(
+        self,
+        enable_template_injection: Optional[bool],
+        project_id: str
+    ) -> bool:
+        """
+        Check if template injection is enabled based on feature flags.
+
+        Args:
+            enable_template_injection: Explicit override (True/False/None)
+            project_id: Project ID for per-project control
+
+        Returns:
+            True if template injection should be enabled
+        """
+        # Explicit override takes precedence
+        if enable_template_injection is not None:
+            return enable_template_injection
+
+        # Check global feature flag
+        global_enabled = os.getenv("TEMPLATE_INJECTION_ENABLED", "false").lower() == "true"
+        if not global_enabled:
+            return False
+
+        # Check per-project control
+        enabled_projects = os.getenv("TEMPLATE_INJECTION_PROJECTS", "")
+        if enabled_projects:
+            # If specific projects are listed, only enable for those
+            project_list = [p.strip() for p in enabled_projects.split(",")]
+            return project_id in project_list
+
+        # Global enabled and no project restrictions
+        return True
+
     async def create_task(
         self,
         project_id: str,
@@ -88,6 +135,8 @@ class TaskService:
         feature: str | None = None,
         sources: list[dict[str, Any]] = None,
         code_examples: list[dict[str, Any]] = None,
+        template_name: str = "workflow_default",
+        enable_template_injection: Optional[bool] = None,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Create a new task under a project with automatic reordering.
@@ -107,6 +156,82 @@ class TaskService:
             is_valid, error_msg = self.validate_assignee(assignee)
             if not is_valid:
                 return False, {"error": error_msg}
+
+            # Template injection logic
+            original_description = description
+            template_metadata = {}
+            expanded_description = description
+
+            # Check if template injection is enabled
+            template_injection_enabled = self._is_template_injection_enabled(
+                enable_template_injection, project_id
+            )
+
+            if template_injection_enabled and _template_injection_available:
+                try:
+                    start_time = time.time()
+                    template_service = get_template_injection_service()
+
+                    # Expand task description with template
+                    try:
+                        project_uuid = UUID(project_id) if project_id else None
+                    except ValueError:
+                        # If project_id is not a valid UUID, pass None
+                        project_uuid = None
+
+                    expansion_response = await template_service.expand_task_description(
+                        original_description=original_description,
+                        project_id=project_uuid,
+                        template_name=template_name,
+                        context_data={}
+                    )
+
+                    if expansion_response.success and expansion_response.result:
+                        expanded_description = expansion_response.result.expanded_instructions
+                        template_metadata = {
+                            "template_injection_enabled": True,
+                            "template_name": template_name,
+                            "original_description": original_description,
+                            "expansion_time_ms": expansion_response.result.expansion_time_ms,
+                            "template_metadata": expansion_response.result.template_metadata or {}
+                        }
+
+                        duration = time.time() - start_time
+                        logger.info(
+                            f"Template injection successful for task '{title}' "
+                            f"(template: {template_name}, duration: {duration*1000:.2f}ms)"
+                        )
+                    else:
+                        # Template expansion failed, use original description
+                        logger.warning(
+                            f"Template expansion failed for task '{title}': {expansion_response.error}"
+                        )
+                        template_metadata = {
+                            "template_injection_enabled": True,
+                            "template_name": template_name,
+                            "original_description": original_description,
+                            "expansion_failed": True,
+                            "expansion_error": expansion_response.error
+                        }
+
+                except Exception as e:
+                    # Template injection failed, use original description
+                    logger.error(f"Template injection error for task '{title}': {e}")
+                    template_metadata = {
+                        "template_injection_enabled": True,
+                        "template_name": template_name,
+                        "original_description": original_description,
+                        "expansion_failed": True,
+                        "expansion_error": str(e)
+                    }
+            else:
+                # Template injection disabled or not available
+                template_metadata = {
+                    "template_injection_enabled": False,
+                    "original_description": original_description
+                }
+                if not _template_injection_available:
+                    template_metadata["template_injection_unavailable"] = True
 
             task_status = "todo"
 
@@ -136,12 +261,13 @@ class TaskService:
             task_data = {
                 "project_id": project_id,
                 "title": title,
-                "description": description,
+                "description": expanded_description,  # Use expanded description
                 "status": task_status,
                 "assignee": assignee,
                 "task_order": task_order,
                 "sources": sources or [],
                 "code_examples": code_examples or [],
+                "template_metadata": template_metadata,  # Include template metadata
                 "created_at": datetime.now().isoformat(),
                 "updated_at": datetime.now().isoformat(),
             }
