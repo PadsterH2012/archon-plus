@@ -1,0 +1,524 @@
+0 OK"
+
+2025-08-21 19:31:55 | httpx | INFO | HTTP Request: HEAD https://gifepwbtqkhiblgjgabq.supabase.co/rest/v1/archon_code_examples?select=id&source_id=eq.file_test_database_config_fix_txt_1755797018 "HTTP/2 200 OK"
+
+  File "/root/.local/lib/python3.11/site-packages/starlette/routing.py", line 694, in lifespan
+
+19:31:55.871 Getting credential | key=DISCONNECT_SCREEN_ENABLED | decrypt=True
+
+19:31:55.872 Credential retrieved successfully | key=DISCONNECT_SCREEN_ENABLED
+
+    async with self.lifespan_context(app) as maybe_state:
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+19:31:55.872 Getting credential | key=PROJECTS_ENABLED | decrypt=True
+
+    return await anext(self.gen)
+
+19:31:55.873 Credential retrieved successfully | key=PROJECTS_ENABLED
+
+INFO:     10.0.8.7:36372 - "WebSocket /socket.io/?session_id=feb91a86-99e4-445d-bfef-dcb19103beec&EIO=4&transport=websocket" [accepted]
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+INFO:     connection open
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | INFO | 🔌 [SOCKETIO] Client connected: PI4BvtMi7tTIFlW2AAAB from 127.0.0.1
+
+    async with original_context(app) as maybe_original_state:
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | INFO | 🔌 [SOCKETIO] Query params: session_id=feb91a86-99e4-445d-bfef-dcb19103beec&EIO=4&transport=websocket
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | INFO | 🔌 [SOCKETIO] User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+
+    return await anext(self.gen)
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | DEBUG | 🔌 New connection:
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | DEBUG |   - SID: PI4BvtMi7tTIFlW2AAAB
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | DEBUG |   - Address: 127.0.0.1
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+    async with original_context(app) as maybe_original_state:
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+    return await anext(self.gen)
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+    async with original_context(app) as maybe_original_state:
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+    return await anext(self.gen)
+
+code
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+  Field required [type=missing, input_value={'message': 'Invalid API ...service_role` API key.'}, input_type=dict]
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | DEBUG |   - Query: session_id=feb91a86-99e4-445d-bfef-dcb19103beec&EIO=4&transport=websocket
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+    async with original_context(app) as maybe_original_state:
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | DEBUG |   - Transport: websocket
+
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | DEBUG |   - Session ID: feb91a86-99e4-445d-bfef-dcb19103beec
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+details
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | DEBUG | Total connected clients: 1
+
+    return await anext(self.gen)
+
+  Field required [type=missing, input_value={'message': 'Invalid API ...service_role` API key.'}, input_type=dict]
+
+2025-08-21 19:31:55 | src.server.api_routes.agent_chat_api | INFO | Client PI4BvtMi7tTIFlW2AAAB joined chat room feb91a86-99e4-445d-bfef-dcb19103beec
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+INFO:     10.0.8.7:36382 - "WebSocket /socket.io/?session_id=63c7ea63-60cc-4c3a-8325-f31d4d12ebdf&EIO=4&transport=websocket" [accepted]
+
+INFO:     connection open
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | INFO | 🔌 [SOCKETIO] Client connected: xt2ByjEVUGSe9cUCAAAD from 127.0.0.1
+
+    async with original_context(app) as maybe_original_state:
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | INFO | 🔌 [SOCKETIO] Query params: session_id=63c7ea63-60cc-4c3a-8325-f31d4d12ebdf&EIO=4&transport=websocket
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | INFO | 🔌 [SOCKETIO] User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | DEBUG | 🔌 New connection:
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | DEBUG |   - SID: xt2ByjEVUGSe9cUCAAAD
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | DEBUG |   - Address: 127.0.0.1
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | DEBUG |   - Query: session_id=63c7ea63-60cc-4c3a-8325-f31d4d12ebdf&EIO=4&transport=websocket
+
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | DEBUG |   - Transport: websocket
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | DEBUG |   - Session ID: 63c7ea63-60cc-4c3a-8325-f31d4d12ebdf
+
+2025-08-21 19:31:55 | src.server.api_routes.socketio_handlers | DEBUG | Total connected clients: 2
+
+During handling of the above exception, another exception occurred:
+
+2025-08-21 19:31:55 | src.server.api_routes.agent_chat_api | INFO | Client xt2ByjEVUGSe9cUCAAAD joined chat room 63c7ea63-60cc-4c3a-8325-f31d4d12ebdf
+
+19:32:06.564 Listing workflows | page=1 | per_page=20 | status=None | category=None | search=None
+
+2025-08-21 19:32:06 | search | INFO | Supabase client initialized - project_id=gifepwbtqkhiblgjgabq
+
+Traceback (most recent call last):
+
+2025-08-21 19:32:06 | src.server.services.workflow.workflow_repository | INFO | Listing workflow templates with filters: none
+
+  File "/root/.local/lib/python3.11/site-packages/starlette/routing.py", line 694, in lifespan
+
+2025-08-21 19:32:06 | httpx | INFO | HTTP Request: GET https://gifepwbtqkhiblgjgabq.supabase.co/rest/v1/archon_workflow_templates?select=%2A&order=created_at.desc&offset=0&limit=20 "HTTP/2 200 OK"
+
+    async with self.lifespan_context(app) as maybe_state:
+
+19:32:06.756 Listed 0 workflows | page=1 | has_more=False
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+    return await anext(self.gen)
+
+19:32:06.759 Getting credential | key=DISCONNECT_SCREEN_ENABLED | decrypt=True
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+19:32:06.759 Credential retrieved successfully | key=DISCONNECT_SCREEN_ENABLED
+
+19:32:06.760 Getting credential | key=PROJECTS_ENABLED | decrypt=True
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+    async with original_context(app) as maybe_original_state:
+
+19:32:06.760 Credential retrieved successfully | key=PROJECTS_ENABLED
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+2025-08-21 19:32:06 | search | INFO | Supabase client initialized - project_id=gifepwbtqkhiblgjgabq
+
+    return await anext(self.gen)
+
+2025-08-21 19:32:06 | httpx | INFO | HTTP Request: HEAD https://gifepwbtqkhiblgjgabq.supabase.co/rest/v1/archon_sources?select=%2A "HTTP/2 200 OK"
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+2025-08-21 19:32:07 | httpx | INFO | HTTP Request: GET https://gifepwbtqkhiblgjgabq.supabase.co/rest/v1/archon_sources?select=%2A&offset=0&limit=100 "HTTP/2 200 OK"
+
+    async with original_context(app) as maybe_original_state:
+
+2025-08-21 19:32:07 | httpx | INFO | HTTP Request: GET https://gifepwbtqkhiblgjgabq.supabase.co/rest/v1/archon_crawled_pages?select=source_id%2Curl&source_id=in.%28file_dev_test_upload_txt_1755788635%2Cfile_naming_conventions_md_1755788695%2Cfile_test_ollama_integration_txt_1755795725%2Cfile_test_dev_ollama_fresh_txt_1755796573%2Cfile_test_database_config_fix_txt_1755797018%29 "HTTP/2 200 OK"
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+2025-08-21 19:32:07 | httpx | INFO | HTTP Request: HEAD https://gifepwbtqkhiblgjgabq.supabase.co/rest/v1/archon_code_examples?select=id&source_id=eq.file_dev_test_upload_txt_1755788635 "HTTP/2 200 OK"
+
+    return await anext(self.gen)
+
+2025-08-21 19:32:07 | httpx | INFO | HTTP Request: HEAD https://gifepwbtqkhiblgjgabq.supabase.co/rest/v1/archon_code_examples?select=id&source_id=eq.file_naming_conventions_md_1755788695 "HTTP/2 200 OK"
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+2025-08-21 19:32:07 | httpx | INFO | HTTP Request: HEAD https://gifepwbtqkhiblgjgabq.supabase.co/rest/v1/archon_code_examples?select=id&source_id=eq.file_test_ollama_integration_txt_1755795725 "HTTP/2 200 OK"
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+2025-08-21 19:32:07 | httpx | INFO | HTTP Request: HEAD https://gifepwbtqkhiblgjgabq.supabase.co/rest/v1/archon_code_examples?select=id&source_id=eq.file_test_dev_ollama_fresh_txt_1755796573 "HTTP/2 200 OK"
+
+    async with original_context(app) as maybe_original_state:
+
+2025-08-21 19:32:07 | httpx | INFO | HTTP Request: HEAD https://gifepwbtqkhiblgjgabq.supabase.co/rest/v1/archon_code_examples?select=id&source_id=eq.file_test_database_config_fix_txt_1755797018 "HTTP/2 200 OK"
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+2025-08-21 19:32:07 | src.server.api_routes.agent_chat_api | INFO | Created chat session 2e4ad2e6-462f-4ace-b820-96366862a746 with agent_type: rag
+
+    return await anext(self.gen)
+
+2025-08-21 19:32:07 | src.server.api_routes.agent_chat_api | INFO | Created chat session d6b791c3-0064-4664-9d50-a2bf27691f61 with agent_type: rag
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+19:32:07.905 Getting credential | key=DISCONNECT_SCREEN_ENABLED | decrypt=True
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+19:32:07.905 Credential retrieved successfully | key=DISCONNECT_SCREEN_ENABLED
+
+    async with original_context(app) as maybe_original_state:
+
+19:32:07.905 Getting credential | key=PROJECTS_ENABLED | decrypt=True
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+19:32:07.906 Credential retrieved successfully | key=PROJECTS_ENABLED
+
+    return await anext(self.gen)
+
+INFO:     10.0.8.7:52834 - "WebSocket /socket.io/?session_id=d6b791c3-0064-4664-9d50-a2bf27691f61&EIO=4&transport=websocket" [accepted]
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+INFO:     connection open
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | INFO | 🔌 [SOCKETIO] Client connected: m8QqBt2gJwMeMuQ4AAAF from 127.0.0.1
+
+    async with original_context(app) as maybe_original_state:
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | INFO | 🔌 [SOCKETIO] Query params: session_id=d6b791c3-0064-4664-9d50-a2bf27691f61&EIO=4&transport=websocket
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | INFO | 🔌 [SOCKETIO] User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+
+    return await anext(self.gen)
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | DEBUG | 🔌 New connection:
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | DEBUG |   - SID: m8QqBt2gJwMeMuQ4AAAF
+
+    async with original_context(app) as maybe_original_state:
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | DEBUG |   - Address: 127.0.0.1
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | DEBUG |   - Query: session_id=d6b791c3-0064-4664-9d50-a2bf27691f61&EIO=4&transport=websocket
+
+    return await anext(self.gen)
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | DEBUG |   - Transport: websocket
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | DEBUG |   - Session ID: d6b791c3-0064-4664-9d50-a2bf27691f61
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | DEBUG | Total connected clients: 3
+
+    async with original_context(app) as maybe_original_state:
+
+2025-08-21 19:32:07 | src.server.api_routes.agent_chat_api | INFO | Client m8QqBt2gJwMeMuQ4AAAF joined chat room d6b791c3-0064-4664-9d50-a2bf27691f61
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+INFO:     10.0.8.7:52850 - "WebSocket /socket.io/?session_id=2e4ad2e6-462f-4ace-b820-96366862a746&EIO=4&transport=websocket" [accepted]
+
+    return await anext(self.gen)
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+INFO:     connection open
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | INFO | 🔌 [SOCKETIO] Client connected: 6dLr-NLWtHOyvhURAAAH from 127.0.0.1
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | INFO | 🔌 [SOCKETIO] Query params: session_id=2e4ad2e6-462f-4ace-b820-96366862a746&EIO=4&transport=websocket
+
+    async with original_context(app) as maybe_original_state:
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+    return await anext(self.gen)
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | INFO | 🔌 [SOCKETIO] User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | DEBUG | 🔌 New connection:
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | DEBUG |   - SID: 6dLr-NLWtHOyvhURAAAH
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+    async with original_context(app) as maybe_original_state:
+
+    return await anext(self.gen)
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+    return await anext(self.gen)
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+    async with original_context(app) as maybe_original_state:
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+    async with original_context(app) as maybe_original_state:
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+    return await anext(self.gen)
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+    return await anext(self.gen)
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+    async with original_context(app) as maybe_original_state:
+
+    async with original_context(app) as maybe_original_state:
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+    return await anext(self.gen)
+
+    return await anext(self.gen)
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+    async with original_context(app) as maybe_original_state:
+
+    async with original_context(app) as maybe_original_state:
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+    return await anext(self.gen)
+
+    return await anext(self.gen)
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+    async with original_context(app) as maybe_original_state:
+
+    async with original_context(app) as maybe_original_state:
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+    return await anext(self.gen)
+
+    return await anext(self.gen)
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+    async with original_context(app) as maybe_original_state:
+
+    async with original_context(app) as maybe_original_state:
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+    return await anext(self.gen)
+
+    return await anext(self.gen)
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+  File "/app/src/server/main.py", line 87, in lifespan
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+    await initialize_credentials()
+
+    async with original_context(app) as maybe_original_state:
+
+  File "/app/src/server/services/credential_service.py", line 692, in initialize_credentials
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+    await credential_service.load_all_credentials()
+
+    return await anext(self.gen)
+
+  File "/app/src/server/services/credential_service.py", line 130, in load_all_credentials
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+    result = supabase.table("archon_settings").select("*").execute()
+
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+  File "/root/.local/lib/python3.11/site-packages/postgrest/_sync/request_builder.py", line 80, in execute
+
+    async with original_context(app) as maybe_original_state:
+
+    raise APIError(generate_default_error_message(r))
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+postgrest.exceptions.APIError: {'message': 'JSON could not be generated', 'code': 401, 'hint': 'Refer to full message for details', 'details': 'b\'{"message":"Invalid API key","hint":"Double check your Supabase `anon` or `service_role` API key."}\''}
+
+    return await anext(self.gen)
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+    async with original_context(app) as maybe_original_state:
+
+ERROR:    Application startup failed. Exiting.
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | DEBUG |   - Address: 127.0.0.1
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | DEBUG |   - Query: session_id=2e4ad2e6-462f-4ace-b820-96366862a746&EIO=4&transport=websocket
+
+    return await anext(self.gen)
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | DEBUG |   - Transport: websocket
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | DEBUG |   - Session ID: 2e4ad2e6-462f-4ace-b820-96366862a746
+
+2025-08-21 19:32:07 | src.server.api_routes.socketio_handlers | DEBUG | Total connected clients: 4
+
+  File "/root/.local/lib/python3.11/site-packages/fastapi/routing.py", line 134, in merged_lifespan
+
+2025-08-21 19:32:07 | src.server.api_routes.agent_chat_api | INFO | Client 6dLr-NLWtHOyvhURAAAH joined chat room 2e4ad2e6-462f-4ace-b820-96366862a746
+
+    async with original_context(app) as maybe_original_state:
+
+  File "/usr/local/lib/python3.11/contextlib.py", line 210, in __aenter__
+
+    return await anext(self.gen)
+
+           ^^^^^^^^^^^^^^^^^^^^^
+
+  File "/app/src/server/main.py", line 87, in lifespan
+
+    await initialize_credentials()
+
+  File "/app/src/server/services/credential_service.py", line 692, in initialize_credentials
+
+    await credential_service.load_all_credentials()
+
+  File "/app/src/server/services/credential_service.py", line 130, in load_all_credentials
+
+    result = supabase.table("archon_settings").select("*").execute()
+
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "/root/.local/lib/python3.11/site-packages/postgrest/_sync/request_builder.py", line 80, in execute
+
+    raise APIError(generate_default_error_message(r))
+
+postgrest.exceptions.APIError: {'message': 'JSON could not be generated', 'code': 401, 'hint': 'Refer to full message for details', 'details': 'b\'{"message":"Invalid API key","hint":"Double check your Supabase `anon` or `service_role` API key."}\''}
+
+ERROR:    Application startup failed. Exiting.
+

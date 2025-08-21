@@ -48,6 +48,56 @@ reference the root cause task in the remediation plan task.
 
 to fix it. and update the task with the root cause and remediation plan.
 if its a question, use exisiting documentation where possible, or gather details from sourcecode and ensure the documentation is updated.
+
+## TROUBLESHOOTING CASE: Components Tab Browser Crash Resolution
+
+**Date**: 2025-08-21
+**Environment**: Archon Dev Instance (homelab-archon-plus-b)
+**Issue**: Components tab causing complete browser crashes
+**Status**: ✅ RESOLVED
+
+### Problem Summary
+- Components tab in project view caused browser crashes
+- JavaScript errors: "Cannot read properties of undefined (reading 'map')"
+- Users unable to access component management functionality
+
+### Root Cause
+1. Missing React Error Boundaries for JavaScript exception handling
+2. Template management expecting array data but receiving undefined
+3. Unhandled exceptions propagating to browser level
+
+### Solution Applied
+1. **Added React Error Boundary** (`frontend/src/components/ErrorBoundary.jsx`)
+   - Catches JavaScript errors gracefully
+   - Displays user-friendly error messages
+   - Provides "Try Again" recovery option
+
+2. **Wrapped Template Management** with error boundary
+   - Prevents crashes from propagating
+   - Maintains application stability
+
+3. **Added Defensive Programming**
+   - Null checks: `templateData?.templates || []`
+   - Safe array operations with fallbacks
+   - Default values for undefined data
+
+### Verification Results
+✅ Components tab accessible without browser crashes
+✅ Graceful error handling with user-friendly messages
+✅ Error recovery options available
+✅ Other application areas remain functional
+
+### Prevention Measures
+- Implement error boundaries around major UI components
+- Use defensive programming patterns (optional chaining, default values)
+- Test components with malformed/missing data
+- Provide graceful degradation for all user interfaces
+
+### Files Modified
+- `frontend/src/components/ErrorBoundary.jsx` (new)
+- `frontend/src/components/TemplateManagement.jsx` (updated)
+
+This case demonstrates the importance of proper error handling in React applications and serves as a template for similar frontend debugging scenarios.
 if its a new feature that has no existing documentation, create a task to create a plan.
 do not assume a issue is fixed until the user confirms this, and this must be confirmed in a deployment to archon-dev
 

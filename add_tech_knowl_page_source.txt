@@ -1,0 +1,240 @@
+# Technical Knowledge Page - API Documentation
+
+## Archon Plus API Reference
+
+### Authentication Endpoints
+
+#### POST /api/auth/login
+Authenticate user and obtain access token.
+
+**Request Body:**
+```json
+{
+  "username": "string",
+  "password": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "token": "jwt_token_here",
+  "expires_in": 3600,
+  "user": {
+    "id": "user_id",
+    "username": "username",
+    "role": "admin|user"
+  }
+}
+```
+
+#### POST /api/auth/refresh
+Refresh expired access token.
+
+**Headers:**
+```
+Authorization: Bearer <refresh_token>
+```
+
+### Knowledge Base Endpoints
+
+#### GET /api/knowledge-items
+Retrieve all knowledge base sources.
+
+**Query Parameters:**
+- `page`: Page number (default: 1)
+- `per_page`: Items per page (default: 25, max: 100)
+- `knowledge_type`: Filter by type (technical|business)
+- `tags`: Filter by tags (comma-separated)
+
+**Response:**
+```json
+{
+  "success": true,
+  "sources": [
+    {
+      "source_id": "string",
+      "title": "string",
+      "summary": "string",
+      "metadata": {
+        "tags": ["tag1", "tag2"],
+        "knowledge_type": "technical",
+        "total_words": 1500
+      },
+      "created_at": "2025-08-21T10:30:00Z",
+      "updated_at": "2025-08-21T10:30:00Z"
+    }
+  ],
+  "count": 10,
+  "pagination": {
+    "page": 1,
+    "per_page": 25,
+    "total": 100,
+    "pages": 4
+  }
+}
+```
+
+#### POST /api/documents/upload
+Upload document to knowledge base.
+
+**Content-Type:** multipart/form-data
+
+**Form Fields:**
+- `file`: Document file (PDF, DOCX, TXT, MD)
+- `knowledge_type`: "technical" or "business"
+- `tags`: JSON array of tags
+
+**Response:**
+```json
+{
+  "success": true,
+  "progressId": "uuid",
+  "message": "Document upload started",
+  "filename": "document.pdf"
+}
+```
+
+#### POST /api/knowledge-items/search
+Search knowledge base content.
+
+**Request Body:**
+```json
+{
+  "query": "search terms",
+  "knowledge_type": "technical",
+  "sources": ["source_id1", "source_id2"],
+  "match_count": 5
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "id": 123,
+      "content": "relevant content snippet",
+      "metadata": {
+        "filename": "document.pdf",
+        "source_id": "source_123",
+        "similarity_score": 0.85
+      }
+    }
+  ],
+  "reranked": false,
+  "error": null
+}
+```
+
+### Project Management Endpoints
+
+#### GET /api/projects
+List all projects.
+
+**Response:**
+```json
+{
+  "success": true,
+  "projects": [
+    {
+      "id": "project_uuid",
+      "title": "Project Name",
+      "description": "Project description",
+      "status": "active|completed|archived",
+      "created_at": "2025-08-21T10:30:00Z",
+      "tasks_count": 15,
+      "documents_count": 8
+    }
+  ]
+}
+```
+
+#### POST /api/projects
+Create new project.
+
+**Request Body:**
+```json
+{
+  "title": "Project Name",
+  "description": "Project description",
+  "prd": {
+    "product_vision": "Vision statement",
+    "target_users": ["User type 1", "User type 2"],
+    "key_features": ["Feature 1", "Feature 2"],
+    "success_metrics": ["Metric 1", "Metric 2"],
+    "constraints": ["Constraint 1", "Constraint 2"]
+  },
+  "github_repo": "https://github.com/user/repo"
+}
+```
+
+### Task Management Endpoints
+
+#### GET /api/projects/{project_id}/tasks
+Get tasks for a project.
+
+**Query Parameters:**
+- `status`: Filter by status (todo|doing|review|done)
+- `assignee`: Filter by assignee
+- `page`: Page number
+- `per_page`: Items per page
+
+#### POST /api/projects/{project_id}/tasks
+Create new task.
+
+**Request Body:**
+```json
+{
+  "title": "Task title",
+  "description": "Task description",
+  "assignee": "User|Archon|AI IDE Agent",
+  "status": "todo",
+  "task_order": 10,
+  "feature": "feature_name",
+  "sources": [
+    {
+      "url": "https://example.com/doc",
+      "type": "documentation",
+      "relevance": "Implementation guide"
+    }
+  ]
+}
+```
+
+### Error Responses
+
+All endpoints may return error responses in this format:
+
+```json
+{
+  "success": false,
+  "error": "Error message",
+  "code": "ERROR_CODE",
+  "details": {
+    "field": "Additional error details"
+  }
+}
+```
+
+### Rate Limiting
+
+- **Standard endpoints**: 100 requests per minute
+- **Upload endpoints**: 10 requests per minute
+- **Search endpoints**: 50 requests per minute
+
+### WebSocket Events
+
+Connect to `/ws` for real-time updates:
+
+- `upload_progress`: Document upload progress
+- `task_updated`: Task status changes
+- `project_updated`: Project modifications
+
+---
+**Document Type**: Technical API Documentation
+**Last Updated**: 2025-08-21
+**Author**: API Team
+**Tags**: api, documentation, technical, endpoints, reference

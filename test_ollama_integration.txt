@@ -1,0 +1,39 @@
+# Ollama Integration Test Document
+
+## Purpose
+This document tests the new Ollama embedding integration with Archon DEV instance.
+
+## Configuration Details
+- Embedding Provider: Ollama
+- Model: nomic-embed-text
+- Dimensions: 768
+- Server: 10.202.28.47:11434
+
+## Test Content
+This document contains various types of content to test embedding generation:
+
+### Technical Information
+- Docker containers and deployment
+- Vector databases and embeddings
+- Knowledge base indexing and search
+- API endpoints and configuration
+
+### Business Context
+- Project management and task tracking
+- Documentation and knowledge sharing
+- Development workflows and processes
+- Quality assurance and testing
+
+## Expected Behavior
+If the Ollama integration works correctly:
+1. This document should upload successfully
+2. Content should be processed and chunked
+3. Embeddings should be generated using nomic-embed-text
+4. Vector data should be stored in the database with 768 dimensions
+5. Search queries should return relevant results from this content
+
+## Test Keywords
+ollama integration test embedding vector database archon knowledge base search functionality
+
+## Timestamp
+Upload time: 2025-08-21 17:01:00

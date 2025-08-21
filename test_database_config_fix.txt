@@ -1,0 +1,28 @@
+# Database Configuration Fix Test
+
+## Purpose
+Testing after updating database RAG settings to use Ollama provider.
+
+## Configuration Changes Made
+- EMBEDDING_PROVIDER: ollama (updated in database)
+- EMBEDDING_BASE_URL: http://10.202.28.47:11434/v1 (updated in database)
+- EMBEDDING_MODEL: nomic-embed-text (updated in database)
+- EMBEDDING_DIMENSIONS: 768 (updated in database)
+
+## Expected Behavior
+With the database configuration fixed:
+1. Document upload should succeed
+2. Content processing should work
+3. Embedding generation should use Ollama API
+4. Vector storage should work with 768 dimensions
+5. Search should return relevant results
+
+## Test Content
+This document tests the complete pipeline after fixing the configuration issue.
+The system should now properly use the Ollama embedding service instead of trying to connect to TEI or local providers.
+
+## Keywords for Testing
+database configuration fix ollama embedding pipeline test vector storage search functionality
+
+## Timestamp
+Configuration fix test: 2025-08-21 17:25:00

@@ -1,0 +1,21 @@
+# DEV Instance Test Document
+
+This is a test document to verify if the DEV instance with 384-dimensional embeddings works correctly.
+
+## Test Content
+- Server: ARCHON-DEV (10.202.70.20:9181)
+- Embedding Model: sentence-transformers/all-MiniLM-L6-v2
+- Embedding Dimensions: 384
+- Purpose: Test if dimension fix resolves upload/indexing issues
+
+## Searchable Keywords
+homelab archon dev test embedding dimensions 384 MiniLM vector database
+
+## Expected Behavior
+If the dimension fix works:
+1. This document should upload successfully
+2. Content should be indexed and searchable
+3. RAG queries should return this content
+
+## Test Timestamp
+Upload time: 2025-08-21 15:03:00

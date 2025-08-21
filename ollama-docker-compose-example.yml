@@ -1,0 +1,88 @@
+# Ollama Container Integration for Archon Plus
+# This example shows how to add Ollama to your existing docker-compose setup
+
+version: '3.8'
+
+services:
+  # Ollama Embedding Service (CPU-Optimized)
+  ollama-embeddings:
+    image: ollama/ollama:latest
+    container_name: archon-ollama-embeddings
+    restart: unless-stopped
+    ports:
+      - "11434:11434"  # Ollama API port
+    volumes:
+      - ollama_models:/root/.ollama  # Persistent model storage
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_NUM_PARALLEL=2  # Reduced for CPU
+      - OLLAMA_MAX_LOADED_MODELS=1  # Keep only one model in memory
+      - OLLAMA_FLASH_ATTENTION=0  # Disable for CPU
+      - OLLAMA_NUM_THREAD=4  # CPU threads (adjust based on your server)
+    networks:
+      - archon-network
+    # CPU resource limits for stability
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'  # Limit to 2 CPU cores
+          memory: 4G   # 4GB RAM limit
+        reservations:
+          cpus: '1.0'  # Reserve 1 CPU core
+          memory: 2G   # Reserve 2GB RAM
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Model Initialization Service (runs once to pull models)
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: archon-ollama-init
+    depends_on:
+      ollama-embeddings:
+        condition: service_healthy
+    volumes:
+      - ollama_models:/root/.ollama
+    networks:
+      - archon-network
+    environment:
+      - OLLAMA_HOST=ollama-embeddings:11434
+    command: >
+      sh -c "
+        echo 'Waiting for Ollama to be ready...' &&
+        sleep 15 &&
+        echo 'Pulling CPU-optimized embedding models...' &&
+        ollama pull nomic-embed-text &&
+        echo 'Primary model pulled. Optionally pulling smaller model...' &&
+        ollama pull all-minilm &&
+        echo 'Models pulled successfully!' &&
+        ollama list
+      "
+    restart: "no"  # Run once only
+
+  # Your existing Archon services would go here
+  archon-server:
+    # ... your existing archon-server config
+    environment:
+      # Update to use containerized Ollama
+      - EMBEDDING_PROVIDER=ollama
+      - EMBEDDING_MODEL=nomic-embed-text
+      - EMBEDDING_DIMENSIONS=768
+      - EMBEDDING_BASE_URL=http://ollama-embeddings:11434/v1
+    depends_on:
+      ollama-embeddings:
+        condition: service_healthy
+    networks:
+      - archon-network
+
+volumes:
+  ollama_models:
+    driver: local
+
+networks:
+  archon-network:
+    driver: bridge

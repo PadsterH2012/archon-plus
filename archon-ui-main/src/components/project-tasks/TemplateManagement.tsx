@@ -89,8 +89,8 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
 
       setState(prev => ({
         ...prev,
-        templates: templatesResult.templates || [],
-        assignments: assignmentsResult || [],
+        templates: Array.isArray(templatesResult.templates) ? templatesResult.templates : [],
+        assignments: Array.isArray(assignmentsResult) ? assignmentsResult : [],
         isLoading: false
       }));
     } catch (err) {
@@ -165,34 +165,82 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
   }, []);
 
   // Filter data based on search and filters
-  const filteredTemplates = (state.templates || []).filter(template => {
-    const matchesSearch = !state.searchQuery ||
-      template.name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
-      template.title.toLowerCase().includes(state.searchQuery.toLowerCase());
+  const filteredTemplates = React.useMemo(() => {
+    // Ensure templates is always an array
+    const templates = Array.isArray(state.templates) ? state.templates : [];
 
-    const matchesFilter = !state.templateFilter ||
+    return templates.filter(template => {
+      // Ensure template object exists and has required properties
+      if (!template || typeof template !== 'object') {
+        return false;
+      }
+
+      const templateName = template.name || '';
+      const templateTitle = template.title || '';
+      const templateType = template.template_type || '';
+
+      const matchesSearch = !state.searchQuery ||
+        templateName.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+        templateTitle.toLowerCase().includes(state.searchQuery.toLowerCase());
+
+      const matchesFilter = !state.templateFilter ||
       template.status === state.templateFilter ||
-      template.template_type === state.templateFilter;
+        templateType === state.templateFilter;
 
-    return matchesSearch && matchesFilter;
-  });
+      return matchesSearch && matchesFilter;
+    });
+  }, [state.templates, state.searchQuery, state.templateFilter]);
 
-  const filteredAssignments = (state.assignments || []).filter(assignment => {
-    const matchesSearch = !state.searchQuery ||
-      assignment.template_name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
-      assignment.hierarchy_level.toLowerCase().includes(state.searchQuery.toLowerCase());
+  const filteredAssignments = React.useMemo(() => {
+    // Ensure assignments is always an array
+    const assignments = Array.isArray(state.assignments) ? state.assignments : [];
 
-    const matchesFilter = !state.assignmentFilter ||
-      assignment.hierarchy_level === state.assignmentFilter ||
-      assignment.assignment_scope === state.assignmentFilter;
+    return assignments.filter(assignment => {
+      // Ensure assignment object exists and has required properties
+      if (!assignment || typeof assignment !== 'object') {
+        return false;
+      }
 
-    return matchesSearch && matchesFilter;
-  });
+      const templateName = assignment.template_name || '';
+      const hierarchyLevel = assignment.hierarchy_level || '';
+      const assignmentScope = assignment.assignment_scope || '';
+
+      const matchesSearch = !state.searchQuery ||
+        templateName.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+        hierarchyLevel.toLowerCase().includes(state.searchQuery.toLowerCase());
+
+      const matchesFilter = !state.assignmentFilter ||
+        hierarchyLevel === state.assignmentFilter ||
+        assignmentScope === state.assignmentFilter;
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [state.assignments, state.searchQuery, state.assignmentFilter]);
 
   if (state.isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <ArchonLoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+            Template Management Error
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            {error}
+          </p>
+          <Button variant="outline" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Try Again
+          </Button>
+        </div>
       </div>
     );
   }

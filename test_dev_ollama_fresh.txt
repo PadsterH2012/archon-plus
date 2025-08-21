@@ -1,0 +1,32 @@
+# Fresh DEV Ollama Test Document
+
+## Configuration Test
+Testing DEV instance with new Ollama embedding configuration after restart.
+
+## Test Details
+- Instance: ARCHON-DEV (10.202.70.20:9181)
+- Embedding Provider: Ollama
+- Model: nomic-embed-text
+- Dimensions: 768
+- Ollama Server: 10.202.28.47:11434
+
+## Expected Results
+If the configuration is working correctly:
+1. This document should upload successfully
+2. Content should be processed and chunked
+3. Embeddings should be generated via Ollama API calls
+4. Vector data should be stored with 768 dimensions
+5. Search should return relevant results
+
+## Test Content
+This document contains searchable content about:
+- Ollama embedding integration
+- DEV instance configuration testing
+- Vector database functionality
+- Knowledge base indexing pipeline
+
+## Unique Identifiers
+fresh dev ollama test configuration restart embedding generation vector storage
+
+## Timestamp
+Fresh upload: 2025-08-21 17:16:00

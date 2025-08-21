@@ -1,0 +1,21 @@
+Test Document for Ollama Embedding and Search
+
+This is a test document to verify that the Ollama embedding integration is working correctly with the Archon search system.
+
+Key Features Being Tested:
+- Ollama embedding generation using nomic-embed-text model
+- Vector search functionality with 768-dimensional embeddings
+- Hybrid search combining semantic and keyword matching
+- Integration between Archon server and external Ollama service
+
+Technical Details:
+- Ollama service running at 10.202.28.47:11434
+- Using nomic-embed-text model for embeddings
+- Environment-first configuration prioritizing env vars
+- Portainer template using variables from .env.dev file
+
+Authentication and OAuth2:
+This document also contains information about OAuth2 authentication implementation, including Google and GitHub providers, token management, and security considerations for modern web applications.
+
+Database Configuration:
+Information about Supabase integration, database migrations, and proper environment variable management for development and production environments.

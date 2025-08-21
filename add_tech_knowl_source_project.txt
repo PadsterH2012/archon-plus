@@ -1,0 +1,81 @@
+# Technical Knowledge Source - Project Documentation
+
+## Project: Archon Plus Development Environment
+
+### Overview
+This document contains technical knowledge for the Archon Plus project development environment setup and configuration.
+
+### Infrastructure Details
+
+#### Homelab Server Configuration
+- **Server IP**: 10.202.70.20
+- **Portainer Management**: http://10.202.70.20:9000
+- **Admin Credentials**: paddy / P0w3rPla72012@@
+
+#### Archon Service Ports
+- **Archon-Prod Server**: Port 8181
+- **Archon-Dev Server**: Port 9181
+- **Archon MCP**: Port 9051
+- **Archon Agents**: Port 9052
+- **Archon UI**: Port 4737
+- **Archon Embeddings**: Port 9080
+- **Archon Docs**: Port 4838
+
+### Development Workflow
+
+#### Service Management
+1. **Never update archon-prod directly**
+2. **Use archon-dev for testing new features**
+3. **Deploy via Jenkins webhook after successful build**
+4. **Restart services in Portainer, don't redeploy**
+
+#### Container Log Access
+```bash
+sshpass -p 'P0w3rPla72012@@' ssh paddy@10.202.70.20
+```
+
+#### Database Management
+- **Factory Reset Script**: migration/factory_reset.sql
+- **Use for dev database issues**
+- **Test locally where possible**
+
+### Troubleshooting
+
+#### Common Issues
+1. **Components Tab Crashes**: Implemented React Error Boundary
+2. **Knowledge Base Upload**: Use correct server addresses (10.202.70.20)
+3. **Template Injection**: Deploy to dev instance first
+
+#### Error Handling Patterns
+- Always implement error boundaries in React components
+- Use defensive programming (null checks, default values)
+- Provide graceful degradation for all user interfaces
+
+### API Endpoints
+
+#### Knowledge Base
+- Upload: `/api/documents/upload`
+- Search: `/api/knowledge-items/search`
+- Sources: `/api/knowledge-items`
+
+#### Health Checks
+- Prod: `http://10.202.70.20:8181/api/health`
+- Dev: `http://10.202.70.20:9181/api/health`
+
+### Security Notes
+- Store credentials securely
+- Use HTTPS in production
+- Implement proper authentication
+- Regular security updates
+
+### Performance Optimization
+- Monitor resource usage
+- Optimize database queries
+- Use caching where appropriate
+- Regular cleanup of temporary files
+
+---
+**Document Type**: Technical Project Documentation
+**Last Updated**: 2025-08-21
+**Author**: Homelab Admin
+**Tags**: archon, homelab, technical, infrastructure, development

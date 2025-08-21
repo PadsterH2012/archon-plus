@@ -1,0 +1,107 @@
+{
+  "version": "2",
+  "templates": [
+    {
+      "type": 1,
+      "title": "Ollama Embedding Service",
+      "description": "Local embedding models for Archon Plus knowledge base",
+      "categories": ["AI", "Machine Learning", "Embeddings"],
+      "platform": "linux",
+      "logo": "https://ollama.com/public/ollama.png",
+      "image": "ollama/ollama:latest",
+      "name": "archon-ollama-embeddings",
+      "ports": [
+        {
+          "label": "Ollama API",
+          "description": "Ollama REST API port",
+          "protocol": "tcp",
+          "web": false,
+          "container": "11434",
+          "host": "11434"
+        }
+      ],
+      "volumes": [
+        {
+          "label": "Model Storage",
+          "description": "Persistent storage for downloaded models",
+          "container": "/root/.ollama",
+          "bind": "archon_ollama_models"
+        }
+      ],
+      "env": [
+        {
+          "name": "OLLAMA_HOST",
+          "label": "Ollama Host",
+          "description": "Host binding for Ollama service",
+          "default": "0.0.0.0"
+        },
+        {
+          "name": "OLLAMA_ORIGINS",
+          "label": "CORS Origins",
+          "description": "Allowed CORS origins",
+          "default": "*"
+        },
+        {
+          "name": "OLLAMA_NUM_PARALLEL",
+          "label": "Parallel Requests",
+          "description": "Number of parallel requests to handle",
+          "default": "4"
+        },
+        {
+          "name": "OLLAMA_MAX_LOADED_MODELS",
+          "label": "Max Loaded Models",
+          "description": "Maximum number of models to keep in memory",
+          "default": "2"
+        }
+      ],
+      "restart_policy": "unless-stopped",
+      "note": "After deployment, pull embedding models with: docker exec archon-ollama-embeddings ollama pull nomic-embed-text"
+    },
+    {
+      "type": 2,
+      "title": "Ollama + Archon Stack",
+      "description": "Complete Ollama and Archon deployment with embedding integration",
+      "categories": ["AI", "Stack", "Development"],
+      "platform": "linux",
+      "logo": "https://ollama.com/public/ollama.png",
+      "repository": {
+        "url": "https://github.com/your-repo/archon-plus",
+        "stackfile": "docker-compose.ollama.yml"
+      },
+      "env": [
+        {
+          "name": "EMBEDDING_MODEL",
+          "label": "Embedding Model",
+          "description": "Ollama embedding model to use",
+          "default": "nomic-embed-text",
+          "select": [
+            {
+              "text": "Nomic Embed Text (768 dims)",
+              "value": "nomic-embed-text"
+            },
+            {
+              "text": "MXBai Embed Large (1024 dims)",
+              "value": "mxbai-embed-large"
+            },
+            {
+              "text": "All MiniLM (384 dims)",
+              "value": "all-minilm"
+            }
+          ]
+        },
+        {
+          "name": "EMBEDDING_DIMENSIONS",
+          "label": "Embedding Dimensions",
+          "description": "Vector dimensions for the selected model",
+          "default": "768"
+        },
+        {
+          "name": "ARCHON_SERVER_PORT",
+          "label": "Archon Server Port",
+          "description": "Port for Archon server",
+          "default": "8181"
+        }
+      ]
+    }
+  ]
+}
