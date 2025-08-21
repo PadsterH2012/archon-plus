@@ -37,15 +37,15 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
   onComponentSelect,
   onAssignmentSelect
 }) => {
-  // State management
+  // State management with comprehensive defensive initialization
   const [state, setState] = useState<TemplateManagementState>({
     activeTab: 'templates',
     isLoading: true, // Start with loading state to prevent premature rendering
     isSaving: false,
     isDeleting: false,
-    templates: [],
-    components: [],
-    assignments: [],
+    templates: [], // Always initialize as empty array
+    components: [], // Always initialize as empty array
+    assignments: [], // Always initialize as empty array
     showTemplateEditor: false,
     showComponentEditor: false,
     showAssignmentEditor: false,
@@ -167,8 +167,13 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
   // Filter data based on search and filters
   const filteredTemplates = React.useMemo(() => {
     try {
+      // Comprehensive state safety check
+      if (!state || typeof state !== 'object') {
+        return [];
+      }
+
       // Ensure templates is always an array
-      const templates = Array.isArray(state?.templates) ? state.templates : [];
+      const templates = Array.isArray(state.templates) ? state.templates : [];
 
       return templates.filter(template => {
         // Ensure template object exists and has required properties
@@ -198,8 +203,13 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
 
   const filteredAssignments = React.useMemo(() => {
     try {
+      // Comprehensive state safety check
+      if (!state || typeof state !== 'object') {
+        return [];
+      }
+
       // Ensure assignments is always an array
-      const assignments = Array.isArray(state?.assignments) ? state.assignments : [];
+      const assignments = Array.isArray(state.assignments) ? state.assignments : [];
 
       return assignments.filter(assignment => {
         // Ensure assignment object exists and has required properties
@@ -277,10 +287,12 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
     );
   }
 
-  return (
-    <div className={`template-management ${className}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+  // Final safety wrapper for render
+  try {
+    return (
+      <div className={`template-management ${className}`}>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Template Management
@@ -391,8 +403,8 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
           { id: 'analytics', label: 'Analytics', icon: BarChart3, count: 0 }
         ].map((tab) => (
           <button
-            key={tab.id}
-            onClick={() => handleTabChange(tab.id as TemplateManagementState['activeTab'])}
+            key={tab?.id || Math.random()}
+            onClick={() => tab?.id && handleTabChange(tab.id as TemplateManagementState['activeTab'])}
             className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium text-sm transition-colors ${
               state.activeTab === tab.id
                 ? 'border-blue-500 text-blue-600 dark:text-blue-400'
@@ -437,9 +449,9 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredTemplates.map((template) => (
-                  <Card key={template.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                    <div className="p-4" onClick={() => handleTemplateEdit(template)}>
+                {(filteredTemplates || []).map((template) => (
+                  <Card key={template?.id || Math.random()} className="cursor-pointer hover:shadow-md transition-shadow">
+                    <div className="p-4" onClick={() => template && handleTemplateEdit(template)}>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
@@ -520,5 +532,28 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
         />
       )}
     </div>
-  );
+    );
+  } catch (renderError) {
+    console.error('TemplateManagement render error:', renderError);
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+            Render Error
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            An error occurred while rendering the template management interface.
+          </p>
+          <Button
+            onClick={() => window.location.reload()}
+            variant="outline"
+            size="sm"
+          >
+            Reload Page
+          </Button>
+        </div>
+      </div>
+    );
+  }
 };
