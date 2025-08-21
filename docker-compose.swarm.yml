@@ -18,9 +18,12 @@ services:
       - ARCHON_MCP_PORT=8051
       - ARCHON_AGENTS_PORT=8052
       - ARCHON_UI_PORT=3737
-      - ARCHON_EMBEDDINGS_PORT=8080
-      - EMBEDDING_DIMENSIONS=1536
-      - EMBEDDING_MODEL_ID=sentence-transformers/all-MiniLM-L6-v2
+      - ARCHON_EMBEDDINGS_PORT=11434
+      - EMBEDDING_DIMENSIONS=768
+      - EMBEDDING_MODEL_ID=nomic-embed-text
+      - EMBEDDING_PROVIDER=ollama
+      - EMBEDDING_BASE_URL=http://10.202.28.47:11434/v1
+      - EMBEDDING_MODEL=nomic-embed-text
     networks:
       - app-network
     deploy:
