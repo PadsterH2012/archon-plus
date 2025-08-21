@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, Package, AlertCircle, Settings, Layers, GitBranch, Workflow, FileText } from 'lucide-react';
+import { Plus, Package, AlertCircle, Settings, Layers, GitBranch, FileText } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-import { WorkflowTaskGroups } from './WorkflowTaskGroups';
 import { TemplateManagement } from './TemplateManagement';
 import type { Project } from '../../types/project';
 
@@ -49,7 +48,7 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
 }) => {
   const [selectedComponent, setSelectedComponent] = useState<any>(null);
   const [activeView, setActiveView] = useState<'hierarchy' | 'graph'>('hierarchy');
-  const [activeTab, setActiveTab] = useState<'components' | 'workflows' | 'templates'>('workflows');
+  const [activeTab, setActiveTab] = useState<'components' | 'templates'>('templates');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -129,19 +128,6 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
       <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex space-x-8">
           <button
-            onClick={() => setActiveTab('workflows')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'workflows'
-                ? 'border-purple-500 text-purple-600 dark:text-purple-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Workflow className="h-4 w-4" />
-              Workflow Task Groups
-            </div>
-          </button>
-          <button
             onClick={() => setActiveTab('templates')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'templates'
@@ -171,16 +157,7 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'workflows' ? (
-        <WorkflowTaskGroups
-          project={project}
-          onTaskGroupExecute={(taskGroup, execution) => {
-            console.log('Task group executed:', taskGroup.name, execution);
-            // Here you could integrate with the Archon task system
-            // to create actual tasks from the workflow
-          }}
-        />
-      ) : activeTab === 'templates' ? (
+      {activeTab === 'templates' ? (
         <TemplateManagement
           projectId={project.id}
           className="mt-6"
