@@ -3,7 +3,7 @@ import { Plus, Package, AlertCircle, Settings, Layers, GitBranch, FileText } fro
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-import { TemplateManagement } from './TemplateManagement';
+// import { TemplateManagement } from './TemplateManagement'; // TEMPORARILY DISABLED FOR DEBUGGING
 import type { Project } from '../../types/project';
 
 interface ComponentsTabProps {
@@ -475,22 +475,23 @@ class TemplateManagementErrorBoundary extends React.Component<
   }
 }
 
+// TEMPORARILY DISABLED FOR DEBUGGING
 // Safe wrapper for TemplateManagement to catch errors
-const SafeTemplateManagement: React.FC<{
-  projectId: string;
-  onError: (error: string) => void;
-  onTemplateSelect?: (template: any) => void;
-  onComponentSelect?: (component: any) => void;
-  onAssignmentSelect?: (assignment: any) => void;
-}> = ({ projectId, onError, onTemplateSelect, onComponentSelect, onAssignmentSelect }) => {
-  return (
-    <TemplateManagementErrorBoundary onError={onError}>
-      <TemplateManagement
-        projectId={projectId}
-        onTemplateSelect={onTemplateSelect}
-        onComponentSelect={onComponentSelect}
-        onAssignmentSelect={onAssignmentSelect}
-      />
-    </TemplateManagementErrorBoundary>
-  );
-};
+// const SafeTemplateManagement: React.FC<{
+//   projectId: string;
+//   onError: (error: string) => void;
+//   onTemplateSelect?: (template: any) => void;
+//   onComponentSelect?: (component: any) => void;
+//   onAssignmentSelect?: (assignment: any) => void;
+// }> = ({ projectId, onError, onTemplateSelect, onComponentSelect, onAssignmentSelect }) => {
+//   return (
+//     <TemplateManagementErrorBoundary onError={onError}>
+//       <TemplateManagement
+//         projectId={projectId}
+//         onTemplateSelect={onTemplateSelect}
+//         onComponentSelect={onComponentSelect}
+//         onAssignmentSelect={onAssignmentSelect}
+//       />
+//     </TemplateManagementErrorBoundary>
+//   );
+// };
