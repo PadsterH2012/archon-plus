@@ -1,0 +1,98 @@
+
+
+I use archon for task management
+Im using archon-prod to improve archon-dev
+NEVER update archon-prod 
+you should use both mcp servers for archon-dev and archon-prod
+but remember that archon-dev should be used to test new features that are not available in prod
+
+portainer
+docker swarm
+10.202.70.20:9000
+archon-prod (Production)
+archon-dev (Development)
+
+
+
+deployed via jenkins webhook after sucessful build on main branch
+
+checking container logs can be done using terminal and sshpass with creds of paddy | P0w3rPla72012@@
+
+Tests locally where possible
+
+never push locally built containers to harbor registry
+
+when task is complete commit and push
+
+wait for jenkins build to complete and wait deployment.
+
+
+add this to knowledgebase
+
+and confirm you can find it and its understandable.
+
+
+issues:
+
+create a task with relevent info
+determine root cause before making any changes.
+do not assume the first error is the root cause.
+once you have gathered enough evidence, base on that alone, build a hypothesis and test it.
+update the task info with findings
+repeat until the root cause is found.
+once found update the task with the root cause and remediation plan.
+
+create a task for the remediation plan and reference the root cause task.
+reference the root cause task in the remediation plan task.
+
+
+to fix it. and update the task with the root cause and remediation plan.
+if its a question, use exisiting documentation where possible, or gather details from sourcecode and ensure the documentation is updated.
+if its a new feature that has no existing documentation, create a task to create a plan.
+do not assume a issue is fixed until the user confirms this, and this must be confirmed in a deployment to archon-dev
+
+now ask the user if the action required "issue", "question", or "new feature" and based on that take the appropriate action.
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Please update the existing Archon Development Environment documentation in the knowledge base with the following clarifications and additional context:
+
+**Document to Update:**
+- Project: archon-plus (ID: ca5bd80c-7820-4b47-87cb-d2ae93e86611)
+- Document ID: 3113303b-d548-4a95-a08a-3df34b48fcc4
+- Document Type: documentation
+- Title: "Archon Development Environment (archon-dev) Documentation"
+
+**Key Updates to Include:**
+
+1. **Task Management Context:**
+   - Add clarification that Archon is used for task management
+   - Explain that archon-prod is being used to improve archon-dev functionality
+
+2. **Critical Production Safety Rules (highlight prominently):**
+   - **NEVER update archon-prod** - this must be emphasized as a critical safety rule
+   - archon-dev should be used exclusively for testing new features not available in production
+
+3. **MCP Server Usage Guidelines:**
+   - Both MCP servers (archon-dev and archon-prod) should be used appropriately
+   - archon-dev for development and testing of new features
+   - archon-prod for stable operations and improving archon-dev
+
+4. **Environment Specifications:**
+   - Portainer management interface: 10.202.70.20:9000
+   - Infrastructure: Docker Swarm
+   - Two environments: archon-prod (Production) and archon-dev (Development)
+
+5. **Deployment Process Details:**
+   - Deployment triggered via Jenkins webhook after successful build on main branch
+   - Container log access: Use terminal with sshpass
+   - Credentials: username `paddy` | password `P0w3rPla72012@@`
+
+6. **Development Workflow Best Practices:**
+   - Test locally where possible before committing
+   - Never push locally built containers to Harbor registry
+   - When task is complete: commit and push to main branch
+   - Wait for Jenkins build completion, then wait for deployment completion
+
+Please update the existing documentation with these clarifications while maintaining the structured JSON format. Ensure all critical warnings (especially about NEVER updating archon-prod) are prominently highlighted in the content structure. Preserve the existing document metadata and version information.

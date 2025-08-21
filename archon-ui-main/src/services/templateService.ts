@@ -117,6 +117,7 @@ export const templateService = {
     } = {}
   ): Promise<{ templates: TemplateDefinition[]; totalCount: number; pagination?: any }> {
     try {
+      // Try MCP first
       const params = {
         action: 'list',
         filter_by: options.filterBy,
@@ -127,15 +128,43 @@ export const templateService = {
       };
 
       const response = await callMCPTool('manage_template', params);
-      
+
       return {
         templates: response.templates || [],
         totalCount: response.total_count || 0,
         pagination: response.pagination
       };
-    } catch (error) {
-      console.error('Failed to list templates:', error);
-      throw error;
+    } catch (mcpError) {
+      console.warn('MCP template service unavailable, trying REST API:', mcpError);
+
+      try {
+        // Fallback to REST API
+        const restResponse = await fetch(`/api/template-management/templates?${new URLSearchParams({
+          filter_by: options.filterBy || '',
+          filter_value: options.filterValue || '',
+          page: (options.page ?? 1).toString(),
+          per_page: (options.perPage ?? 50).toString()
+        })}`);
+
+        if (!restResponse.ok) {
+          throw new Error(`REST API failed: ${restResponse.statusText}`);
+        }
+
+        const data = await restResponse.json();
+        return {
+          templates: data.templates || [],
+          totalCount: data.pagination?.total_count || 0,
+          pagination: data.pagination
+        };
+      } catch (restError) {
+        console.error('Both MCP and REST API failed for listTemplates:', restError);
+        // Return empty result instead of throwing to prevent UI crashes
+        return {
+          templates: [],
+          totalCount: 0,
+          pagination: null
+        };
+      }
     }
   },
 

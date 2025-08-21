@@ -4,6 +4,113 @@
 // API configuration - use relative URL to go through Vite proxy
 const API_BASE_URL = '/api';
 
+// REST API service for template management (fallback when MCP is not available)
+class TemplateManagementRestService {
+  private baseUrl = `${API_BASE_URL}/template-management`;
+
+  async listComponents(options: {
+    filterBy?: string;
+    filterValue?: string;
+    page?: number;
+    perPage?: number;
+  } = {}) {
+    const params = new URLSearchParams();
+    if (options.filterBy) params.append('filter_by', options.filterBy);
+    if (options.filterValue) params.append('filter_value', options.filterValue);
+    if (options.page) params.append('page', options.page.toString());
+    if (options.perPage) params.append('per_page', options.perPage.toString());
+
+    const response = await fetch(`${this.baseUrl}/components?${params}`);
+    if (!response.ok) {
+      throw new Error(`Failed to list components: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  async getComponent(componentId: string) {
+    const response = await fetch(`${this.baseUrl}/components/${componentId}`);
+    if (!response.ok) {
+      throw new Error(`Failed to get component: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  async listTemplates(options: {
+    filterBy?: string;
+    filterValue?: string;
+    page?: number;
+    perPage?: number;
+  } = {}) {
+    const params = new URLSearchParams();
+    if (options.filterBy) params.append('filter_by', options.filterBy);
+    if (options.filterValue) params.append('filter_value', options.filterValue);
+    if (options.page) params.append('page', options.page.toString());
+    if (options.perPage) params.append('per_page', options.perPage.toString());
+
+    const response = await fetch(`${this.baseUrl}/templates?${params}`);
+    if (!response.ok) {
+      throw new Error(`Failed to list templates: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  async getTemplate(templateId: string) {
+    const response = await fetch(`${this.baseUrl}/templates/${templateId}`);
+    if (!response.ok) {
+      throw new Error(`Failed to get template: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  async testTemplate(templateName: string, originalDescription: string, contextData: any = {}) {
+    const response = await fetch(`${this.baseUrl}/templates/test`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        template_name: templateName,
+        original_description: originalDescription,
+        context_data: contextData,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to test template: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  async listAssignments(options: {
+    projectId?: string;
+    isActive?: boolean;
+    page?: number;
+    perPage?: number;
+  } = {}) {
+    const params = new URLSearchParams();
+    if (options.projectId) params.append('project_id', options.projectId);
+    if (options.isActive !== undefined) params.append('is_active', options.isActive.toString());
+    if (options.page) params.append('page', options.page.toString());
+    if (options.perPage) params.append('per_page', options.perPage.toString());
+
+    const response = await fetch(`${this.baseUrl}/assignments?${params}`);
+    if (!response.ok) {
+      throw new Error(`Failed to list assignments: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  async checkHealth() {
+    const response = await fetch(`${this.baseUrl}/health`);
+    if (!response.ok) {
+      throw new Error(`Template management service unhealthy: ${response.statusText}`);
+    }
+    return response.json();
+  }
+}
+
+// Create instance of REST service
+const restService = new TemplateManagementRestService();
+
 // Helper function to call MCP tools via API
 async function callMCPTool<T = any>(toolName: string, params: Record<string, any>): Promise<T> {
   try {
@@ -133,6 +240,7 @@ export const templateAssignmentService = {
     includeExpired?: boolean;
   } = {}): Promise<TemplateAssignment[]> {
     try {
+      // Try MCP first
       const response = await callMCPTool('manage_template_assignment', {
         action: 'list',
         hierarchy_level: options.hierarchyLevel,
@@ -143,9 +251,24 @@ export const templateAssignmentService = {
       });
 
       return response.assignments || [];
-    } catch (error) {
-      console.error('Failed to list template assignments:', error);
-      throw error;
+    } catch (mcpError) {
+      console.warn('MCP assignment service unavailable, trying REST API:', mcpError);
+
+      try {
+        // Fallback to REST API
+        const restResponse = await restService.listAssignments({
+          projectId: options.entityId,
+          isActive: options.isActive,
+          page: 1,
+          perPage: 100
+        });
+
+        return restResponse.assignments || [];
+      } catch (restError) {
+        console.error('Both MCP and REST API failed for listAssignments:', restError);
+        // Return empty array instead of throwing to prevent UI crashes
+        return [];
+      }
     }
   },
 
@@ -426,7 +549,7 @@ export const templateTestingService = {
     contextData?: Record<string, any>
   ): Promise<TemplateTestResult> {
     try {
-      // Use the template injection service to test expansion
+      // Try MCP first
       const response = await callMCPTool('expand_template', {
         original_description: testTaskDescription,
         template_name: templateName,
@@ -452,17 +575,35 @@ export const templateTestingService = {
         performance_score: this.calculatePerformanceScore(result.expansion_time_ms || 0),
         quality_score: this.calculateQualityScore(result.expanded_description || '')
       };
-    } catch (error) {
-      console.error('Failed to test template:', error);
-      return {
-        success: false,
-        expanded_content: '',
-        expansion_time_ms: 0,
-        component_count: 0,
-        validation_errors: [error.message || 'Unknown error'],
-        performance_score: 0,
-        quality_score: 0
-      };
+    } catch (mcpError) {
+      console.warn('MCP template test unavailable, trying REST API:', mcpError);
+
+      try {
+        // Fallback to REST API
+        const restResponse = await restService.testTemplate(templateName, testTaskDescription, contextData);
+        const result = restResponse.result || {};
+
+        return {
+          success: true,
+          expanded_content: result.expanded_description || '',
+          expansion_time_ms: result.expansion_time_ms || 0,
+          component_count: result.component_count || 0,
+          validation_errors: result.validation_errors || [],
+          performance_score: this.calculatePerformanceScore(result.expansion_time_ms || 0),
+          quality_score: this.calculateQualityScore(result.expanded_description || '')
+        };
+      } catch (restError) {
+        console.error('Both MCP and REST API failed for testTemplate:', restError);
+        return {
+          success: false,
+          expanded_content: '',
+          expansion_time_ms: 0,
+          component_count: 0,
+          validation_errors: [restError.message || 'Template test service unavailable'],
+          performance_score: 0,
+          quality_score: 0
+        };
+      }
     }
   },
 
