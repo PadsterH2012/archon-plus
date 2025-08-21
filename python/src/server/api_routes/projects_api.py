@@ -71,6 +71,13 @@ class CreateTaskRequest(BaseModel):
     assignee: str | None = "User"
     task_order: int | None = 0
     feature: str | None = None
+    sources: list[dict[str, Any]] | None = None
+    code_examples: list[dict[str, Any]] | None = None
+    # Template injection parameters
+    template_name: str | None = None
+    disable_template: bool | None = False
+    template_context: dict[str, Any] | None = None
+    preserve_original: bool | None = True
 
 
 @router.get("/projects")
@@ -523,6 +530,10 @@ async def create_task(request: CreateTaskRequest):
     try:
         # Use TaskService to create the task
         task_service = TaskService()
+
+        # Determine template injection settings
+        enable_template_injection = None if request.disable_template is None else not request.disable_template
+
         success, result = await task_service.create_task(
             project_id=request.project_id,
             title=request.title,
@@ -530,6 +541,12 @@ async def create_task(request: CreateTaskRequest):
             assignee=request.assignee or "User",
             task_order=request.task_order or 0,
             feature=request.feature,
+            sources=request.sources,
+            code_examples=request.code_examples,
+            template_name=request.template_name or "workflow_default",
+            enable_template_injection=enable_template_injection,
+            template_context=request.template_context,
+            preserve_original=request.preserve_original if request.preserve_original is not None else True,
         )
 
         if not success:

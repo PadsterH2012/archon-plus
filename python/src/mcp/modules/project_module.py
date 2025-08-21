@@ -268,6 +268,11 @@ def register_project_tools(mcp: FastMCP):
         include_closed: bool = False,
         page: int = 1,
         per_page: int = 50,
+        # Template injection parameters
+        template_name: str = None,
+        disable_template: bool = False,
+        template_context: dict[str, Any] = None,
+        preserve_original: bool = True,
     ) -> str:
         """
         Unified tool for task management operations within PRP-driven projects.
@@ -345,6 +350,19 @@ def register_project_tools(mcp: FastMCP):
             page: Page number for pagination (default: 1, for large task lists)
             per_page: Items per page (default: 50, max: 100)
 
+            template_name: Optional template override (default: "workflow::default")
+                          Specify which workflow template to use for task expansion
+                          Examples: "workflow::default", "workflow::hotfix", "workflow::research"
+
+            disable_template: Boolean to disable template injection for specific task (default: False)
+                             Set to True to create task with original description only
+
+            template_context: Additional context for template selection (default: None)
+                             Dict with context data to help with template expansion
+
+            preserve_original: Boolean to store original description in metadata (default: True)
+                              When True, original description is preserved in template_metadata
+
         Returns:
             JSON string with task operation results:
             - success: Boolean indicating operation success
@@ -355,7 +373,7 @@ def register_project_tools(mcp: FastMCP):
 
         📚 COMPREHENSIVE EXAMPLES:
 
-        Create PRP Implementation Task:
+        Create PRP Implementation Task with Template:
             manage_task(
                 action="create",
                 project_id="550e8400-e29b-41d4-a716-446655440000",
@@ -364,6 +382,8 @@ def register_project_tools(mcp: FastMCP):
                 assignee="AI IDE Agent",
                 task_order=10,
                 feature="authentication",
+                template_name="workflow::default",
+                template_context={"priority": "high", "complexity": "medium"},
                 sources=[
                     {"url": "https://developers.google.com/identity/protocols/oauth2", "type": "documentation", "relevance": "Official OAuth2 spec"},
                     {"file": "docs/auth/README.md", "type": "internal_docs", "relevance": "Current auth architecture"}
@@ -372,6 +392,17 @@ def register_project_tools(mcp: FastMCP):
                     {"file": "src/auth/base.py", "class": "BaseAuthProvider", "purpose": "Provider interface pattern"},
                     {"file": "examples/oauth-flow.py", "function": "generate_auth_url", "purpose": "URL generation example"}
                 ]
+            )
+
+        Create Task with Disabled Template:
+            manage_task(
+                action="create",
+                project_id="550e8400-e29b-41d4-a716-446655440000",
+                title="Quick documentation update",
+                description="Update README with new installation instructions",
+                assignee="User",
+                disable_template=True,
+                preserve_original=False
             )
 
         Update Task Status (todo → doing):
@@ -455,20 +486,33 @@ def register_project_tools(mcp: FastMCP):
                     # Don't fail task creation if workflow detection fails
                     print(f"Workflow detection failed: {e}")
 
+                # Prepare task creation payload with template parameters
+                task_payload = {
+                    "project_id": project_id,
+                    "title": title,
+                    "description": description,
+                    "assignee": assignee,
+                    "task_order": task_order,
+                    "feature": feature,
+                    "sources": sources,
+                    "code_examples": code_examples,
+                }
+
+                # Add template parameters if provided
+                if template_name is not None:
+                    task_payload["template_name"] = template_name
+                if disable_template:
+                    task_payload["disable_template"] = disable_template
+                if template_context is not None:
+                    task_payload["template_context"] = template_context
+                if not preserve_original:
+                    task_payload["preserve_original"] = preserve_original
+
                 # Call Server API to create task
                 async with httpx.AsyncClient(timeout=timeout) as client:
                     response = await client.post(
                         urljoin(api_url, "/api/tasks"),
-                        json={
-                            "project_id": project_id,
-                            "title": title,
-                            "description": description,
-                            "assignee": assignee,
-                            "task_order": task_order,
-                            "feature": feature,
-                            "sources": sources,
-                            "code_examples": code_examples,
-                        },
+                        json=task_payload,
                     )
 
                     if response.status_code == 200:

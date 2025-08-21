@@ -137,6 +137,8 @@ class TaskService:
         code_examples: list[dict[str, Any]] = None,
         template_name: str = "workflow_default",
         enable_template_injection: Optional[bool] = None,
+        template_context: dict[str, Any] = None,
+        preserve_original: bool = True,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Create a new task under a project with automatic reordering.
@@ -183,7 +185,7 @@ class TaskService:
                         original_description=original_description,
                         project_id=project_uuid,
                         template_name=template_name,
-                        context_data={}
+                        context_data=template_context or {}
                     )
 
                     if expansion_response.success and expansion_response.result:
@@ -191,10 +193,15 @@ class TaskService:
                         template_metadata = {
                             "template_injection_enabled": True,
                             "template_name": template_name,
-                            "original_description": original_description,
                             "expansion_time_ms": expansion_response.result.expansion_time_ms,
-                            "template_metadata": expansion_response.result.template_metadata or {}
+                            "template_metadata": expansion_response.result.template_metadata or {},
+                            "template_context": template_context,
+                            "preserve_original": preserve_original,
                         }
+
+                        # Store original description if preserve_original is True
+                        if preserve_original:
+                            template_metadata["original_description"] = original_description
 
                         duration = time.time() - start_time
                         logger.info(
@@ -292,18 +299,23 @@ class TaskService:
                             f"Failed to broadcast Socket.IO update for new task {task['id']}: {ws_error}"
                         )
 
-                return True, {
-                    "task": {
-                        "id": task["id"],
-                        "project_id": task["project_id"],
-                        "title": task["title"],
-                        "description": task["description"],
-                        "status": task["status"],
-                        "assignee": task["assignee"],
-                        "task_order": task["task_order"],
-                        "created_at": task["created_at"],
-                    }
+                # Build task response with all relevant fields
+                task_response = {
+                    "id": task["id"],
+                    "project_id": task["project_id"],
+                    "title": task["title"],
+                    "description": task["description"],
+                    "status": task["status"],
+                    "assignee": task["assignee"],
+                    "task_order": task["task_order"],
+                    "created_at": task["created_at"],
                 }
+
+                # Include template metadata if present
+                if "template_metadata" in task and task["template_metadata"]:
+                    task_response["template_metadata"] = task["template_metadata"]
+
+                return True, {"task": task_response}
             else:
                 return False, {"error": "Failed to create task"}
 

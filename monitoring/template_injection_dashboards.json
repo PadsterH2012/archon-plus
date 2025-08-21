@@ -1,0 +1,451 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Template Injection System Monitoring",
+    "tags": ["archon", "template-injection", "performance"],
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Template Injection Status",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "template_injection_enabled",
+            "legendFormat": "Enabled",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "bool"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Template Expansion Performance",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 4
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(template_expansion_duration_ms_bucket[5m]))",
+            "legendFormat": "P50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(template_expansion_duration_ms_bucket[5m]))",
+            "legendFormat": "P95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(template_expansion_duration_ms_bucket[5m]))",
+            "legendFormat": "P99",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "ms",
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 100
+                },
+                {
+                  "color": "red",
+                  "value": 200
+                }
+              ]
+            }
+          }
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Template Usage Rate",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 4
+        },
+        "targets": [
+          {
+            "expr": "rate(template_expansions_total[5m])",
+            "legendFormat": "Expansions/sec",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(task_creations_total[5m])",
+            "legendFormat": "Tasks/sec",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "reqps"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Cache Performance",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "template_cache_hit_ratio",
+            "legendFormat": "Hit Ratio",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 0.6
+                },
+                {
+                  "color": "green",
+                  "value": 0.8
+                }
+              ]
+            },
+            "unit": "percentunit",
+            "min": 0,
+            "max": 1
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Error Rate",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "rate(template_expansion_errors_total[5m]) / rate(template_expansions_total[5m])",
+            "legendFormat": "Error Rate",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 0.01
+                },
+                {
+                  "color": "red",
+                  "value": 0.05
+                }
+              ]
+            },
+            "unit": "percentunit"
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Memory Usage",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes{job=\"archon-server\"}",
+            "legendFormat": "Server Memory",
+            "refId": "A"
+          },
+          {
+            "expr": "process_resident_memory_bytes{job=\"archon-mcp\"}",
+            "legendFormat": "MCP Memory",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "bytes"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Template Usage by Type",
+        "type": "piechart",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "sum by (template_name) (template_usage_total)",
+            "legendFormat": "{{template_name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Task Creation Overhead",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 0,
+          "y": 18
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(task_creation_duration_ms_bucket{template_enabled=\"true\"}[5m])) - histogram_quantile(0.95, rate(task_creation_duration_ms_bucket{template_enabled=\"false\"}[5m]))",
+            "legendFormat": "Template Overhead (P95)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "ms",
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 50
+                },
+                {
+                  "color": "red",
+                  "value": 100
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Database Query Performance",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 18
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(database_query_duration_ms_bucket{table=~\"archon_template.*\"}[5m]))",
+            "legendFormat": "Template Queries (P95)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "ms"
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "Recent Template Errors",
+        "type": "logs",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 24
+        },
+        "targets": [
+          {
+            "expr": "{job=\"archon-server\"} |= \"template\" |= \"error\"",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": false,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": false,
+          "enableLogDetails": true,
+          "dedupStrategy": "none",
+          "sortOrder": "Descending"
+        }
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "name": "Template Deployments",
+          "datasource": "prometheus",
+          "enable": true,
+          "expr": "changes(template_injection_version[1h]) > 0",
+          "iconColor": "blue",
+          "titleFormat": "Template System Deployment"
+        }
+      ]
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "environment",
+          "type": "query",
+          "query": "label_values(template_expansions_total, environment)",
+          "current": {
+            "value": "dev",
+            "text": "dev"
+          },
+          "options": [],
+          "refresh": 1,
+          "includeAll": false,
+          "multi": false
+        },
+        {
+          "name": "template_name",
+          "type": "query",
+          "query": "label_values(template_usage_total, template_name)",
+          "current": {
+            "value": "All",
+            "text": "All"
+          },
+          "options": [],
+          "refresh": 1,
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    }
+  },
+  "alerts": [
+    {
+      "name": "Template Expansion High Latency",
+      "condition": "histogram_quantile(0.95, rate(template_expansion_duration_ms_bucket[5m])) > 200",
+      "frequency": "1m",
+      "severity": "warning",
+      "message": "Template expansion P95 latency is above 200ms"
+    },
+    {
+      "name": "Template Injection High Error Rate",
+      "condition": "rate(template_expansion_errors_total[5m]) / rate(template_expansions_total[5m]) > 0.05",
+      "frequency": "1m",
+      "severity": "critical",
+      "message": "Template injection error rate is above 5%"
+    },
+    {
+      "name": "Template Cache Low Hit Ratio",
+      "condition": "template_cache_hit_ratio < 0.6",
+      "frequency": "5m",
+      "severity": "warning",
+      "message": "Template cache hit ratio is below 60%"
+    },
+    {
+      "name": "Template Service High Memory Usage",
+      "condition": "process_resident_memory_bytes{job=\"archon-server\"} > 1073741824",
+      "frequency": "1m",
+      "severity": "warning",
+      "message": "Template service memory usage is above 1GB"
+    }
+  ]
+}
