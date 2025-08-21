@@ -3,7 +3,7 @@ import { Plus, Package, AlertCircle, Settings, Layers, GitBranch, FileText } fro
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-// import { TemplateManagement } from './TemplateManagement'; // TEMPORARILY DISABLED FOR DEBUGGING
+import { TemplateManagement } from './TemplateManagement'; // RE-ENABLED WITH DEFENSIVE PROGRAMMING
 import type { Project } from '../../types/project';
 
 interface ComponentsTabProps {
@@ -193,23 +193,13 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
               </div>
             </Card>
           ) : (
-            {/* Temporarily disabled TemplateManagement for debugging */}
-            <Card className="p-8 text-center">
-              <Layers className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                Template Management Temporarily Disabled
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Template management is temporarily disabled for debugging. This will be restored shortly.
-              </p>
-              <Button
-                onClick={() => window.location.reload()}
-                variant="outline"
-                size="sm"
-              >
-                Refresh Page
-              </Button>
-            </Card>
+            <SafeTemplateManagement
+              projectId={project.id}
+              onError={setError}
+              onTemplateSelect={(template) => console.log('Template selected:', template)}
+              onComponentSelect={(component) => console.log('Component selected:', component)}
+              onAssignmentSelect={(assignment) => console.log('Assignment selected:', assignment)}
+            />
           )}
         </div>
       ) : (
@@ -475,23 +465,22 @@ class TemplateManagementErrorBoundary extends React.Component<
   }
 }
 
-// TEMPORARILY DISABLED FOR DEBUGGING
 // Safe wrapper for TemplateManagement to catch errors
-// const SafeTemplateManagement: React.FC<{
-//   projectId: string;
-//   onError: (error: string) => void;
-//   onTemplateSelect?: (template: any) => void;
-//   onComponentSelect?: (component: any) => void;
-//   onAssignmentSelect?: (assignment: any) => void;
-// }> = ({ projectId, onError, onTemplateSelect, onComponentSelect, onAssignmentSelect }) => {
-//   return (
-//     <TemplateManagementErrorBoundary onError={onError}>
-//       <TemplateManagement
-//         projectId={projectId}
-//         onTemplateSelect={onTemplateSelect}
-//         onComponentSelect={onComponentSelect}
-//         onAssignmentSelect={onAssignmentSelect}
-//       />
-//     </TemplateManagementErrorBoundary>
-//   );
-// };
+const SafeTemplateManagement: React.FC<{
+  projectId: string;
+  onError: (error: string) => void;
+  onTemplateSelect?: (template: any) => void;
+  onComponentSelect?: (component: any) => void;
+  onAssignmentSelect?: (assignment: any) => void;
+}> = ({ projectId, onError, onTemplateSelect, onComponentSelect, onAssignmentSelect }) => {
+  return (
+    <TemplateManagementErrorBoundary onError={onError}>
+      <TemplateManagement
+        projectId={projectId}
+        onTemplateSelect={onTemplateSelect}
+        onComponentSelect={onComponentSelect}
+        onAssignmentSelect={onAssignmentSelect}
+      />
+    </TemplateManagementErrorBoundary>
+  );
+};
