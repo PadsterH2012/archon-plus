@@ -37,10 +37,11 @@ services:
       - ARCHON_MCP_HOST=dev-archon-mcp
       - ARCHON_AGENTS_HOST=dev-archon-agents
 
-      # Embedding Service Override for Development Environment (Ollama)
-      - EMBEDDING_BASE_URL=http://10.202.28.47:11434/v1
-      - EMBEDDING_PROVIDER=ollama
-      - EMBEDDING_MODEL=nomic-embed-text
+      # Embedding Service Configuration (from .env.dev)
+      - EMBEDDING_BASE_URL=${EMBEDDING_BASE_URL}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      - EMBEDDING_DIMENSIONS=${EMBEDDING_DIMENSIONS}
 
       # MCP Service Management (for Docker Swarm)
       - MCP_CONTAINER_NAME=archon-dev_dev-archon-mcp
@@ -290,12 +291,9 @@ networks:
 # LOG_LEVEL=DEBUG
 # LOGFIRE_TOKEN=your-logfire-token
 #
-# TEI Configuration:
-# EMBEDDING_MODEL_ID=sentence-transformers/all-MiniLM-L6-v2
-# TEI_MAX_CONCURRENT=256
-# TEI_MAX_BATCH_TOKENS=8192
-# TEI_MAX_BATCH_REQUESTS=16
-# TEI_MEMORY_LIMIT=1G
-# TEI_CPU_LIMIT=1
-# TEI_MEMORY_RESERVATION=512M
-# TEI_CPU_RESERVATION=0.5
+# Embedding Configuration (Ollama):
+# EMBEDDING_BASE_URL=http://10.202.28.47:11434/v1
+# EMBEDDING_PROVIDER=ollama
+# EMBEDDING_MODEL=nomic-embed-text
+# EMBEDDING_DIMENSIONS=768
+# EMBEDDING_MODEL_ID=nomic-embed-text
