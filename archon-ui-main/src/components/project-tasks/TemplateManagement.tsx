@@ -40,7 +40,7 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
   // State management
   const [state, setState] = useState<TemplateManagementState>({
     activeTab: 'templates',
-    isLoading: false,
+    isLoading: true, // Start with loading state to prevent premature rendering
     isSaving: false,
     isDeleting: false,
     templates: [],
@@ -166,56 +166,66 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
 
   // Filter data based on search and filters
   const filteredTemplates = React.useMemo(() => {
-    // Ensure templates is always an array
-    const templates = Array.isArray(state.templates) ? state.templates : [];
+    try {
+      // Ensure templates is always an array
+      const templates = Array.isArray(state?.templates) ? state.templates : [];
 
-    return templates.filter(template => {
-      // Ensure template object exists and has required properties
-      if (!template || typeof template !== 'object') {
-        return false;
-      }
+      return templates.filter(template => {
+        // Ensure template object exists and has required properties
+        if (!template || typeof template !== 'object') {
+          return false;
+        }
 
-      const templateName = template.name || '';
-      const templateTitle = template.title || '';
-      const templateType = template.template_type || '';
+        const templateName = template.name || '';
+        const templateTitle = template.title || '';
+        const templateType = template.template_type || '';
 
-      const matchesSearch = !state.searchQuery ||
-        templateName.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
-        templateTitle.toLowerCase().includes(state.searchQuery.toLowerCase());
+        const matchesSearch = !state.searchQuery ||
+          templateName.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+          templateTitle.toLowerCase().includes(state.searchQuery.toLowerCase());
 
-      const matchesFilter = !state.templateFilter ||
+        const matchesFilter = !state.templateFilter ||
       template.status === state.templateFilter ||
-        templateType === state.templateFilter;
+          templateType === state.templateFilter;
 
-      return matchesSearch && matchesFilter;
-    });
-  }, [state.templates, state.searchQuery, state.templateFilter]);
+        return matchesSearch && matchesFilter;
+      });
+    } catch (error) {
+      console.error('Error filtering templates:', error);
+      return [];
+    }
+  }, [state?.templates, state?.searchQuery, state?.templateFilter]);
 
   const filteredAssignments = React.useMemo(() => {
-    // Ensure assignments is always an array
-    const assignments = Array.isArray(state.assignments) ? state.assignments : [];
+    try {
+      // Ensure assignments is always an array
+      const assignments = Array.isArray(state?.assignments) ? state.assignments : [];
 
-    return assignments.filter(assignment => {
-      // Ensure assignment object exists and has required properties
-      if (!assignment || typeof assignment !== 'object') {
-        return false;
-      }
+      return assignments.filter(assignment => {
+        // Ensure assignment object exists and has required properties
+        if (!assignment || typeof assignment !== 'object') {
+          return false;
+        }
 
-      const templateName = assignment.template_name || '';
-      const hierarchyLevel = assignment.hierarchy_level || '';
-      const assignmentScope = assignment.assignment_scope || '';
+        const templateName = assignment.template_name || '';
+        const hierarchyLevel = assignment.hierarchy_level || '';
+        const assignmentScope = assignment.assignment_scope || '';
 
-      const matchesSearch = !state.searchQuery ||
-        templateName.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
-        hierarchyLevel.toLowerCase().includes(state.searchQuery.toLowerCase());
+        const matchesSearch = !state.searchQuery ||
+          templateName.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+          hierarchyLevel.toLowerCase().includes(state.searchQuery.toLowerCase());
 
-      const matchesFilter = !state.assignmentFilter ||
-        hierarchyLevel === state.assignmentFilter ||
-        assignmentScope === state.assignmentFilter;
+        const matchesFilter = !state.assignmentFilter ||
+          hierarchyLevel === state.assignmentFilter ||
+          assignmentScope === state.assignmentFilter;
 
-      return matchesSearch && matchesFilter;
-    });
-  }, [state.assignments, state.searchQuery, state.assignmentFilter]);
+        return matchesSearch && matchesFilter;
+      });
+    } catch (error) {
+      console.error('Error filtering assignments:', error);
+      return [];
+    }
+  }, [state?.assignments, state?.searchQuery, state?.assignmentFilter]);
 
   if (state.isLoading) {
     return (
@@ -239,6 +249,28 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
           <Button variant="outline" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Additional safety check to ensure state is properly initialized
+  if (!state || typeof state !== 'object') {
+    console.error('TemplateManagement: Invalid state object', state);
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+            State Initialization Error
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Component state is not properly initialized. Please refresh the page.
+          </p>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Reload Page
           </Button>
         </div>
       </div>
