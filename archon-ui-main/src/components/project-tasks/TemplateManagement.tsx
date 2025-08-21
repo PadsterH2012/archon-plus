@@ -165,27 +165,27 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
   }, []);
 
   // Filter data based on search and filters
-  const filteredTemplates = state.templates.filter(template => {
-    const matchesSearch = !state.searchQuery || 
+  const filteredTemplates = (state.templates || []).filter(template => {
+    const matchesSearch = !state.searchQuery ||
       template.name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
       template.title.toLowerCase().includes(state.searchQuery.toLowerCase());
-    
-    const matchesFilter = !state.templateFilter || 
+
+    const matchesFilter = !state.templateFilter ||
       template.status === state.templateFilter ||
       template.template_type === state.templateFilter;
-    
+
     return matchesSearch && matchesFilter;
   });
 
-  const filteredAssignments = state.assignments.filter(assignment => {
+  const filteredAssignments = (state.assignments || []).filter(assignment => {
     const matchesSearch = !state.searchQuery ||
       assignment.template_name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
       assignment.hierarchy_level.toLowerCase().includes(state.searchQuery.toLowerCase());
-    
+
     const matchesFilter = !state.assignmentFilter ||
       assignment.hierarchy_level === state.assignmentFilter ||
       assignment.assignment_scope === state.assignmentFilter;
-    
+
     return matchesSearch && matchesFilter;
   });
 
@@ -306,7 +306,7 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
       <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
         {[
           { id: 'templates', label: 'Templates', icon: FileText, count: filteredTemplates.length },
-          { id: 'components', label: 'Components', icon: Layers, count: state.components.length },
+          { id: 'components', label: 'Components', icon: Layers, count: (state.components || []).length },
           { id: 'assignments', label: 'Assignments', icon: GitBranch, count: filteredAssignments.length },
           { id: 'analytics', label: 'Analytics', icon: BarChart3, count: 0 }
         ].map((tab) => (
