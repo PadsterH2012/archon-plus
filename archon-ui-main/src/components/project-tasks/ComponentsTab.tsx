@@ -418,6 +418,59 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
   );
 };
 
+// Error Boundary for TemplateManagement
+class TemplateManagementErrorBoundary extends React.Component<
+  {
+    children: React.ReactNode;
+    onError: (error: string) => void;
+  },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('TemplateManagement Error Boundary caught error:', error, errorInfo);
+    this.props.onError(`Template management error: ${error.message}`);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Card className="p-6" accentColor="red">
+          <div className="text-center">
+            <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+              Template Management Unavailable
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              The template management system is currently unavailable. This may be due to missing backend services.
+            </p>
+            <Button
+              onClick={() => {
+                this.setState({ hasError: false });
+                window.location.reload();
+              }}
+              variant="outline"
+              size="sm"
+            >
+              Reload Page
+            </Button>
+          </div>
+        </Card>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 // Safe wrapper for TemplateManagement to catch errors
 const SafeTemplateManagement: React.FC<{
   projectId: string;
@@ -426,18 +479,14 @@ const SafeTemplateManagement: React.FC<{
   onComponentSelect?: (component: any) => void;
   onAssignmentSelect?: (assignment: any) => void;
 }> = ({ projectId, onError, onTemplateSelect, onComponentSelect, onAssignmentSelect }) => {
-  try {
-    return (
+  return (
+    <TemplateManagementErrorBoundary onError={onError}>
       <TemplateManagement
         projectId={projectId}
         onTemplateSelect={onTemplateSelect}
         onComponentSelect={onComponentSelect}
         onAssignmentSelect={onAssignmentSelect}
       />
-    );
-  } catch (error) {
-    console.error('TemplateManagement error:', error);
-    onError(error instanceof Error ? error.message : 'Unknown template management error');
-    return null;
-  }
+    </TemplateManagementErrorBoundary>
+  );
 };
