@@ -193,19 +193,23 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
               </div>
             </Card>
           ) : (
-            <SafeTemplateManagement
-              projectId={project.id}
-              onError={setError}
-              onTemplateSelect={(template) => {
-                console.log('Template selected:', template);
-              }}
-              onComponentSelect={(component) => {
-                console.log('Component selected:', component);
-              }}
-              onAssignmentSelect={(assignment) => {
-                console.log('Assignment selected:', assignment);
-              }}
-            />
+            {/* Temporarily disabled TemplateManagement for debugging */}
+            <Card className="p-8 text-center">
+              <Layers className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                Template Management Temporarily Disabled
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Template management is temporarily disabled for debugging. This will be restored shortly.
+              </p>
+              <Button
+                onClick={() => window.location.reload()}
+                variant="outline"
+                size="sm"
+              >
+                Refresh Page
+              </Button>
+            </Card>
           )}
         </div>
       ) : (
