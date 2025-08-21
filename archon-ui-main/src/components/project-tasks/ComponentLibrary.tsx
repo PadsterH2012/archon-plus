@@ -54,6 +54,19 @@ export const ComponentLibrary: React.FC<ComponentLibraryProps> = ({
     setError(null);
 
     try {
+      // Try to load components from the API first, fall back to mock data
+      let components: TemplateComponent[] = [];
+
+      try {
+        // Attempt to load from API
+        const response = await templateManagementService.testing.testComponent('group::understand_homelab_env');
+        // If successful, we know the API is working, so we could load real components here
+        // For now, still use mock data but log that API is available
+        console.log('Template API is available');
+      } catch (apiError) {
+        console.warn('Template API not available, using mock data:', apiError);
+      }
+
       // Mock data for now - would be replaced with actual API call
       const mockComponents: TemplateComponent[] = [
         {

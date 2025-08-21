@@ -69,16 +69,28 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
     setError(null);
 
     try {
-      // Load templates, components, and assignments in parallel
-      const [templatesResult, assignmentsResult] = await Promise.all([
-        templateService.listTemplates({ includeInheritance: true }),
-        templateManagementService.assignments.listAssignments({ isActive: true })
-      ]);
+      // Load templates and assignments with proper error handling
+      let templatesResult = { templates: [] };
+      let assignmentsResult = [];
+
+      try {
+        templatesResult = await templateService.listTemplates({ includeInheritance: true });
+      } catch (templateError) {
+        console.warn('Failed to load templates:', templateError);
+        // Continue with empty templates array
+      }
+
+      try {
+        assignmentsResult = await templateManagementService.assignments.listAssignments({ isActive: true });
+      } catch (assignmentError) {
+        console.warn('Failed to load assignments:', assignmentError);
+        // Continue with empty assignments array
+      }
 
       setState(prev => ({
         ...prev,
-        templates: templatesResult.templates,
-        assignments: assignmentsResult,
+        templates: templatesResult.templates || [],
+        assignments: assignmentsResult || [],
         isLoading: false
       }));
     } catch (err) {

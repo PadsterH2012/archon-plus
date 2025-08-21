@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Package, AlertCircle, Settings, Layers, GitBranch, FileText } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -48,6 +48,20 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
 }) => {
   const [selectedComponent, setSelectedComponent] = useState<any>(null);
   const [activeView, setActiveView] = useState<'hierarchy' | 'graph'>('hierarchy');
+  const [error, setError] = useState<string | null>(null);
+
+  // Add error handling for template management
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      if (event.error && event.error.message) {
+        console.error('ComponentsTab error:', event.error);
+        setError(`Template system error: ${event.error.message}`);
+      }
+    };
+
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
   const [activeTab, setActiveTab] = useState<'components' | 'templates'>('templates');
 
   const getStatusColor = (status: string) => {
@@ -158,19 +172,42 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
 
       {/* Tab Content */}
       {activeTab === 'templates' ? (
-        <TemplateManagement
-          projectId={project.id}
-          className="mt-6"
-          onTemplateSelect={(template) => {
-            console.log('Template selected:', template);
-          }}
-          onComponentSelect={(component) => {
-            console.log('Component selected:', component);
-          }}
-          onAssignmentSelect={(assignment) => {
-            console.log('Assignment selected:', assignment);
-          }}
-        />
+        <div className="mt-6">
+          {error ? (
+            <Card className="p-6" accentColor="red">
+              <div className="text-center">
+                <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                  Template Management Error
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  {error}
+                </p>
+                <Button
+                  onClick={() => setError(null)}
+                  variant="outline"
+                  size="sm"
+                >
+                  Try Again
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <SafeTemplateManagement
+              projectId={project.id}
+              onError={setError}
+              onTemplateSelect={(template) => {
+                console.log('Template selected:', template);
+              }}
+              onComponentSelect={(component) => {
+                console.log('Component selected:', component);
+              }}
+              onAssignmentSelect={(assignment) => {
+                console.log('Assignment selected:', assignment);
+              }}
+            />
+          )}
+        </div>
       ) : (
         <div className="space-y-6">
           {/* Original Components Content */}
@@ -379,4 +416,28 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
       )}
     </div>
   );
+};
+
+// Safe wrapper for TemplateManagement to catch errors
+const SafeTemplateManagement: React.FC<{
+  projectId: string;
+  onError: (error: string) => void;
+  onTemplateSelect?: (template: any) => void;
+  onComponentSelect?: (component: any) => void;
+  onAssignmentSelect?: (assignment: any) => void;
+}> = ({ projectId, onError, onTemplateSelect, onComponentSelect, onAssignmentSelect }) => {
+  try {
+    return (
+      <TemplateManagement
+        projectId={projectId}
+        onTemplateSelect={onTemplateSelect}
+        onComponentSelect={onComponentSelect}
+        onAssignmentSelect={onAssignmentSelect}
+      />
+    );
+  } catch (error) {
+    console.error('TemplateManagement error:', error);
+    onError(error instanceof Error ? error.message : 'Unknown template management error');
+    return null;
+  }
 };

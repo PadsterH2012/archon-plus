@@ -62,13 +62,17 @@ export const AssignmentManager: React.FC<AssignmentManagerProps> = ({
   }, []);
 
   const handleCreateAssignment = useCallback(() => {
-    onAssignmentCreate?.({
-      template_name: 'workflow_default',
-      hierarchy_level: 'project' as HierarchyLevel,
-      entity_id: projectId,
-      assignment_scope: 'all',
-      priority: 0
-    });
+    try {
+      onAssignmentCreate?.({
+        template_name: 'workflow_default',
+        hierarchy_level: 'project' as HierarchyLevel,
+        entity_id: projectId,
+        assignment_scope: 'all',
+        priority: 0
+      });
+    } catch (error) {
+      console.warn('Failed to create assignment:', error);
+    }
   }, [onAssignmentCreate, projectId]);
 
   const handleEditAssignment = useCallback((assignment: TemplateAssignment) => {
