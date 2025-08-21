@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit, 
-  Trash2, 
+import {
+  Plus,
+  Search,
+  Filter,
+  Edit,
+  Trash2,
   Copy,
   Clock,
-  Tool,
+  Wrench,
   Tag,
   BarChart3,
   Layers
@@ -336,7 +336,7 @@ export const ComponentLibrary: React.FC<ComponentLibraryProps> = ({
                       {component.estimated_duration}m
                     </div>
                     <div className="flex items-center gap-1">
-                      <Tool className="h-3 w-3" />
+                      <Wrench className="h-3 w-3" />
                       {component.required_tools?.length || 0} tools
                     </div>
                     <div className="flex items-center gap-1">
