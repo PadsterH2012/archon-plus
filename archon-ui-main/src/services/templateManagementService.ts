@@ -1,7 +1,55 @@
 // Template Management Service
 // Provides API integration for template management UI components
 
-import { callMCPTool } from '../utils/mcpClient';
+// API configuration - use relative URL to go through Vite proxy
+const API_BASE_URL = '/api';
+
+// Helper function to call MCP tools via API
+async function callMCPTool<T = any>(toolName: string, params: Record<string, any>): Promise<T> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/mcp/tools/call`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        tool_name: toolName,
+        arguments: params
+      })
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorBody = await response.text();
+        if (errorBody) {
+          const errorJson = JSON.parse(errorBody);
+          errorMessage = errorJson.detail || errorJson.error || errorMessage;
+        }
+      } catch (e) {
+        // Ignore parse errors, use default message
+      }
+
+      throw new TemplateManagementServiceError(
+        errorMessage,
+        'HTTP_ERROR',
+        response.status
+      );
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    if (error instanceof TemplateManagementServiceError) {
+      throw error;
+    }
+
+    throw new TemplateManagementServiceError(
+      `Failed to call MCP tool ${toolName}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      'MCP_CALL_ERROR'
+    );
+  }
+}
 import type {
   TemplateAssignment,
   TemplateResolution,
