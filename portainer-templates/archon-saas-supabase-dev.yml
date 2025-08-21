@@ -37,8 +37,10 @@ services:
       - ARCHON_MCP_HOST=dev-archon-mcp
       - ARCHON_AGENTS_HOST=dev-archon-agents
 
-      # Embedding Service Override for Development Environment
-      - EMBEDDING_BASE_URL=http://dev-archon-embeddings:80
+      # Embedding Service Override for Development Environment (Ollama)
+      - EMBEDDING_BASE_URL=http://10.202.28.47:11434/v1
+      - EMBEDDING_PROVIDER=ollama
+      - EMBEDDING_MODEL=nomic-embed-text
 
       # MCP Service Management (for Docker Swarm)
       - MCP_CONTAINER_NAME=archon-dev_dev-archon-mcp
@@ -232,42 +234,42 @@ services:
     depends_on:
       - dev-archon-server
 
-  # Text Embeddings Inference (TEI) - Local Embedding Server
-  dev-archon-embeddings:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
-    environment:
-      - MODEL_ID=${EMBEDDING_MODEL_ID:-sentence-transformers/all-MiniLM-L6-v2}
-      - MAX_CONCURRENT_REQUESTS=${TEI_MAX_CONCURRENT:-256}
-      - MAX_BATCH_TOKENS=${TEI_MAX_BATCH_TOKENS:-8192}
-      - MAX_BATCH_REQUESTS=${TEI_MAX_BATCH_REQUESTS:-16}
-      - HOSTNAME=0.0.0.0
-      - PORT=80
-    ports:
-      - target: 80
-        published: ${ARCHON_EMBEDDINGS_PORT:-9080}
-        protocol: tcp
-        mode: ingress
-    networks:
-      - archon-dev-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-      resources:
-        limits:
-          memory: ${TEI_MEMORY_LIMIT:-1G}
-          cpus: ${TEI_CPU_LIMIT:-1}
-        reservations:
-          memory: ${TEI_MEMORY_RESERVATION:-512M}
-          cpus: ${TEI_CPU_RESERVATION:-0.5}
+  # Text Embeddings Inference (TEI) - DISABLED - Using External Ollama
+  # dev-archon-embeddings:
+  #   image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
+  #   environment:
+  #     - MODEL_ID=${EMBEDDING_MODEL_ID:-sentence-transformers/all-MiniLM-L6-v2}
+  #     - MAX_CONCURRENT_REQUESTS=${TEI_MAX_CONCURRENT:-256}
+  #     - MAX_BATCH_TOKENS=${TEI_MAX_BATCH_TOKENS:-8192}
+  #     - MAX_BATCH_REQUESTS=${TEI_MAX_BATCH_REQUESTS:-16}
+  #     - HOSTNAME=0.0.0.0
+  #     - PORT=80
+  #   ports:
+  #     - target: 80
+  #       published: ${ARCHON_EMBEDDINGS_PORT:-9080}
+  #       protocol: tcp
+  #       mode: ingress
+  #   networks:
+  #     - archon-dev-network
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 60s
+  #   deploy:
+  #     replicas: 1
+  #     restart_policy:
+  #       condition: on-failure
+  #       delay: 5s
+  #       max_attempts: 3
+  #     resources:
+  #       limits:
+  #         memory: ${TEI_MEMORY_LIMIT:-1G}
+  #         cpus: ${TEI_CPU_LIMIT:-1}
+  #       reservations:
+  #         memory: ${TEI_MEMORY_RESERVATION:-512M}
+  #         cpus: ${TEI_CPU_RESERVATION:-0.5}
 
 networks:
   archon-dev-network:
