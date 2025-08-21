@@ -166,21 +166,40 @@ export const ComponentLibrary: React.FC<ComponentLibraryProps> = ({
   }, [onComponentCreate]);
 
   // Filter components based on search and filters
-  const filteredComponents = components.filter(component => {
-    const matchesSearch = !searchQuery || 
-      component.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      component.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      component.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    const matchesCategory = !categoryFilter || component.category === categoryFilter;
-    const matchesType = !typeFilter || component.component_type === typeFilter;
-    
-    return matchesSearch && matchesCategory && matchesType;
-  });
+  const filteredComponents = React.useMemo(() => {
+    try {
+      // Ensure components is always an array
+      const componentsArray = Array.isArray(components) ? components : [];
+
+      return componentsArray.filter(component => {
+        // Ensure component object exists and has required properties
+        if (!component || typeof component !== 'object') {
+          return false;
+        }
+
+        const componentName = component.name || '';
+        const componentDescription = component.description || '';
+        const componentTags = Array.isArray(component.tags) ? component.tags : [];
+
+        const matchesSearch = !searchQuery ||
+          componentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          componentDescription.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          componentTags.some(tag => tag && tag.toLowerCase().includes(searchQuery.toLowerCase()));
+
+        const matchesCategory = !categoryFilter || component.category === categoryFilter;
+        const matchesType = !typeFilter || component.component_type === typeFilter;
+
+        return matchesSearch && matchesCategory && matchesType;
+      });
+    } catch (error) {
+      console.error('Error filtering components:', error);
+      return [];
+    }
+  }, [components, searchQuery, categoryFilter, typeFilter]);
 
   // Get unique categories and types for filters
-  const categories = Array.from(new Set(components.map(c => c.category).filter(Boolean)));
-  const types = Array.from(new Set(components.map(c => c.component_type)));
+  const categories = Array.from(new Set((Array.isArray(components) ? components : []).map(c => c?.category).filter(Boolean)));
+  const types = Array.from(new Set((Array.isArray(components) ? components : []).map(c => c?.component_type).filter(Boolean)));
 
   if (isLoading) {
     return (
