@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Plus, Package, AlertCircle, Settings, Layers, GitBranch, Workflow } from 'lucide-react';
+import { Plus, Package, AlertCircle, Settings, Layers, GitBranch, Workflow, FileText } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { WorkflowTaskGroups } from './WorkflowTaskGroups';
+import { TemplateManagement } from './TemplateManagement';
 import type { Project } from '../../types/project';
 
 interface ComponentsTabProps {
@@ -48,7 +49,7 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
 }) => {
   const [selectedComponent, setSelectedComponent] = useState<any>(null);
   const [activeView, setActiveView] = useState<'hierarchy' | 'graph'>('hierarchy');
-  const [activeTab, setActiveTab] = useState<'components' | 'workflows'>('workflows');
+  const [activeTab, setActiveTab] = useState<'components' | 'workflows' | 'templates'>('workflows');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -141,6 +142,19 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
             </div>
           </button>
           <button
+            onClick={() => setActiveTab('templates')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'templates'
+                ? 'border-purple-500 text-purple-600 dark:text-purple-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Template Management
+            </div>
+          </button>
+          <button
             onClick={() => setActiveTab('components')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'components'
@@ -164,6 +178,20 @@ export const ComponentsTab: React.FC<ComponentsTabProps> = ({
             console.log('Task group executed:', taskGroup.name, execution);
             // Here you could integrate with the Archon task system
             // to create actual tasks from the workflow
+          }}
+        />
+      ) : activeTab === 'templates' ? (
+        <TemplateManagement
+          projectId={project.id}
+          className="mt-6"
+          onTemplateSelect={(template) => {
+            console.log('Template selected:', template);
+          }}
+          onComponentSelect={(component) => {
+            console.log('Component selected:', component);
+          }}
+          onAssignmentSelect={(assignment) => {
+            console.log('Assignment selected:', assignment);
           }}
         />
       ) : (
