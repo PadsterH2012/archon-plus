@@ -398,6 +398,11 @@ class CredentialService:
         """
         Get the currently active provider configuration for the specified service type.
 
+        PRIORITY ORDER (Environment First):
+        1. Environment variables (.env files) - Easy to change, version controlled
+        2. Database settings (UI overrides) - Advanced user configuration
+        3. Hardcoded defaults - Last resort fallback
+
         Args:
             service_type: Either 'llm'/'chat' or 'embedding'
 
@@ -405,31 +410,54 @@ class CredentialService:
             Dict with provider, api_key, base_url, model, and fallback_providers for the service type
         """
         try:
-            # Get RAG strategy settings (where UI saves provider selection)
+            # STEP 1: Check environment variables FIRST (logical priority)
+            env_provider = None
+            env_base_url = None
+            env_model = None
+
+            if service_type == "embedding":
+                env_provider = os.getenv("EMBEDDING_PROVIDER")
+                env_base_url = os.getenv("EMBEDDING_BASE_URL")
+                env_model = os.getenv("EMBEDDING_MODEL")
+            else:  # llm/chat
+                env_provider = os.getenv("LLM_PROVIDER") or os.getenv("CHAT_PROVIDER")
+                env_base_url = os.getenv("LLM_BASE_URL") or os.getenv("CHAT_BASE_URL")
+                env_model = os.getenv("MODEL_CHOICE")
+
+            # STEP 2: Get database settings as fallback/override
             rag_settings = await self.get_credentials_by_category("rag_strategy")
 
-            # Determine provider and configuration based on service type
+            # STEP 3: Determine final configuration (Environment takes priority)
             if service_type == "embedding":
-                # Use EMBEDDING_PROVIDER, fallback to LLM_PROVIDER for backward compatibility
-                provider = rag_settings.get("EMBEDDING_PROVIDER",
-                                           rag_settings.get("LLM_PROVIDER", "openai"))
+                # Environment first, then database, then defaults
+                db_provider = rag_settings.get("EMBEDDING_PROVIDER",
+                                              rag_settings.get("LLM_PROVIDER", "openai"))
+                provider = env_provider or db_provider
+                model = env_model or rag_settings.get("EMBEDDING_MODEL", "")
                 base_url_key = "EMBEDDING_BASE_URL"
-                model = rag_settings.get("EMBEDDING_MODEL", "")
             else:  # llm/chat
-                # Use CHAT_PROVIDER, fallback to LLM_PROVIDER for backward compatibility
-                provider = rag_settings.get("CHAT_PROVIDER",
-                                           rag_settings.get("LLM_PROVIDER", "openai"))
+                # Environment first, then database, then defaults
+                db_provider = rag_settings.get("CHAT_PROVIDER",
+                                              rag_settings.get("LLM_PROVIDER", "openai"))
+                provider = env_provider or db_provider
+                model = env_model or rag_settings.get("MODEL_CHOICE", "")
                 base_url_key = "CHAT_BASE_URL"
-                model = rag_settings.get("MODEL_CHOICE", "")
+
+            # For base URL: Environment > Database > Provider defaults
+            base_url = env_base_url or rag_settings.get(base_url_key)
+            if not base_url:
+                base_url = self._get_provider_base_url(provider, rag_settings, base_url_key)
 
             # Get API key for this provider
             api_key = await self._get_provider_api_key(provider)
 
-            # Get service-specific base URL
-            base_url = self._get_provider_base_url(provider, rag_settings, base_url_key)
-
             # Get fallback providers for this service type
             fallback_providers = await self._get_fallback_providers(service_type, rag_settings)
+
+            logger.info(f"🔧 Provider config for {service_type}: provider={provider}, "
+                       f"base_url={base_url}, model={model} "
+                       f"(env_override: provider={bool(env_provider)}, "
+                       f"base_url={bool(env_base_url)}, model={bool(env_model)})")
 
             return {
                 "provider": provider,
