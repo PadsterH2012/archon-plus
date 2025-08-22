@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
-import { Search, Grid, Plus, Upload, Link as LinkIcon, Brain, Filter, BoxIcon, List, BookOpen, CheckSquare } from 'lucide-react';
+import { useEffect, useState, useRef, useMemo, Component, ErrorInfo, ReactNode } from 'react';
+import { Search, Grid, Plus, Upload, Link as LinkIcon, Brain, Filter, BoxIcon, List, BookOpen, CheckSquare, AlertTriangle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -51,9 +51,69 @@ interface GroupedKnowledgeItem {
   updated_at: string;
 }
 
+// Error Boundary for Knowledge Base Page
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+  errorInfo?: ErrorInfo;
+}
+
+class KnowledgeBaseErrorBoundary extends Component<
+  { children: ReactNode },
+  ErrorBoundaryState
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('KnowledgeBasePage Error:', error, errorInfo);
+    this.setState({ error, errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <Card className="max-w-md w-full mx-4">
+            <div className="text-center p-6">
+              <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">
+                Knowledge Base Error
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Something went wrong while loading the knowledge base.
+              </p>
+              <div className="text-xs text-gray-500 dark:text-gray-500 mb-4 p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                {this.state.error?.message || 'Unknown error'}
+              </div>
+              <Button
+                onClick={() => window.location.reload()}
+                variant="primary"
+                accentColor="blue"
+                className="w-full"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Reload Page
+              </Button>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 
-export const KnowledgeBasePage = () => {
+
+const KnowledgeBasePage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -1196,6 +1256,18 @@ export const KnowledgeBasePage = () => {
       )}
     </div>;
 };
+
+// Wrapped component with error boundary
+const KnowledgeBasePageWithErrorBoundary = () => {
+  return (
+    <KnowledgeBaseErrorBoundary>
+      <KnowledgeBasePage />
+    </KnowledgeBaseErrorBoundary>
+  );
+};
+
+// Export the wrapped component
+export { KnowledgeBasePageWithErrorBoundary as KnowledgeBasePage };
 
 
 
