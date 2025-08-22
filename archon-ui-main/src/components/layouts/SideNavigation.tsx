@@ -53,7 +53,7 @@ export const SideNavigation: React.FC<SideNavigationProps> = ({
   
   // Default navigation items
   const navigationItems: NavigationItem[] = [{
-    path: '/',
+    path: '/knowledge-base',
     icon: <BookOpen className="h-5 w-5" />,
     label: 'Knowledge Base'
   }, {
@@ -112,7 +112,10 @@ export const SideNavigation: React.FC<SideNavigationProps> = ({
       {/* Navigation links */}
       <nav className="flex flex-col gap-4">
         {navigationItems.map(item => {
-        const isActive = location.pathname === item.path;
+        // Special handling for Knowledge Base route - active for both / and /knowledge-base
+        const isActive = item.path === '/knowledge-base'
+          ? (location.pathname === '/' || location.pathname === '/knowledge-base')
+          : location.pathname === item.path;
         return <Link key={item.path} to={item.path} className={`
                 relative p-3 rounded-lg flex items-center justify-center
                 transition-all duration-300
