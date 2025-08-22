@@ -26,7 +26,9 @@ export const TagInput: React.FC<TagInputProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
-  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Debug log to see if component is being used
+  console.log('TagInput component rendered with tags:', tags);
 
   // Filter suggestions based on input value
   useEffect(() => {
