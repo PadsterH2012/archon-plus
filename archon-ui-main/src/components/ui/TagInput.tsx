@@ -26,7 +26,6 @@ export const TagInput: React.FC<TagInputProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
-  const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
   // Filter suggestions based on input value
@@ -95,7 +94,6 @@ export const TagInput: React.FC<TagInputProps> = ({
   // Handle suggestion click
   const handleSuggestionClick = (tag: string) => {
     addTag(tag);
-    inputRef.current?.focus();
   };
 
   // Handle input focus
@@ -144,7 +142,6 @@ export const TagInput: React.FC<TagInputProps> = ({
       {/* Input Field */}
       <div className="relative">
         <Input
-          ref={inputRef}
           type="text"
           value={inputValue}
           onChange={handleInputChange}
