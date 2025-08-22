@@ -176,6 +176,15 @@ class KnowledgeBaseService {
   }
 
   /**
+   * Get all available tags from existing knowledge items
+   */
+  async getAvailableTags(): Promise<{ tags: string[] }> {
+    console.log('🏷️ [KnowledgeBase] Getting available tags');
+
+    return apiRequest<{ tags: string[] }>('/knowledge-items/tags')
+  }
+
+  /**
    * Delete a knowledge item by source_id
    */
   async deleteKnowledgeItem(sourceId: string) {

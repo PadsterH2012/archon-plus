@@ -131,6 +131,27 @@ async def get_knowledge_sources():
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
+@router.get("/knowledge-items/tags")
+async def get_available_tags():
+    """Get all unique tags from existing knowledge items."""
+    try:
+        # Use KnowledgeItemService to get all items
+        service = KnowledgeItemService(get_supabase_client())
+        result = await service.list_items(page=1, per_page=1000)  # Get a large number to capture all tags
+
+        # Extract and flatten all tags
+        all_tags = set()
+        for item in result["items"]:
+            if item.get("metadata", {}) and item["metadata"].get("tags"):
+                all_tags.update(item["metadata"]["tags"])
+
+        # Return sorted list of unique tags
+        return {"tags": sorted(list(all_tags))}
+    except Exception as e:
+        safe_logfire_error(f"Failed to get available tags: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get available tags: {str(e)}")
+
+
 @router.get("/knowledge-items")
 async def get_knowledge_items(
     page: int = 1, per_page: int = 20, knowledge_type: str | None = None, search: str | None = None

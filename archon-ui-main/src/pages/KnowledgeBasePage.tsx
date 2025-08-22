@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Badge } from '../components/ui/Badge';
+import { TagInput } from '../components/ui/TagInput';
 import { GlassCrawlDepthSelector } from '../components/ui/GlassCrawlDepthSelector';
 import { useStaggeredEntrance } from '../hooks/useStaggeredEntrance';
 import { useToast } from '../contexts/ToastContext';
@@ -1287,13 +1288,28 @@ const AddKnowledgeModal = ({
   const [method, setMethod] = useState<'url' | 'file'>('url');
   const [url, setUrl] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [newTag, setNewTag] = useState('');
   const [knowledgeType, setKnowledgeType] = useState<'technical' | 'business'>('technical');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [crawlDepth, setCrawlDepth] = useState(2);
   const [showDepthTooltip, setShowDepthTooltip] = useState(false);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const { showToast } = useToast();
+
+  // Load available tags when modal opens
+  useEffect(() => {
+    const loadAvailableTags = async () => {
+      try {
+        const response = await knowledgeBaseService.getAvailableTags();
+        setAvailableTags(response.tags);
+      } catch (error) {
+        console.error('Failed to load available tags:', error);
+        // Don't show error toast as this is not critical
+      }
+    };
+
+    loadAvailableTags();
+  }, []);
 
   // URL validation function that checks domain existence
   const validateUrl = async (url: string): Promise<{ isValid: boolean; error?: string; formattedUrl?: string }> => {
@@ -1588,17 +1604,14 @@ const AddKnowledgeModal = ({
           <label className="block text-gray-600 dark:text-zinc-400 text-sm mb-2">
             Tags (AI will add recommended tags if left blank)
           </label>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {tags.map(tag => <Badge key={tag} color="purple" variant="outline">
-                {tag}
-              </Badge>)}
-          </div>
-          <Input type="text" value={newTag} onChange={e => setNewTag(e.target.value)} onKeyDown={e => {
-          if (e.key === 'Enter' && newTag.trim()) {
-            setTags([...tags, newTag.trim()]);
-            setNewTag('');
-          }
-        }} placeholder="Add tags..." accentColor="purple" />
+          <TagInput
+            tags={tags}
+            onTagsChange={setTags}
+            availableTags={availableTags}
+            placeholder="Add tags..."
+            accentColor="purple"
+            disabled={loading}
+          />
         </div>
         {/* Action Buttons */}
         <div className="flex justify-end gap-4">
