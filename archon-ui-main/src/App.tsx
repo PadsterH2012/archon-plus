@@ -20,6 +20,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<KnowledgeBasePage />} />
+      <Route path="/knowledge-base" element={<KnowledgeBasePage />} />
       <Route path="/onboarding" element={<OnboardingPage />} />
       <Route path="/settings" element={<SettingsPage />} />
       <Route path="/mcp" element={<MCPPage />} />
