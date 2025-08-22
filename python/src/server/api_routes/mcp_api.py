@@ -457,7 +457,7 @@ class MCPServerManager:
         if self.status == "running" and self.start_time:
             uptime = int(time.time() - self.start_time)
         elif self.status == "running" and self.container:
-            # Try to get uptime from container info
+            # Try to get uptime from container info (Docker Compose mode)
             try:
                 self.container.reload()
                 started_at = self.container.attrs["State"]["StartedAt"]
@@ -467,6 +467,28 @@ class MCPServerManager:
                 started_time = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
                 uptime = int((datetime.now(started_time.tzinfo) - started_time).total_seconds())
             except Exception:
+                pass
+        elif self.status == "running" and self.is_swarm_mode and self.service:
+            # Try to get uptime from service task info (Docker Swarm mode)
+            try:
+                from datetime import datetime
+
+                self.service.reload()
+                tasks = self.service.tasks()
+                if tasks:
+                    # Find the most recent running task
+                    running_tasks = [task for task in tasks if task.get('Status', {}).get('State') == 'running']
+                    if running_tasks:
+                        # Get the most recent running task
+                        latest_task = max(running_tasks, key=lambda t: t.get('CreatedAt', ''))
+                        created_at = latest_task.get('CreatedAt')
+                        if created_at:
+                            # Parse ISO format datetime
+                            created_time = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                            uptime = int((datetime.now(created_time.tzinfo) - created_time).total_seconds())
+            except Exception as e:
+                # Log the exception for debugging
+                mcp_logger.debug(f"Failed to get Swarm service uptime: {str(e)}")
                 pass
 
         # Convert log entries to strings for backward compatibility
