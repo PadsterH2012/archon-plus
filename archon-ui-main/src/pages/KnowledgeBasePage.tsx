@@ -559,7 +559,33 @@ const KnowledgeBasePage = () => {
       }
     } catch (error) {
       console.error('Failed to refresh knowledge item:', error);
-      showToast('Failed to refresh knowledge item', 'error');
+
+      // Extract more specific error information
+      let errorMessage = 'Failed to refresh knowledge item';
+      let suggestion = '';
+
+      if (error instanceof Error) {
+        try {
+          // Try to parse the error response for more details
+          const errorText = error.message;
+          if (errorText.includes('no content chunks found')) {
+            errorMessage = 'Cannot refresh this file';
+            suggestion = 'This file needs to be re-uploaded instead of refreshed.';
+          } else if (errorText.includes('re-upload')) {
+            errorMessage = 'File refresh not available';
+            suggestion = 'Please re-upload this file to update its content.';
+          } else if (errorText.includes('400')) {
+            errorMessage = 'Refresh not supported for this item';
+            suggestion = 'Try re-uploading the file instead.';
+          }
+        } catch (parseError) {
+          // Use default message if parsing fails
+        }
+      }
+
+      // Show the error with suggestion if available
+      const fullMessage = suggestion ? `${errorMessage}. ${suggestion}` : errorMessage;
+      showToast(fullMessage, 'error');
     }
   };
 

@@ -325,9 +325,17 @@ async def refresh_knowledge_item(source_id: str):
                 )
 
                 if not pages_response.data:
+                    # Check if this is a file source that might need re-upload instead of refresh
+                    safe_logfire_warning(f"No chunks found for file source {source_id} - this file may need to be re-uploaded instead of refreshed")
+
+                    # Provide a more helpful error message to users
                     raise HTTPException(
                         status_code=400,
-                        detail={"error": f"No content found for file source {source_id} to refresh"}
+                        detail={
+                            "error": f"Cannot refresh file source '{source_id}' - no content chunks found in database",
+                            "suggestion": "This file may need to be re-uploaded instead of refreshed. File sources can only be refreshed if they have been properly processed and stored as chunks.",
+                            "action": "re-upload"
+                        }
                     )
 
                 # Reconstruct the original file content
