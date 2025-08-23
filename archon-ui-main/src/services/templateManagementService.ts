@@ -6,7 +6,7 @@ const API_BASE_URL = '/api';
 
 // REST API service for template management (fallback when MCP is not available)
 class TemplateManagementRestService {
-  private baseUrl = `${API_BASE_URL}/template-management`;
+  private baseUrl = `${API_BASE_URL}/template-injection`;
 
   async listComponents(options: {
     filterBy?: string;

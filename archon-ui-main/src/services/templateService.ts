@@ -139,7 +139,7 @@ export const templateService = {
 
       try {
         // Fallback to REST API
-        const restResponse = await fetch(`/api/template-management/templates?${new URLSearchParams({
+        const restResponse = await fetch(`/api/template-injection/templates?${new URLSearchParams({
           filter_by: options.filterBy || '',
           filter_value: options.filterValue || '',
           page: (options.page ?? 1).toString(),
