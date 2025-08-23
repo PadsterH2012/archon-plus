@@ -44,10 +44,15 @@ Bash/shell code blocks containing directory trees were incorrectly filtered as A
 
 **Status:** **FIXED** - Updated filtering logic to preserve directory structures while filtering actual diagrams.
 
-#### Fix 2: File Access During Recrawl Operations ⚠️ IDENTIFIED (2025-08-23)
+#### Fix 2: File Access During Recrawl Operations ✅ RESOLVED (2025-08-23)
 Recrawl operations fail at the file access stage, preventing code extraction from being triggered.
 
-**Status:** **NEEDS FIXING** - Refresh endpoint cannot locate source files using file:// URLs.
+**Status:** **FIXED** - Enhanced refresh endpoint to handle file:// URLs and added raw content processing.
+
+#### Fix 3: Raw Content Processing ✅ RESOLVED (2025-08-23)
+Crawling service couldn't process raw: prefixed content from reconstructed file sources.
+
+**Status:** **FIXED** - Added special handling for raw: URLs in crawling service.
 
 **Affected Code Patterns:**
 ```bash
@@ -89,11 +94,43 @@ Local file not found: ARCHON_DATABASE_SETUP_GUIDE.md
 3. **Crawl Failure**: Since crawl fails, code extraction is never triggered
 4. **Pipeline Interruption**: Code extraction fix cannot be tested due to upstream failure
 
-**Solution Required:**
-- Fix file path resolution in refresh/recrawl mechanism
-- Implement proper file access for containerized environments
-- Test with web URLs or direct content upload instead of file refresh
-- Verify code extraction works once crawl succeeds
+**Solution Applied:** ✅ **COMPLETED**
+- **Commit:** `3412dcb` - "Fix file:// URLs in refresh endpoint"
+- **File Modified:** `python/src/server/api_routes/knowledge_api.py`
+- **Changes:** Added file:// URL detection to trigger content reconstruction
+- **Result:** File sources properly reconstructed from database chunks
+
+**Problem:** Raw content processing in crawling service
+
+**Symptoms:**
+- Crawling service fails with "Failed to crawl raw::" errors
+- Raw: prefixed URLs not handled by crawl4ai
+- Content reconstruction successful but processing fails
+
+**Root Cause:**
+```
+Failed to crawl raw::
+```
+
+**Analysis:**
+1. **Missing Handler**: Crawling service had no special handling for raw: URLs
+2. **Crawl4ai Limitation**: External crawler doesn't understand raw: prefix format
+3. **Processing Gap**: Need direct content processing without external crawling
+4. **Pipeline Interruption**: Raw content couldn't reach code extraction phase
+
+**Solution Applied:** ✅ **COMPLETED**
+- **Commit:** `ee0d095` - "Add raw content handling for reconstructed file sources"
+- **File Modified:** `python/src/server/services/crawling/crawling_service.py`
+- **Changes:** Added special handling for raw: URLs to process content directly
+- **Result:** Raw content processed without external crawling, enabling code extraction
+
+**Verification:** ✅ **CODE EXTRACTION WORKING**
+```
+2025-08-23 12:09:27 | search | INFO | Successfully generated 2 code summaries
+2025-08-23 12:09:27 | httpx | INFO | HTTP Request: DELETE archon_code_examples
+```
+
+**Final Status:** ✅ **KNOWLEDGE BASE RECRAWL FUNCTIONALITY FULLY RESTORED**
 
 #### Fix 2: Minimum Length Requirements
 Code blocks must meet minimum length requirements (default: 250 characters).
