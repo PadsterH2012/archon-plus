@@ -2,12 +2,14 @@ import React from 'react';
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   children: React.ReactNode;
   color?: 'purple' | 'green' | 'pink' | 'blue' | 'gray' | 'orange';
-  variant?: 'solid' | 'outline';
+  variant?: 'solid' | 'outline' | 'secondary' | 'success';
+  size?: 'sm' | 'md' | 'lg';
 }
 export const Badge: React.FC<BadgeProps> = ({
   children,
   color = 'gray',
   variant = 'outline',
+  size = 'md',
   className = '',
   ...props
 }) => {
@@ -27,11 +29,34 @@ export const Badge: React.FC<BadgeProps> = ({
       blue: 'border border-blue-300 text-blue-600 dark:border-blue-500/30 dark:text-blue-500',
       gray: 'border border-gray-300 text-gray-700 dark:border-zinc-700 dark:text-zinc-400',
       orange: 'border border-orange-500 text-orange-500 dark:border-orange-500 dark:text-orange-500 shadow-[0_0_10px_rgba(251,146,60,0.3)]'
+    },
+    secondary: {
+      purple: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+      green: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+      pink: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+      blue: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+      gray: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+      orange: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+    },
+    success: {
+      purple: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
+      green: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
+      pink: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
+      blue: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
+      gray: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
+      orange: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
     }
   };
+
+  const sizeMap = {
+    sm: 'text-xs px-2 py-0.5',
+    md: 'text-xs px-2 py-1',
+    lg: 'text-sm px-3 py-1.5'
+  };
   return <span className={`
-        inline-flex items-center text-xs px-2 py-1 rounded
+        inline-flex items-center rounded
         ${colorMap[variant][color]}
+        ${sizeMap[size]}
         ${className}
       `} {...props}>
       {children}
