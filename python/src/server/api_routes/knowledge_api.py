@@ -309,7 +309,7 @@ async def refresh_knowledge_item(source_id: str):
         safe_logfire_info(f"Refresh URL analysis | source_id={source_id} | url={repr(url)} | metadata_original_url={repr(metadata.get('original_url'))} | item_url={repr(existing_item.get('url'))}")
 
         # Handle file sources that don't have a valid URL to recrawl
-        if not url or url.startswith("source://"):
+        if not url or url.startswith("source://") or url.startswith("file://"):
             # This is a file source - we need to reconstruct the content from the database
             safe_logfire_info(f"Detected file source for refresh | source_id={source_id} | url={repr(url)}")
 
