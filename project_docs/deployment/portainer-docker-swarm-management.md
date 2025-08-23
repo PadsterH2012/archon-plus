@@ -22,15 +22,32 @@ Comprehensive documentation for managing Archon deployments using Portainer and 
 
 ## Core Operations
 
+### Docker Swarm Node Configuration
+
+| Node | IP Address | Role | Purpose |
+|------|------------|------|---------|
+| **hl-dswarm1** | `10.202.70.20` | Manager | Swarm orchestration, SSH access point, Portainer host |
+| **hl-dswarm2** | `10.202.70.21` | Worker | Service execution, container hosting |
+| **hl-dswarm3** | `10.202.70.22` | Worker | Service execution, container hosting |
+
 ### SSH Access Setup
 ```bash
-# SSH credentials for Docker Swarm manager
-HOST="10.202.70.20"
+# SSH credentials for Docker Swarm cluster
 USER="paddy"
 PASSWORD="P0w3rPla72012@@"
 
-# Using sshpass for automated access
+# Primary access point (Swarm Manager)
+SWARM_MANAGER="10.202.70.20"  # hl-dswarm1
+
+# Worker nodes (for direct container access if needed)
+WORKER_NODE_2="10.202.70.21"  # hl-dswarm2
+WORKER_NODE_3="10.202.70.22"  # hl-dswarm3
+
+# Using sshpass for automated access to swarm manager
 sshpass -p 'P0w3rPla72012@@' ssh -o StrictHostKeyChecking=no paddy@10.202.70.20
+
+# Access specific worker node (if container debugging needed)
+sshpass -p 'P0w3rPla72012@@' ssh -o StrictHostKeyChecking=no paddy@10.202.70.21
 ```
 
 ### Service Management Commands

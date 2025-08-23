@@ -320,15 +320,23 @@ docker node rm <node-id>
 #### Adding Replacement Node
 
 ```bash
-# Generate join token
+# Generate join token on swarm manager (10.202.70.20)
 docker swarm join-token worker
 
-# On new node, join swarm
-docker swarm join --token <token> <manager-ip>:2377
+# On new node, join swarm (replace <manager-ip> with 10.202.70.20)
+docker swarm join --token <token> 10.202.70.20:2377
 
 # Verify node joined
 docker node ls
 ```
+
+#### Current Swarm Topology
+
+| Node | IP Address | Role | Status |
+|------|------------|------|--------|
+| **hl-dswarm1** | `10.202.70.20` | Manager | Active |
+| **hl-dswarm2** | `10.202.70.21` | Worker | Active |
+| **hl-dswarm3** | `10.202.70.22` | Worker | Active |
 
 ## Monitoring and Alerting
 

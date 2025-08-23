@@ -36,6 +36,16 @@ graph TD
 | **archon-dev** | Portainer UI | Port 9181 (server) | 10.202.70.20 |
 | **Local** | N/A | Port 8080 (server) | hl-dev-lnx-01 |
 
+### Docker Swarm Node Configuration
+
+| Node | IP Address | Role | Purpose |
+|------|------------|------|---------|
+| **hl-dswarm1** | `10.202.70.20` | Manager | Swarm orchestration, SSH access point, Portainer host |
+| **hl-dswarm2** | `10.202.70.21` | Worker | Service execution, container hosting |
+| **hl-dswarm3** | `10.202.70.22` | Worker | Service execution, container hosting |
+
+**SSH Access**: Use `hl-dswarm1` (10.202.70.20) as the primary access point for all swarm management operations.
+
 ## Portainer Management
 
 ### Accessing Portainer
@@ -94,18 +104,44 @@ graph TD
    - **Force Update**: Redeploy even if no changes
    - **Rollback**: Revert to previous version
 
+#### Accessing Containers on Specific Nodes
+
+When containers are running on worker nodes, you may need to access them directly:
+
+```bash
+# Find which node a service is running on
+docker service ps <service-id> --format "{{.Node}}"
+
+# Access the specific node where container is running
+# Example: If service is on hl-dswarm2
+sshpass -p 'P0w3rPla72012@@' ssh -o StrictHostKeyChecking=no paddy@10.202.70.21
+
+# Then access the container directly
+docker ps | grep <service-name>
+docker exec -it <container-id> /bin/bash
+```
+
 ## Command Line Management
 
 ### SSH Access Setup
 
 ```bash
-# SSH credentials for Docker Swarm manager
-HOST="10.202.70.20"
+# SSH credentials for Docker Swarm cluster
 USER="paddy"
 PASSWORD="P0w3rPla72012@@"
 
-# Using sshpass for automated access
+# Primary access point (Swarm Manager)
+SWARM_MANAGER="10.202.70.20"  # hl-dswarm1
+
+# Worker nodes (for direct container access if needed)
+WORKER_NODE_2="10.202.70.21"  # hl-dswarm2
+WORKER_NODE_3="10.202.70.22"  # hl-dswarm3
+
+# Using sshpass for automated access to swarm manager
 sshpass -p 'P0w3rPla72012@@' ssh -o StrictHostKeyChecking=no paddy@10.202.70.20
+
+# Access specific worker node (if container debugging needed)
+sshpass -p 'P0w3rPla72012@@' ssh -o StrictHostKeyChecking=no paddy@10.202.70.21
 ```
 
 ### Docker Swarm Commands
