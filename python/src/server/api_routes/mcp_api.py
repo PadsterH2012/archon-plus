@@ -1275,6 +1275,51 @@ async def get_mcp_tools():
             }
 
 
+@router.post("/tools/call")
+async def call_mcp_tool(request: dict):
+    """Call a specific MCP tool."""
+    with safe_span("api_call_mcp_tool") as span:
+        safe_set_attribute(span, "endpoint", "/api/mcp/tools/call")
+        safe_set_attribute(span, "method", "POST")
+
+        try:
+            tool_name = request.get("name")
+            arguments = request.get("arguments", {})
+
+            if not tool_name:
+                raise HTTPException(status_code=400, detail={"error": "Tool name is required"})
+
+            api_logger.info(f"Calling MCP tool | tool={tool_name}")
+            safe_set_attribute(span, "tool_name", tool_name)
+
+            # Check if server is running
+            server_status = mcp_manager.get_status()
+            is_running = server_status.get("status") == "running"
+
+            if not is_running:
+                api_logger.warning("MCP server not running when calling tool")
+                raise HTTPException(status_code=503, detail={"error": "MCP server is not running"})
+
+            # For now, return a placeholder response since the actual MCP tool calling
+            # infrastructure is still being developed
+            api_logger.warning(f"MCP tool calling not yet implemented | tool={tool_name}")
+
+            return {
+                "success": False,
+                "error": "MCP tool calling not yet implemented",
+                "tool": tool_name,
+                "arguments": arguments,
+                "message": "This endpoint exists but tool calling functionality is still in development"
+            }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            api_logger.error(f"Failed to call MCP tool: {str(e)}")
+            safe_set_attribute(span, "error", str(e))
+            raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
 @router.get("/health")
 async def mcp_health():
     """Health check for MCP API."""
