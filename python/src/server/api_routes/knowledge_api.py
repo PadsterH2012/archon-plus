@@ -347,8 +347,21 @@ async def refresh_knowledge_item(source_id: str):
                 url = f"raw:{combined_content}"
                 safe_logfire_info(f"Reconstructed file content for refresh | source_id={source_id} | content_length={len(combined_content)} | new_url={repr(url[:100])}...")
 
+            except HTTPException:
+                # Re-raise HTTPExceptions (like our improved error message) without wrapping
+                raise
             except Exception as e:
-                safe_logfire_error(f"Failed to reconstruct file content | source_id={source_id} | error={str(e)}")
+                # CRITICAL DEBUG: Print to stdout to ensure we see this
+                print(f"🚨 CRITICAL DEBUG: Exception caught in refresh | type={type(e).__name__} | str={str(e)}")
+                safe_logfire_error(f"Failed to reconstruct file content | source_id={source_id} | error={str(e)} | exception_type={type(e).__name__}")
+                # Log the full exception details for debugging
+                if hasattr(e, 'detail'):
+                    print(f"🚨 CRITICAL DEBUG: Exception has detail: {e.detail}")
+                    safe_logfire_error(f"Exception detail: {e.detail}")
+                if hasattr(e, 'status_code'):
+                    print(f"🚨 CRITICAL DEBUG: Exception has status_code: {e.status_code}")
+                    safe_logfire_error(f"Exception status_code: {e.status_code}")
+                print(f"🚨 CRITICAL DEBUG: About to raise new HTTPException with wrapped error")
                 raise HTTPException(
                     status_code=500,
                     detail={"error": f"Failed to retrieve file content for refresh: {str(e)}"}

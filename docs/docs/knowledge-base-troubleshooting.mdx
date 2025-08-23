@@ -329,6 +329,70 @@ If issues persist after following this guide:
 2. **Enable Debug Logging:** Increase log verbosity for detailed diagnostics
 3. **Contact Support:** Provide logs, configuration, and reproduction steps
 
+## Recrawl Error Message Investigation (August 2025)
+
+### Issue: Persistent Old Error Messages After Deployment
+
+**Problem**: Despite successful deployment of improved error handling code, users continue to see old error messages when using the recrawl functionality.
+
+**Symptoms**:
+- **Production Environment**: "Crawling failed: Refresh failed"
+- **Development Environment**: "Failed to refresh knowledge item"
+- **API Response Format**: `"400: {'error': 'No content found for file source...'}"`
+
+### Investigation Findings
+
+**Root Cause Identified**: An old HTTPException with the original error message is still being raised somewhere in the codebase and caught by the new exception handler.
+
+**Error Flow Analysis**:
+```
+1. Old HTTPException raised → "No content found for file source..."
+2. Exception handler catches it (knowledge_api.py:353-363)
+3. str(e) converts HTTPException to → "400: {'error': 'No content found...'}"
+4. Handler wraps it → "Failed to retrieve file content for refresh: 400: {'error': '...'}"
+```
+
+**Evidence Collected**:
+- ✅ **Deployment Verified**: Latest code with improved error messages is running in containers
+- ✅ **New Code Active**: Outer error message confirms new exception handler is working
+- ✅ **Error Pattern**: HTTPException wrapping pattern identified through debugging
+- ✅ **Service Health**: All services healthy with latest container images
+
+### Investigation Status
+
+**Completed Analysis**:
+- [x] Verified deployment of latest code in all environments
+- [x] Confirmed new error messages are present in deployed containers
+- [x] Identified error wrapping pattern in exception handling
+- [x] Added comprehensive debug logging for exception details
+- [x] Ruled out MCP service and cached responses as error sources
+
+**In Progress**:
+- [ ] Systematic search for remaining old HTTPException source
+- [ ] Database function/procedure investigation for Supabase-level errors
+- [ ] Call stack tracing to identify exact origin of nested HTTPException
+- [ ] Complete fix implementation once source is located
+
+### Resolution Strategy
+
+1. **Source Location**: Find where the old HTTPException is still being raised
+2. **Database Investigation**: Check Supabase stored procedures/functions for old error messages
+3. **Complete Update**: Update all remaining locations with new error message format
+4. **Comprehensive Testing**: Verify recrawl functionality across all environments
+
+### Temporary Workaround
+
+**For End Users**: If recrawl fails with old error messages, **re-upload the file** instead of using the refresh button. This bypasses the problematic code path.
+
+**For Developers**: Monitor the investigation task in Archon project management system for real-time updates on resolution progress.
+
+### Technical Details
+
+**Exception Handler Location**: `python/src/server/api_routes/knowledge_api.py:353-363`
+**Debug Logging Added**: Exception type, detail, and status_code logging for investigation
+**Container Verification**: Confirmed via `docker exec` that new code is deployed
+**Service Status**: All services healthy with 1/1 replicas running latest images
+
 ## Related Documentation
 
 - [Knowledge Base Overview](./knowledge-overview.mdx)

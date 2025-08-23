@@ -381,6 +381,37 @@ SELECT key, value FROM archon_settings WHERE category = 'code_extraction';
    - **Solution:** Verify `extract_code_examples: true` in crawl requests
    - **Check:** Review crawl request parameters
 
+### Issue: Recrawl Error Messages (August 2025 Investigation)
+
+**Symptoms:**
+- Users see old error messages despite successful deployment
+- Error format: `"Failed to retrieve file content for refresh: 400: {'error': 'No content found for file source...'}"`
+- Both development and production environments affected
+
+**Root Cause Analysis:**
+```
+Error Flow:
+1. Old HTTPException raised → "No content found for file source..."
+2. Exception handler catches it (knowledge_api.py:353-363)
+3. str(e) converts to → "400: {'error': 'No content found...'}"
+4. Handler wraps it → "Failed to retrieve file content for refresh: 400: {'error': '...'}"
+```
+
+**Investigation Status:**
+- ✅ **Deployment Verified**: Latest code running in containers
+- ✅ **New Error Messages**: Improved error handling deployed
+- ✅ **Error Pattern Identified**: HTTPException wrapping detected
+- 🔄 **In Progress**: Finding remaining old HTTPException source
+
+**Resolution Strategy:**
+1. **Systematic Search**: Find remaining old error message locations
+2. **Database Functions**: Check Supabase stored procedures/functions
+3. **Call Stack Tracing**: Identify exact source of nested HTTPException
+4. **Complete Fix**: Update all remaining old error message sources
+
+**Temporary Workaround:**
+Users experiencing recrawl errors should try re-uploading the file instead of using the refresh button until the remaining error source is identified and fixed.
+
 ## Future Enhancements
 
 ### Planned Improvements
