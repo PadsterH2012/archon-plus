@@ -6,6 +6,77 @@
 ## Purpose
 Comprehensive documentation of advanced project management components that provide sophisticated project features including template management, component libraries, data visualization, document management, task handling, and workflow integration patterns.
 
+## 🚨 CRITICAL ARCHITECTURAL ISSUES DISCOVERED
+
+### Template Management System Fragmentation
+**Issue**: Multiple disconnected service layers causing display failures in ComponentsTab
+- **Frontend Services**: `templateService.ts` (MCP-based) vs `templateManagementService.ts` (REST-based)
+- **Backend APIs**: `/api/template-management/*` (implemented) vs `/api/template-injection/*` (missing)
+- **MCP Tools**: Calling non-existent `/api/template-injection/*` endpoints
+- **Result**: Template management fails silently with error boundaries masking real issues
+
+### Service Layer Anti-Pattern
+**Pattern Discovered**: Dual service architecture causing conflicts
+- **Working Pattern**: `workflowService.ts` → `/api/workflows/*` → Direct database operations
+- **Broken Pattern**: `templateService.ts` → `/api/mcp/tools/call` → Missing `/api/template-injection/*`
+- **Inconsistency**: Some services use MCP tools, others use direct REST APIs
+
+### Error Handling Masking Real Issues
+**Problem**: Defensive programming hiding critical failures
+- Error boundaries in ComponentsTab catch and hide API failures
+- Services return empty arrays instead of throwing errors
+- Frontend shows "coming soon" messages instead of actual errors
+
+## 📊 EVIDENCE-BASED ANALYSIS
+
+### Working vs Broken Patterns Analysis
+
+#### ✅ **WORKING PATTERN: Workflow Management**
+```typescript
+// workflowService.ts - Single service layer
+const API_BASE = '/api/workflows';
+async listWorkflows() {
+  const response = await fetch(`${API_BASE}?${params}`);
+  return response.json();
+}
+
+// workflow_api.py - Direct database operations
+@router.get("", response_model=WorkflowListResponse)
+async def list_workflows():
+  repository = WorkflowRepository(get_supabase_client())
+  return await repository.list_workflows()
+```
+
+#### ❌ **BROKEN PATTERN: Template Management**
+```typescript
+// templateService.ts - MCP tool calls
+async listTemplates() {
+  const response = await callMCPTool('manage_template', params);
+  // Falls back to REST API that doesn't match MCP expectations
+}
+
+// template_injection_module.py - Calls non-existent endpoints
+response = await client.post(
+  urljoin(api_url, "/api/template-injection/templates"), // MISSING!
+  json=template_data
+)
+
+// template_management_api.py - Different endpoint structure
+@router.get("/templates")  # /api/template-management/templates (EXISTS)
+async def list_templates():
+  # Direct Supabase calls, no MCP integration
+```
+
+### Service Architecture Inconsistencies
+
+| Service | Frontend Pattern | Backend Pattern | Status |
+|---------|------------------|-----------------|---------|
+| Workflows | Direct REST → `/api/workflows/*` | FastAPI → Database | ✅ Working |
+| Projects | Direct REST → `/api/projects/*` | FastAPI → Database | ✅ Working |
+| Knowledge | Direct REST → `/api/knowledge/*` | FastAPI → Database | ✅ Working |
+| Templates | MCP Tools → `/api/template-injection/*` | **MISSING** | ❌ Broken |
+| Components | MCP Tools → `/api/components/*` | FastAPI → Database | ⚠️ Partial |
+
 ## Core Project Management Components
 
 ### 1. TemplateManagement
