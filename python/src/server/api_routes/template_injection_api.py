@@ -10,7 +10,7 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 import logging
 
-from ..database.supabase_client import get_supabase_client
+from ..utils import get_supabase_client
 from ..services.template_injection_service import TemplateInjectionService
 from ..services.template_assignment_service import TemplateAssignmentService
 
