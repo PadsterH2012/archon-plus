@@ -69,27 +69,148 @@ The Jenkins pipeline automatically:
 3. **Pushes** to Harbor registry (`hl-harbor.techpad.uk/archon`)
 4. **Attempts** automatic dev deployment (may require manual completion)
 
-### Manual Deployment Completion
+### Dev-First Deployment Workflow (MANDATORY)
+
+**🚨 CRITICAL: Always deploy to development environment first, then promote to production after verification.**
+
+#### Step 1: Deploy to Development Environment
 When Jenkins build succeeds but deployment requires manual action:
 
 ```bash
 # Check Jenkins build status
 curl -u "jenkins:P0w3rPla72012@@" -s "http://hl-jenkins.techpad.uk:8080/job/archon-plus/job/main/lastBuild/api/json" | jq -r '.number, .result'
 
-# Complete manual deployment to dev environment
+# Deploy to development environment FIRST
 docker service update --force archon-dev_dev-archon-server
 docker service update --force archon-dev_dev-archon-ui
 docker service update --force archon-dev_dev-archon-mcp
 docker service update --force archon-dev_dev-archon-agents
 
-# Verify deployment
+# Verify dev deployment
 docker service ls | grep archon-dev
 ```
 
-### Production Deployment Options
+#### Step 2: Test Development Environment
+```bash
+# Test dev API health
+curl -s "http://10.202.70.20:9181/health" | jq .
+
+# Test dev UI accessibility
+curl -I "http://10.202.70.20:4737" 2>/dev/null | head -2
+
+# Test specific functionality (example: knowledge base API)
+curl -s "http://10.202.70.20:9181/api/knowledge-items" | jq '.items[0:2]'
+
+# Verify all dev services healthy
+docker service ps archon-dev_dev-archon-server --format "table {{.Name}}\t{{.CurrentState}}"
+```
+
+#### Step 3: Deploy to Production (Only After Dev Verification)
+```bash
+# ONLY proceed if dev environment is stable and tested
+# Deploy to production environment
+docker service update --force archon_archon-server
+docker service update --force archon_archon-ui
+docker service update --force archon_archon-mcp
+docker service update --force archon_archon-agents
+
+# Verify production deployment
+docker service ls | grep -E "archon_"
+```
+
+#### Step 4: Verify Production Environment
+```bash
+# Test production API health
+curl -s "http://10.202.70.20:8181/health" | jq .
+
+# Test production UI accessibility
+curl -I "http://10.202.70.20:3737" 2>/dev/null | head -2
+
+# Verify all production services healthy
+docker service ps archon_archon-server --format "table {{.Name}}\t{{.CurrentState}}"
+```
+
+### Environment URLs
+- **Development**:
+  - UI: http://10.202.70.20:4737
+  - API: http://10.202.70.20:9181
+- **Production**:
+  - UI: http://10.202.70.20:3737
+  - API: http://10.202.70.20:8181
+
+### Deployment Checklist
+
+Use this checklist to ensure proper dev-first deployment:
+
+#### ✅ Pre-Deployment
+- [ ] Jenkins build completed successfully
+- [ ] Latest Docker images available in Harbor registry
+- [ ] No critical issues in development environment
+- [ ] Backup/rollback plan prepared if needed
+
+#### ✅ Development Deployment
+- [ ] Deploy to dev environment (`archon-dev_*` services)
+- [ ] Verify all dev services healthy (1/1 replicas)
+- [ ] Test dev API endpoints (`http://10.202.70.20:9181`)
+- [ ] Test dev UI functionality (`http://10.202.70.20:4737`)
+- [ ] Verify specific feature functionality
+- [ ] Check logs for any errors or warnings
+
+#### ✅ Production Deployment (Only After Dev Success)
+- [ ] Deploy to production environment (`archon_*` services)
+- [ ] Verify all production services healthy (1/1 replicas)
+- [ ] Test production API endpoints (`http://10.202.70.20:8181`)
+- [ ] Test production UI functionality (`http://10.202.70.20:3737`)
+- [ ] Monitor for any errors or performance issues
+- [ ] Update deployment documentation if needed
+
+#### ✅ Post-Deployment
+- [ ] Notify team of successful deployment
+- [ ] Update task status in project management
+- [ ] Document any lessons learned
+- [ ] Monitor system for 24 hours for stability
+
+### Emergency Rollback Procedures
+
+If issues are discovered after deployment, use these rollback procedures:
+
+#### Quick Rollback (Previous Image)
+```bash
+# Get previous image ID from service history
+docker service ps archon_archon-server --format "table {{.Name}}\t{{.Image}}\t{{.CurrentState}}"
+
+# Rollback to previous version (example)
+docker service update --rollback archon_archon-server
+docker service update --rollback archon_archon-ui
+
+# Verify rollback successful
+docker service ls | grep archon_
+```
+
+#### Specific Image Rollback
+```bash
+# Rollback to specific image tag
+docker service update --image hl-harbor.techpad.uk/archon/archon-server:BUILD_NUMBER archon_archon-server
+docker service update --image hl-harbor.techpad.uk/archon/archon-ui:BUILD_NUMBER archon_archon-ui
+
+# Verify specific version deployed
+docker service inspect archon_archon-server --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}'
+```
+
+### Alternative Production Deployment Options
 1. **Portainer UI**: Navigate to `http://10.202.70.20:9000` → Stacks → archon → Update
 2. **Pipeline Script**: `./portainer-templates/pipeline-deploy.sh deploy prod ${IMAGE_TAG}`
 3. **Manual Stack**: `docker stack deploy -c portainer-templates/archon-saas-supabase-prod.yml archon`
+
+### Best Practices Summary
+
+1. **🚨 ALWAYS**: Deploy to development first, test thoroughly, then promote to production
+2. **⏱️ TIMING**: Allow sufficient time for testing in development environment
+3. **📊 MONITORING**: Monitor both environments for at least 24 hours post-deployment
+4. **🔄 ROLLBACK**: Have rollback plan ready before starting production deployment
+5. **📝 DOCUMENTATION**: Update deployment logs and notify team of changes
+6. **🧪 TESTING**: Test critical user journeys in both environments
+7. **⚡ ZERO-DOWNTIME**: Use `docker service update --force` for rolling updates
 
 ## Hot Module Reload (HMR)
 
