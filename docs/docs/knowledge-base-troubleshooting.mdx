@@ -1,0 +1,270 @@
+---
+title: Knowledge Base Troubleshooting
+description: Comprehensive troubleshooting guide for knowledge base recrawl and code extraction issues
+---
+
+# Knowledge Base Troubleshooting
+
+This guide helps diagnose and resolve common issues with the Archon knowledge base system, particularly focusing on recrawl functionality and code extraction problems.
+
+## Common Issues
+
+### 1. Code Examples Not Being Extracted
+
+**Symptoms:**
+- `search_code_examples` returns empty results
+- `archon_code_examples` table is empty
+- Content shows `has_code: true` but no code examples stored
+
+**Root Cause:**
+The code extraction service may be filtering out legitimate code blocks due to overly aggressive diagram filtering.
+
+**Diagnosis Steps:**
+
+1. **Check Content Processing:**
+```bash
+# Verify content is being indexed
+curl -X POST "http://localhost:8080/api/rag/query" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "your search term", "match_count": 3}'
+```
+
+2. **Verify Code Detection:**
+Look for `"has_code": true` in RAG query results metadata.
+
+3. **Check Code Examples Table:**
+```sql
+SELECT COUNT(*) as total_count FROM archon_code_examples;
+```
+
+**Common Fixes:**
+
+#### Fix 1: Directory Tree Filtering Issue ✅ RESOLVED (2025-08-23)
+Bash/shell code blocks containing directory trees were incorrectly filtered as ASCII art diagrams.
+
+**Status:** **FIXED** - Updated filtering logic to preserve directory structures while filtering actual diagrams.
+
+**Affected Code Patterns:**
+```bash
+project/
+├── src/
+│   ├── components/
+│   └── services/
+└── docs/
+```
+
+**Solution Applied:** ✅ **COMPLETED**
+- **Commit:** `ebe3c23` - "Fix: Improve code extraction for directory tree structures"
+- **File Modified:** `python/src/server/services/storage/code_storage_service.py`
+- **Changes:** Added intelligent detection for bash/shell directory trees with file extensions
+- **Result:** Directory trees are now preserved while actual ASCII art diagrams are still filtered
+
+**Verification Steps:**
+1. Deploy updated code to environment
+2. Trigger recrawl of sources containing bash directory trees
+3. Verify code examples appear in search results
+4. Check `archon_code_examples` table for new entries
+
+#### Fix 2: Minimum Length Requirements
+Code blocks must meet minimum length requirements (default: 250 characters).
+
+**Check Settings:**
+```sql
+SELECT key, value FROM archon_settings 
+WHERE key = 'MIN_CODE_BLOCK_LENGTH';
+```
+
+#### Fix 3: Service Restart Required
+After code changes, ensure the server service restarts to reload updated code.
+
+### 2. Recrawl Button Not Working
+
+**Symptoms:**
+- Clicking recrawl button shows no progress
+- Content doesn't update after recrawl
+- Progress tracking stalls
+
+**Diagnosis:**
+
+1. **Check API Endpoint:**
+```bash
+curl -X POST "http://localhost:8080/api/knowledge-items/{source_id}/refresh" \
+  -H "Content-Type: application/json"
+```
+
+2. **Monitor Progress:**
+Check WebSocket connections for real-time progress updates.
+
+3. **Verify Background Processing:**
+Ensure crawl semaphore and task management are functioning.
+
+**Common Fixes:**
+
+- Restart background processing services
+- Clear stuck crawl tasks
+- Check database connection health
+- Verify source metadata integrity
+
+### 3. Empty Search Results
+
+**Symptoms:**
+- RAG queries return no results
+- Knowledge base appears empty
+- Sources listed but no content searchable
+
+**Diagnosis Steps:**
+
+1. **Check Database Tables:**
+```sql
+-- Check crawled pages
+SELECT COUNT(*) FROM archon_crawled_pages;
+
+-- Check embeddings
+SELECT COUNT(*) FROM archon_crawled_pages WHERE embedding IS NOT NULL;
+
+-- Check sources
+SELECT COUNT(*) FROM archon_sources;
+```
+
+2. **Verify Embedding Service:**
+```bash
+curl -X GET "http://localhost:8080/api/health"
+```
+
+**Common Fixes:**
+
+- Restart embedding service (TEI)
+- Reconfigure embedding provider
+- Clear and reindex content
+- Check vector database integrity
+
+## Diagnostic Tools
+
+### Health Check Commands
+
+```bash
+# Overall system health
+curl -X GET "http://localhost:8080/api/health"
+
+# Check available sources
+curl -X GET "http://localhost:8080/api/rag/sources"
+
+# Test RAG functionality
+curl -X POST "http://localhost:8080/api/rag/query" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "test", "match_count": 1}'
+
+# Test code search
+curl -X POST "http://localhost:8080/api/rag/code-search" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "function", "match_count": 1}'
+```
+
+### Database Queries
+
+```sql
+-- Check recent uploads
+SELECT source_id, created_at, total_words 
+FROM archon_sources 
+ORDER BY created_at DESC 
+LIMIT 10;
+
+-- Check content chunks
+SELECT url, chunk_number, LENGTH(content) as content_length,
+       CASE WHEN embedding IS NOT NULL THEN 'has_embedding' ELSE 'no_embedding' END
+FROM archon_crawled_pages 
+ORDER BY created_at DESC 
+LIMIT 10;
+
+-- Check code extraction settings
+SELECT key, value, category 
+FROM archon_settings 
+WHERE category = 'code_extraction' 
+ORDER BY key;
+```
+
+## Configuration Settings
+
+### Code Extraction Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `MIN_CODE_BLOCK_LENGTH` | 250 | Minimum characters for code extraction |
+| `MAX_CODE_BLOCK_LENGTH` | 5000 | Maximum characters before truncation |
+| `ENABLE_COMPLETE_BLOCK_DETECTION` | true | Extend blocks to natural boundaries |
+| `ENABLE_LANGUAGE_SPECIFIC_PATTERNS` | true | Use language-specific extraction |
+| `ENABLE_PROSE_FILTERING` | true | Filter out documentation text |
+| `ENABLE_DIAGRAM_FILTERING` | true | Filter out ASCII art diagrams |
+| `ENABLE_CODE_SUMMARIES` | true | Generate AI summaries for code |
+
+### Crawling Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `CRAWL_MAX_CONCURRENT` | 10 | Maximum concurrent crawl workers |
+| `CRAWL_TIMEOUT` | 30 | Timeout in seconds per page |
+| `CHUNK_SIZE` | 5000 | Characters per knowledge chunk |
+| `MAX_DEPTH` | 3 | Maximum recursive crawl depth |
+
+## Recovery Procedures
+
+### Complete System Reset
+
+1. **Stop all services**
+2. **Clear database tables:**
+```sql
+TRUNCATE archon_crawled_pages, archon_code_examples, archon_sources CASCADE;
+```
+3. **Restart services**
+4. **Re-upload content**
+
+### Partial Recovery
+
+1. **Clear specific source:**
+```sql
+DELETE FROM archon_crawled_pages WHERE source_id = 'your_source_id';
+DELETE FROM archon_code_examples WHERE source_id = 'your_source_id';
+```
+2. **Trigger recrawl**
+
+### Service Restart Sequence
+
+```bash
+# Docker Swarm environment
+docker service update --force archon_archon-server
+docker service update --force archon_archon-embeddings
+
+# Local development
+docker-compose restart archon-server
+docker-compose restart archon-embeddings
+```
+
+## Monitoring and Logs
+
+### Key Log Locations
+
+- **Server logs:** Check crawling service logs for extraction errors
+- **Embedding logs:** Monitor TEI service for embedding generation
+- **Database logs:** Check Supabase logs for query performance
+
+### Performance Metrics
+
+- **Crawl success rate:** >95% expected
+- **Embedding generation:** <2s per chunk
+- **Search response time:** <500ms
+- **Code extraction rate:** >80% for code-heavy documents
+
+## Getting Help
+
+If issues persist after following this guide:
+
+1. **Check GitHub Issues:** Review known issues in the repository
+2. **Enable Debug Logging:** Increase log verbosity for detailed diagnostics
+3. **Contact Support:** Provide logs, configuration, and reproduction steps
+
+## Related Documentation
+
+- [Knowledge Base Overview](./knowledge-overview.mdx)
+- [Code Extraction Rules](./code-extraction-rules.mdx)
+- [Crawling Configuration](./crawling-configuration.mdx)
+- [API Reference](./api-reference.mdx)
