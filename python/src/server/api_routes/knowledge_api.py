@@ -283,6 +283,8 @@ async def get_knowledge_item_code_examples(source_id: str):
 async def refresh_knowledge_item(source_id: str):
     """Refresh a knowledge item by re-crawling its URL with the same metadata."""
     try:
+        # CRITICAL DEBUG: Print to stdout to ensure we see this
+        print(f"🚨 CRITICAL DEBUG: REFRESH ENDPOINT CALLED | source_id={source_id}")
         safe_logfire_info(f"🚀 REFRESH ENDPOINT CALLED | source_id={source_id}")
         safe_logfire_info(f"Starting knowledge item refresh | source_id={source_id}")
 
@@ -316,6 +318,11 @@ async def refresh_knowledge_item(source_id: str):
             try:
                 # Get all the content chunks for this source from the database
                 supabase_client = get_supabase_client()
+
+                # CRITICAL DEBUG: Log before Supabase call
+                print(f"🚨 CRITICAL DEBUG: About to query Supabase for source_id={source_id}")
+                safe_logfire_info(f"Querying archon_crawled_pages for source_id={source_id}")
+
                 pages_response = (
                     supabase_client.from_("archon_crawled_pages")
                     .select("content, url")  # Remove title as it doesn't exist in this table
@@ -324,17 +331,34 @@ async def refresh_knowledge_item(source_id: str):
                     .execute()
                 )
 
+                # CRITICAL DEBUG: Log Supabase response
+                print(f"🚨 CRITICAL DEBUG: Supabase response received | data_count={len(pages_response.data) if pages_response.data else 0}")
+                safe_logfire_info(f"Supabase query completed | data_count={len(pages_response.data) if pages_response.data else 0}")
+
                 if not pages_response.data:
                     # Check if this is a file source that might need re-upload instead of refresh
                     safe_logfire_warning(f"No chunks found for file source {source_id} - this file may need to be re-uploaded instead of refreshed")
 
-                    # Provide a more helpful error message to users
+                    # MOST PROBABLE FIX: This is likely where the old error is coming from
+                    # Instead of the old generic error, provide a comprehensive error message
                     raise HTTPException(
                         status_code=400,
                         detail={
                             "error": f"Cannot refresh file source '{source_id}' - no content chunks found in database",
                             "suggestion": "This file may need to be re-uploaded instead of refreshed. File sources can only be refreshed if they have been properly processed and stored as chunks.",
-                            "action": "re-upload"
+                            "action": "re-upload",
+                            "troubleshooting": {
+                                "possible_causes": [
+                                    "File was uploaded but not properly processed",
+                                    "Content chunks were deleted or corrupted",
+                                    "Database connection issues during original upload"
+                                ],
+                                "recommended_actions": [
+                                    "Re-upload the file to ensure proper processing",
+                                    "Check file format compatibility",
+                                    "Contact support if issue persists"
+                                ]
+                            }
                         }
                     )
 
@@ -347,13 +371,58 @@ async def refresh_knowledge_item(source_id: str):
                 url = f"raw:{combined_content}"
                 safe_logfire_info(f"Reconstructed file content for refresh | source_id={source_id} | content_length={len(combined_content)} | new_url={repr(url[:100])}...")
 
-            except HTTPException:
-                # Re-raise HTTPExceptions (like our improved error message) without wrapping
+            except HTTPException as he:
+                # COMPREHENSIVE FIX: Check if this HTTPException has ANY old error message format
+                error_detail = str(he.detail) if hasattr(he, 'detail') else str(he)
+
+                # Check for various old error message patterns
+                old_error_patterns = [
+                    'No content found for file source',
+                    'to refresh',  # Part of the old error message
+                ]
+
+                has_old_error = any(pattern in error_detail for pattern in old_error_patterns)
+
+                if has_old_error:
+                    # This is an old error! Replace it with our comprehensive new error
+                    safe_logfire_warning(f"Intercepted old HTTPException with outdated error message | source_id={source_id} | original_error={error_detail}")
+                    raise HTTPException(
+                        status_code=400,
+                        detail={
+                            "error": f"Cannot refresh file source '{source_id}' - content not available for refresh",
+                            "suggestion": "This file may need to be re-uploaded instead of refreshed. File sources can only be refreshed if they have been properly processed and stored as chunks.",
+                            "action": "re-upload",
+                            "troubleshooting": {
+                                "possible_causes": [
+                                    "File was uploaded but not properly processed",
+                                    "Content chunks were deleted or corrupted",
+                                    "Database connection issues during original upload"
+                                ],
+                                "recommended_actions": [
+                                    "Re-upload the file to ensure proper processing",
+                                    "Check file format compatibility",
+                                    "Contact support if issue persists"
+                                ]
+                            },
+                            "technical_details": {
+                                "intercepted_old_error": error_detail,
+                                "source_id": source_id,
+                                "timestamp": "2025-08-23"
+                            }
+                        }
+                    )
+                # Re-raise other HTTPExceptions (like our improved error message) without wrapping
                 raise
             except Exception as e:
                 # CRITICAL DEBUG: Print to stdout to ensure we see this
                 print(f"🚨 CRITICAL DEBUG: Exception caught in refresh | type={type(e).__name__} | str={str(e)}")
                 safe_logfire_error(f"Failed to reconstruct file content | source_id={source_id} | error={str(e)} | exception_type={type(e).__name__}")
+
+                # Check for Supabase client errors specifically
+                if hasattr(e, '__class__') and 'supabase' in str(type(e)).lower():
+                    print(f"🚨 CRITICAL DEBUG: Supabase client error detected")
+                    safe_logfire_error(f"Supabase client error: {str(e)}")
+
                 # Log the full exception details for debugging
                 if hasattr(e, 'detail'):
                     print(f"🚨 CRITICAL DEBUG: Exception has detail: {e.detail}")
@@ -361,6 +430,10 @@ async def refresh_knowledge_item(source_id: str):
                 if hasattr(e, 'status_code'):
                     print(f"🚨 CRITICAL DEBUG: Exception has status_code: {e.status_code}")
                     safe_logfire_error(f"Exception status_code: {e.status_code}")
+                if hasattr(e, 'response'):
+                    print(f"🚨 CRITICAL DEBUG: Exception has response: {e.response}")
+                    safe_logfire_error(f"Exception response: {e.response}")
+
                 print(f"🚨 CRITICAL DEBUG: About to raise new HTTPException with wrapped error")
                 raise HTTPException(
                     status_code=500,

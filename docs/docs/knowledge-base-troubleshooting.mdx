@@ -367,11 +367,18 @@ If issues persist after following this guide:
 - [x] Added comprehensive debug logging for exception details
 - [x] Ruled out MCP service and cached responses as error sources
 
-**In Progress**:
-- [ ] Systematic search for remaining old HTTPException source
-- [ ] Database function/procedure investigation for Supabase-level errors
-- [ ] Call stack tracing to identify exact origin of nested HTTPException
-- [ ] Complete fix implementation once source is located
+**Final Investigation Results**:
+- [x] Systematic search for remaining old HTTPException source - **NOT FOUND in current codebase**
+- [x] Database function/procedure investigation for Supabase-level errors - **NO SQL functions with old error**
+- [x] Enhanced debug logging deployment - **Debug output not visible in container logs**
+- [x] Call stack tracing attempts - **Request reaches server but debug not captured**
+
+**Most Probable Source Identified**: **Supabase client-level error or HTTP client exception** that returns the old error format and gets caught by our exception handler.
+
+**Latest Test Results (August 23, 2025)**:
+- ✅ **Enhanced HTTPException handling deployed** - Added specific catch for old error messages
+- ❌ **Old error still persists** - Error format unchanged: `"400: {'error': 'No content found for file source...'}"`
+- 🔍 **Confirmed**: There's definitely an old HTTPException being raised somewhere that we haven't located yet
 
 ### Resolution Strategy
 
