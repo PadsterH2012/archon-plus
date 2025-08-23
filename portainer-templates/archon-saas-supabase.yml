@@ -22,16 +22,37 @@ services:
       # Supabase Configuration (REQUIRED)
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-      
+
       # Service Discovery
       - SERVICE_DISCOVERY_MODE=docker_swarm
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      
+
       # Port Configuration
       - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
       - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-8051}
       - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
-      
+
+      # Service Host Overrides for Production Environment
+      - ARCHON_SERVER_HOST=${ARCHON_SERVER_HOST:-archon-server}
+      - ARCHON_MCP_HOST=${ARCHON_MCP_HOST:-archon-mcp}
+      - ARCHON_AGENTS_HOST=${ARCHON_AGENTS_HOST:-archon-agents}
+
+      # Embedding Service Configuration (TEI)
+      - EMBEDDING_BASE_URL=${EMBEDDING_BASE_URL:-http://archon-embeddings:80}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-tei}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      - EMBEDDING_DIMENSIONS=${EMBEDDING_DIMENSIONS:-384}
+
+      # Embedding Fallback Configuration (Remove localhost/ollama fallback)
+      - EMBEDDING_FALLBACK_PROVIDERS=${EMBEDDING_FALLBACK_PROVIDERS:-openai,tei}
+
+      # MCP Service Management (for Docker Swarm)
+      - MCP_CONTAINER_NAME=${MCP_CONTAINER_NAME:-archon-prod_archon-mcp}
+
+      # MCP Host Configuration (for client connections)
+      - MCP_HOST=${HOST:-localhost}
+      - MCP_EXTERNAL_PORT=${ARCHON_MCP_PORT:-8051}
+
       # Optional: Logging
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
     ports:
@@ -255,6 +276,19 @@ networks:
 # HOST=your-domain.com
 # LOG_LEVEL=INFO
 # LOGFIRE_TOKEN=your-logfire-token
+#
+# Service Host Configuration:
+# ARCHON_SERVER_HOST=archon-server
+# ARCHON_MCP_HOST=archon-mcp
+# ARCHON_AGENTS_HOST=archon-agents
+# MCP_CONTAINER_NAME=archon-prod_archon-mcp
+#
+# Embedding Configuration (TEI):
+# EMBEDDING_BASE_URL=http://archon-embeddings:80
+# EMBEDDING_PROVIDER=tei
+# EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+# EMBEDDING_DIMENSIONS=384
+# EMBEDDING_FALLBACK_PROVIDERS=openai,tei
 #
 # TEI Configuration:
 # EMBEDDING_MODEL_ID=sentence-transformers/all-MiniLM-L6-v2

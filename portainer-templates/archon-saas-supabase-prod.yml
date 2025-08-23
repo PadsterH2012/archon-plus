@@ -33,12 +33,21 @@ services:
       - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
       
       # Service Host Overrides for Production Environment
-      - ARCHON_SERVER_HOST=archon-server
-      - ARCHON_MCP_HOST=archon-mcp
-      - ARCHON_AGENTS_HOST=archon-agents
+      - ARCHON_SERVER_HOST=${ARCHON_SERVER_HOST:-archon-server}
+      - ARCHON_MCP_HOST=${ARCHON_MCP_HOST:-archon-mcp}
+      - ARCHON_AGENTS_HOST=${ARCHON_AGENTS_HOST:-archon-agents}
+
+      # Embedding Service Configuration (Ollama)
+      - EMBEDDING_BASE_URL=${EMBEDDING_BASE_URL:-http://10.202.28.47:11434/v1}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-ollama}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-nomic-embed-text}
+      - EMBEDDING_DIMENSIONS=${EMBEDDING_DIMENSIONS:-768}
+
+      # Embedding Fallback Configuration (Remove localhost fallback)
+      - EMBEDDING_FALLBACK_PROVIDERS=${EMBEDDING_FALLBACK_PROVIDERS:-openai,tei}
 
       # MCP Service Management (for Docker Swarm)
-      - MCP_CONTAINER_NAME=archon-prod_archon-mcp
+      - MCP_CONTAINER_NAME=${MCP_CONTAINER_NAME:-archon-prod_archon-mcp}
 
       # MCP Host Configuration (for client connections)
       - MCP_HOST=${HOST:-localhost}
@@ -54,7 +63,7 @@ services:
     networks:
       archon-network:
         aliases:
-          - archon-server  # Alias for UI nginx compatibility
+          - ${ARCHON_SERVER_HOST:-archon-server}  # Alias for UI nginx compatibility
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
@@ -94,8 +103,8 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       
       # Service URLs for inter-service communication
-      - API_SERVICE_URL=http://archon-server:8181
-      - AGENTS_SERVICE_URL=http://archon-agents:8052
+      - API_SERVICE_URL=http://${ARCHON_SERVER_HOST:-archon-server}:8181
+      - AGENTS_SERVICE_URL=http://${ARCHON_AGENTS_HOST:-archon-agents}:8052
       
       # Port Configuration
       - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-8051}
@@ -187,9 +196,9 @@ services:
       - HOST=${HOST:-localhost}
 
       # MCP Configuration for Production Environment
-      - VITE_MCP_HOST=${HOST:-localhost}
+      - VITE_MCP_HOST=${MCP_HOST:-${HOST:-localhost}}
       - VITE_MCP_PORT=${ARCHON_MCP_PORT:-8051}
-      - VITE_MCP_NAME=archon-prod
+      - VITE_MCP_NAME=${MCP_NAME:-archon-prod}
     ports:
       - target: 5173
         published: ${ARCHON_UI_PORT:-3737}
@@ -227,42 +236,42 @@ services:
     depends_on:
       - archon-server
 
-  # Text Embeddings Inference (TEI) - Local Embedding Server
-  archon-embeddings:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
-    environment:
-      - MODEL_ID=${EMBEDDING_MODEL_ID:-sentence-transformers/all-MiniLM-L6-v2}
-      - MAX_CONCURRENT_REQUESTS=${TEI_MAX_CONCURRENT:-512}
-      - MAX_BATCH_TOKENS=${TEI_MAX_BATCH_TOKENS:-16384}
-      - MAX_BATCH_REQUESTS=${TEI_MAX_BATCH_REQUESTS:-32}
-      - HOSTNAME=0.0.0.0
-      - PORT=80
-    ports:
-      - target: 80
-        published: ${ARCHON_EMBEDDINGS_PORT:-8080}
-        protocol: tcp
-        mode: ingress
-    networks:
-      - archon-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-      resources:
-        limits:
-          memory: ${TEI_MEMORY_LIMIT:-2G}
-          cpus: ${TEI_CPU_LIMIT:-2}
-        reservations:
-          memory: ${TEI_MEMORY_RESERVATION:-1G}
-          cpus: ${TEI_CPU_RESERVATION:-1}
+  # Text Embeddings Inference (TEI) - DISABLED - Using External Ollama
+  # archon-embeddings:
+  #   image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
+  #   environment:
+  #     - MODEL_ID=${EMBEDDING_MODEL_ID:-sentence-transformers/all-MiniLM-L6-v2}
+  #     - MAX_CONCURRENT_REQUESTS=${TEI_MAX_CONCURRENT:-512}
+  #     - MAX_BATCH_TOKENS=${TEI_MAX_BATCH_TOKENS:-16384}
+  #     - MAX_BATCH_REQUESTS=${TEI_MAX_BATCH_REQUESTS:-32}
+  #     - HOSTNAME=0.0.0.0
+  #     - PORT=80
+  #   ports:
+  #     - target: 80
+  #       published: ${ARCHON_EMBEDDINGS_PORT:-8080}
+  #       protocol: tcp
+  #       mode: ingress
+  #   networks:
+  #     - archon-network
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 60s
+  #   deploy:
+  #     replicas: 1
+  #     restart_policy:
+  #       condition: on-failure
+  #       delay: 5s
+  #       max_attempts: 3
+  #     resources:
+  #       limits:
+  #         memory: ${TEI_MEMORY_LIMIT:-2G}
+  #         cpus: ${TEI_CPU_LIMIT:-2}
+  #       reservations:
+  #         memory: ${TEI_MEMORY_RESERVATION:-1G}
+  #         cpus: ${TEI_CPU_RESERVATION:-1}
 
 networks:
   archon-network:
@@ -278,12 +287,26 @@ networks:
 # ARCHON_MCP_PORT=8051
 # ARCHON_AGENTS_PORT=8052
 # ARCHON_UI_PORT=3737
-# ARCHON_EMBEDDINGS_PORT=8080
 # HOST=your-domain.com
 # LOG_LEVEL=INFO
 # LOGFIRE_TOKEN=your-logfire-token
 #
-# TEI Configuration:
+# Service Host Configuration:
+# ARCHON_SERVER_HOST=archon-server
+# ARCHON_MCP_HOST=archon-mcp
+# ARCHON_AGENTS_HOST=archon-agents
+# MCP_CONTAINER_NAME=archon-prod_archon-mcp
+# MCP_HOST=10.202.70.20
+# MCP_NAME=archon-prod
+#
+# Embedding Configuration (Ollama):
+# EMBEDDING_BASE_URL=http://10.202.28.47:11434/v1
+# EMBEDDING_PROVIDER=ollama
+# EMBEDDING_MODEL=nomic-embed-text
+# EMBEDDING_DIMENSIONS=768
+# EMBEDDING_FALLBACK_PROVIDERS=openai,tei
+#
+# TEI Configuration (Disabled - using Ollama):
 # EMBEDDING_MODEL_ID=sentence-transformers/all-MiniLM-L6-v2
 # TEI_MAX_CONCURRENT=512
 # TEI_MAX_BATCH_TOKENS=16384
