@@ -1,0 +1,456 @@
+---
+title: Docker Swarm Troubleshooting
+description: Advanced troubleshooting guide for Docker Swarm issues, service failures, and recovery procedures
+---
+
+# Docker Swarm Troubleshooting
+
+This guide provides comprehensive troubleshooting procedures for Docker Swarm issues, service failures, and recovery scenarios specific to Archon deployments.
+
+## Common Issues and Solutions
+
+### 1. Service Update Failures
+
+#### Issue: Service Stuck in "Updating" State
+
+**Symptoms:**
+- Service shows "Updating" status for extended periods
+- New containers not starting
+- Old containers not terminating
+
+**Diagnosis:**
+```bash
+# Check service update status
+docker service ps <service-id> --no-trunc
+
+# Look for error messages in task history
+docker service ps <service-id> --format "table {{.ID}}\t{{.Name}}\t{{.CurrentState}}\t{{.Error}}"
+
+# Check service logs
+docker service logs <service-id> --tail 100
+```
+
+**Solutions:**
+
+**Option 1: Force Rollback**
+```bash
+# Rollback to previous working version
+docker service rollback <service-id>
+
+# Verify rollback success
+docker service ps <service-id>
+```
+
+**Option 2: Manual Recovery**
+```bash
+# Scale service to 0
+docker service scale <service-id>=0
+
+# Wait for containers to stop
+sleep 15
+
+# Scale back to desired replicas
+docker service scale <service-id>=1
+```
+
+**Option 3: Complete Service Recreation**
+```bash
+# Get service configuration
+docker service inspect <service-id> > service-backup.json
+
+# Remove service
+docker service rm <service-id>
+
+# Recreate via Portainer stack update or docker service create
+```
+
+### 2. Image Pull Issues
+
+#### Issue: "Image could not be accessed on registry"
+
+**Symptoms:**
+- Services fail to update with new images
+- Warning about registry access
+- Containers using old image versions
+
+**Diagnosis:**
+```bash
+# Test registry connectivity
+docker pull hl-harbor.techpad.uk/archon/archon-server:latest
+
+# Check registry status
+curl -I https://hl-harbor.techpad.uk
+
+# Verify image exists
+docker manifest inspect hl-harbor.techpad.uk/archon/archon-server:latest
+```
+
+**Solutions:**
+
+**Option 1: Force Update Without Registry Check**
+```bash
+# Update service with --force flag
+docker service update --force --image hl-harbor.techpad.uk/archon/archon-server:latest <service-id>
+```
+
+**Option 2: Manual Image Pull**
+```bash
+# Pull image on all nodes
+docker node ls --format "{{.Hostname}}" | xargs -I {} ssh {} "docker pull hl-harbor.techpad.uk/archon/archon-server:latest"
+
+# Then update service
+docker service update <service-id>
+```
+
+**Option 3: Registry Authentication**
+```bash
+# Login to Harbor registry (if authentication required)
+docker login hl-harbor.techpad.uk
+
+# Update service
+docker service update --image hl-harbor.techpad.uk/archon/archon-server:latest <service-id>
+```
+
+### 3. Container Health Check Failures
+
+#### Issue: Services Showing Unhealthy Status
+
+**Symptoms:**
+- Health checks failing repeatedly
+- Services restarting frequently
+- Application not responding
+
+**Diagnosis:**
+```bash
+# Check container health status
+docker ps --filter health=unhealthy
+
+# View health check logs
+docker inspect <container-id> | jq '.[0].State.Health'
+
+# Check application logs
+docker logs <container-id> --tail 100
+
+# Test health endpoint manually
+curl -f http://<service-ip>:<port>/health
+```
+
+**Solutions:**
+
+**Option 1: Restart Unhealthy Containers**
+```bash
+# Force service update to restart containers
+docker service update --force <service-id>
+
+# Or restart specific container
+docker restart <container-id>
+```
+
+**Option 2: Adjust Health Check Configuration**
+```bash
+# Update service with modified health check
+docker service update \
+  --health-cmd "curl -f http://localhost:8181/health || exit 1" \
+  --health-interval 30s \
+  --health-timeout 10s \
+  --health-retries 3 \
+  <service-id>
+```
+
+**Option 3: Disable Health Checks Temporarily**
+```bash
+# Remove health check for debugging
+docker service update --health-cmd="" <service-id>
+```
+
+### 4. Network Connectivity Issues
+
+#### Issue: Services Cannot Communicate
+
+**Symptoms:**
+- API calls between services failing
+- Database connection errors
+- External service access issues
+
+**Diagnosis:**
+```bash
+# List networks
+docker network ls
+
+# Inspect overlay network
+docker network inspect <network-name>
+
+# Test connectivity between services
+docker exec <container-id> ping <other-service-name>
+
+# Check port accessibility
+docker exec <container-id> telnet <service-name> <port>
+```
+
+**Solutions:**
+
+**Option 1: Recreate Overlay Network**
+```bash
+# Remove stack (this removes network)
+docker stack rm <stack-name>
+
+# Wait for cleanup
+sleep 30
+
+# Redeploy stack
+docker stack deploy -c docker-compose.yml <stack-name>
+```
+
+**Option 2: Manual Network Troubleshooting**
+```bash
+# Create test container on same network
+docker run -it --network <network-name> alpine sh
+
+# Test connectivity from test container
+ping <service-name>
+nslookup <service-name>
+```
+
+### 5. Resource Constraints
+
+#### Issue: Services Failing Due to Resource Limits
+
+**Symptoms:**
+- Containers being killed (OOMKilled)
+- Services failing to start
+- Performance degradation
+
+**Diagnosis:**
+```bash
+# Check node resources
+docker node ls
+docker system df
+
+# Check service resource usage
+docker stats
+
+# View service constraints
+docker service inspect <service-id> | jq '.[0].Spec.TaskTemplate.Resources'
+```
+
+**Solutions:**
+
+**Option 1: Increase Resource Limits**
+```bash
+# Update service with higher limits
+docker service update \
+  --limit-memory 2g \
+  --limit-cpu 1.0 \
+  <service-id>
+```
+
+**Option 2: Add More Nodes**
+```bash
+# Add worker node to swarm
+docker swarm join-token worker
+
+# On new node, join swarm
+docker swarm join --token <token> <manager-ip>:2377
+```
+
+## Advanced Recovery Procedures
+
+### Complete Swarm Recovery
+
+#### When to Use
+- Multiple services failing
+- Network issues across entire swarm
+- Swarm manager corruption
+
+#### Procedure
+
+**Step 1: Backup Current State**
+```bash
+# Backup all stack configurations
+mkdir -p /backup/stacks
+docker stack ls --format "{{.Name}}" | xargs -I {} docker stack ps {} > /backup/stacks/{}.txt
+
+# Backup service configurations
+docker service ls --format "{{.ID}}" | xargs -I {} docker service inspect {} > /backup/services/{}.json
+```
+
+**Step 2: Graceful Shutdown**
+```bash
+# Scale all services to 0
+docker service ls --format "{{.ID}}" | xargs -I {} docker service scale {}=0
+
+# Remove all stacks
+docker stack ls --format "{{.Name}}" | xargs -I {} docker stack rm {}
+```
+
+**Step 3: Swarm Reinitialize**
+```bash
+# Leave swarm on all nodes
+docker swarm leave --force
+
+# Reinitialize swarm on manager
+docker swarm init --advertise-addr <manager-ip>
+
+# Rejoin worker nodes
+docker swarm join-token worker
+# Run join command on each worker
+```
+
+**Step 4: Redeploy Services**
+```bash
+# Redeploy stacks via Portainer or command line
+docker stack deploy -c docker-compose.yml <stack-name>
+```
+
+### Node Recovery
+
+#### Removing Failed Node
+
+```bash
+# List nodes
+docker node ls
+
+# Drain node (move services away)
+docker node update --availability drain <node-id>
+
+# Remove node from swarm
+docker node rm <node-id>
+```
+
+#### Adding Replacement Node
+
+```bash
+# Generate join token
+docker swarm join-token worker
+
+# On new node, join swarm
+docker swarm join --token <token> <manager-ip>:2377
+
+# Verify node joined
+docker node ls
+```
+
+## Monitoring and Alerting
+
+### Health Monitoring Scripts
+
+**Service Health Check Script:**
+```bash
+#!/bin/bash
+# check-services.sh
+
+SERVICES=(
+    "archon-dev_dev-archon-server"
+    "archon-dev_dev-archon-mcp"
+    "archon-dev_dev-archon-agents"
+)
+
+for service in "${SERVICES[@]}"; do
+    status=$(docker service ps $service --format "{{.CurrentState}}" | head -1)
+    if [[ $status != "Running"* ]]; then
+        echo "ALERT: $service is not running - Status: $status"
+        # Add notification logic here
+    fi
+done
+```
+
+**Automated Recovery Script:**
+```bash
+#!/bin/bash
+# auto-recover.sh
+
+SERVICE_ID="$1"
+MAX_RETRIES=3
+RETRY_COUNT=0
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if docker service ps $SERVICE_ID --format "{{.CurrentState}}" | grep -q "Running"; then
+        echo "Service $SERVICE_ID is healthy"
+        exit 0
+    fi
+    
+    echo "Attempt $((RETRY_COUNT + 1)): Restarting service $SERVICE_ID"
+    docker service update --force $SERVICE_ID
+    sleep 30
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+done
+
+echo "CRITICAL: Service $SERVICE_ID failed to recover after $MAX_RETRIES attempts"
+exit 1
+```
+
+### Log Aggregation
+
+**Centralized Logging Setup:**
+```bash
+# Deploy logging stack
+docker stack deploy -c logging-stack.yml logging
+
+# View aggregated logs
+docker service logs logging_elasticsearch
+docker service logs logging_kibana
+```
+
+## Prevention Best Practices
+
+### 1. Regular Maintenance
+
+```bash
+# Weekly maintenance script
+#!/bin/bash
+
+# Clean up unused images
+docker system prune -f
+
+# Update all services (during maintenance window)
+docker service ls --format "{{.ID}}" | xargs -I {} docker service update --force {}
+
+# Check node health
+docker node ls
+docker system df
+```
+
+### 2. Monitoring Setup
+
+- **Health Checks**: Implement comprehensive health checks for all services
+- **Resource Monitoring**: Monitor CPU, memory, and disk usage
+- **Log Monitoring**: Set up centralized logging and alerting
+- **Network Monitoring**: Monitor inter-service communication
+
+### 3. Backup Strategy
+
+- **Configuration Backups**: Regular backups of docker-compose files
+- **Data Backups**: Backup persistent volumes and databases
+- **Image Backups**: Maintain image registry backups
+- **Documentation**: Keep recovery procedures updated
+
+## Emergency Contacts and Procedures
+
+### Escalation Matrix
+
+1. **Level 1**: Automated recovery scripts
+2. **Level 2**: Manual intervention by operations team
+3. **Level 3**: Development team involvement
+4. **Level 4**: Infrastructure team escalation
+
+### Emergency Procedures
+
+**Critical Service Down:**
+1. Check service status and logs
+2. Attempt automated recovery
+3. If failed, manual restart
+4. Escalate if issue persists > 15 minutes
+
+**Complete Environment Down:**
+1. Check swarm manager status
+2. Verify network connectivity
+3. Attempt service restart
+4. Consider swarm reinitialize if needed
+5. Immediate escalation for production
+
+## Related Documentation
+
+- [Portainer & Docker Swarm Management](./portainer-docker-swarm-management.mdx)
+- [Server Deployment](./server-deployment.mdx)
+- [Server Monitoring](./server-monitoring.mdx)
+- [Configuration Guide](./configuration.mdx)

@@ -1,0 +1,362 @@
+---
+title: Portainer Stack Management
+description: Step-by-step guide for managing Docker Swarm stacks through Portainer UI
+---
+
+# Portainer Stack Management
+
+This guide provides detailed instructions for managing Archon stacks through the Portainer web interface, including deployment, updates, and troubleshooting procedures.
+
+## Portainer Access and Navigation
+
+### Accessing Portainer
+
+1. **Open Portainer UI** in your web browser
+2. **Login** with your credentials
+3. **Select Environment**: Choose the appropriate Docker Swarm environment
+4. **Navigate to Stacks**: Click on "Stacks" in the left sidebar
+
+### Environment Overview
+
+| Environment | Purpose | Stacks | Access Level |
+|-------------|---------|--------|--------------|
+| **Production** | Live services | archon-prod | Restricted |
+| **Development** | Testing/staging | archon-dev | Full access |
+| **Local** | Development | Various | Full access |
+
+## Stack Operations
+
+### Viewing Stack Information
+
+#### Stack Dashboard
+
+1. **Navigate to Stacks** section
+2. **View Stack List**: See all deployed stacks
+3. **Stack Status Indicators**:
+   - 🟢 **Green**: All services healthy
+   - 🟡 **Yellow**: Services updating/starting
+   - 🔴 **Red**: Services failed or unhealthy
+   - ⚪ **Gray**: Services stopped
+
+#### Stack Details
+
+1. **Click Stack Name** to view details
+2. **Services Tab**: View all services in the stack
+3. **Editor Tab**: View/edit docker-compose.yml
+4. **Logs Tab**: View stack deployment logs
+
+### Creating a New Stack
+
+#### Method 1: Web Editor
+
+1. **Click "Add Stack"** button
+2. **Enter Stack Name** (e.g., `archon-test`)
+3. **Select Build Method**: "Web editor"
+4. **Paste Docker Compose Content**:
+
+```yaml
+version: '3.8'
+services:
+  archon-server:
+    image: hl-harbor.techpad.uk/archon/archon-server:latest
+    ports:
+      - "8181:8181"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8181/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+```
+
+5. **Set Environment Variables** (if needed)
+6. **Deploy Stack**
+
+#### Method 2: Git Repository
+
+1. **Click "Add Stack"** button
+2. **Enter Stack Name**
+3. **Select Build Method**: "Git Repository"
+4. **Repository Configuration**:
+   - **Repository URL**: `https://github.com/PadsterH2012/archon-plus.git`
+   - **Reference**: `refs/heads/main`
+   - **Compose Path**: `docker-compose.yml`
+5. **Authentication** (if private repo):
+   - **Username**: Your GitHub username
+   - **Personal Access Token**: GitHub PAT
+6. **Deploy Stack**
+
+### Updating Existing Stacks
+
+#### Method 1: Force Update (Recommended)
+
+**Use Case**: Update services with latest images without changing configuration
+
+1. **Select Stack** from the list
+2. **Click Stack Name** to open details
+3. **Go to Editor Tab**
+4. **Click "Update the stack"** button
+5. **Enable Options**:
+   - ☑️ **Pull and redeploy**: Force pull latest images
+   - ☑️ **Re-pull image**: Update even if tag unchanged
+6. **Click "Update"**
+
+#### Method 2: Configuration Update
+
+**Use Case**: Modify docker-compose.yml configuration
+
+1. **Select Stack** and open **Editor Tab**
+2. **Modify Configuration** as needed:
+   - Update image tags
+   - Change environment variables
+   - Modify port mappings
+   - Adjust resource limits
+3. **Click "Update the stack"**
+4. **Review Changes** in the diff view
+5. **Confirm Update**
+
+#### Method 3: Git Repository Update
+
+**Use Case**: Update from Git repository changes
+
+1. **Select Stack** and open **Editor Tab**
+2. **Click "Update from Git repository"**
+3. **Force Update** (if needed):
+   - ☑️ **Force update**: Ignore local changes
+4. **Click "Update"**
+
+### Stack Management Best Practices
+
+#### Pre-Update Checklist
+
+- [ ] **Backup Current Configuration**: Export stack configuration
+- [ ] **Check Service Health**: Ensure all services are healthy
+- [ ] **Review Changes**: Understand what will be updated
+- [ ] **Plan Rollback**: Know how to revert if needed
+- [ ] **Notify Users**: Inform users of maintenance (for production)
+
+#### Update Process
+
+1. **Start with Development**: Always test updates on archon-dev first
+2. **Monitor During Update**: Watch service status during deployment
+3. **Verify Health**: Check all services are healthy post-update
+4. **Test Functionality**: Perform basic functionality tests
+5. **Monitor Logs**: Check for any errors or warnings
+
+#### Post-Update Verification
+
+```bash
+# Check service status
+curl http://<host>:<port>/health
+
+# Verify API endpoints
+curl http://<host>:<port>/api/rag/sources
+
+# Check logs for errors
+# (via Portainer Logs tab or CLI)
+```
+
+## Service Management Within Stacks
+
+### Viewing Service Details
+
+1. **Navigate to Services** section
+2. **Filter by Stack**: Use stack label filter
+3. **Click Service Name** for details:
+   - **Tasks**: Running containers
+   - **Logs**: Service output
+   - **Stats**: Resource usage
+
+### Individual Service Operations
+
+#### Restarting a Service
+
+1. **Go to Services** section
+2. **Select Service** (e.g., `archon-dev_dev-archon-server`)
+3. **Click "Update service"**
+4. **Enable "Force update"**
+5. **Click "Update"**
+
+#### Scaling Services
+
+1. **Select Service** from Services list
+2. **Click "Update service"**
+3. **Modify "Replicas"** count
+4. **Click "Update"**
+
+#### Viewing Service Logs
+
+1. **Select Service** from Services list
+2. **Click "Logs" tab**
+3. **Configure Log Options**:
+   - **Lines**: Number of lines to show
+   - **Since**: Time range for logs
+   - **Follow**: Real-time log streaming
+
+## Environment Variables Management
+
+### Stack-Level Variables
+
+1. **Select Stack** and go to **Editor Tab**
+2. **Scroll to Environment Variables** section
+3. **Add/Modify Variables**:
+   ```
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_SERVICE_KEY=your-service-key
+   OPENAI_API_KEY=your-openai-key
+   ```
+4. **Update Stack** to apply changes
+
+### Service-Level Variables
+
+Modify in docker-compose.yml:
+
+```yaml
+services:
+  archon-server:
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - CUSTOM_SETTING=value
+      - DEBUG=true
+```
+
+## Troubleshooting Through Portainer
+
+### Common Issues
+
+#### 1. Stack Update Fails
+
+**Symptoms**: Update process fails or hangs
+
+**Diagnosis via Portainer**:
+1. **Check Logs Tab**: Look for error messages
+2. **View Services**: Check individual service status
+3. **Inspect Tasks**: Look for failed containers
+
+**Solutions**:
+- **Rollback**: Use previous stack configuration
+- **Force Update**: Enable all update options
+- **Manual Intervention**: Update individual services
+
+#### 2. Services Not Starting
+
+**Symptoms**: Services stuck in "Starting" state
+
+**Diagnosis**:
+1. **Service Logs**: Check for startup errors
+2. **Task History**: Look at failed task attempts
+3. **Resource Usage**: Check if resource limits exceeded
+
+**Solutions**:
+- **Increase Resources**: Modify memory/CPU limits
+- **Fix Configuration**: Correct environment variables
+- **Image Issues**: Verify image accessibility
+
+#### 3. Health Check Failures
+
+**Symptoms**: Services showing unhealthy status
+
+**Diagnosis**:
+1. **Service Details**: Check health check configuration
+2. **Container Logs**: Look for application errors
+3. **Network Issues**: Verify port accessibility
+
+**Solutions**:
+- **Adjust Health Checks**: Modify timeout/interval
+- **Fix Application**: Address underlying issues
+- **Disable Temporarily**: Remove health checks for debugging
+
+### Emergency Procedures
+
+#### Quick Service Restart
+
+1. **Navigate to Services**
+2. **Find Problematic Service**
+3. **Click "Update service"**
+4. **Enable "Force update"**
+5. **Click "Update"**
+
+#### Stack Rollback
+
+1. **Go to Stack Editor**
+2. **Revert Configuration** to previous working version
+3. **Update Stack** with old configuration
+4. **Monitor Service Recovery**
+
+#### Complete Stack Restart
+
+1. **Stop Stack**: Scale all services to 0
+2. **Wait for Shutdown**: Ensure all containers stopped
+3. **Start Stack**: Scale services back to desired replicas
+
+## Monitoring and Alerts
+
+### Built-in Monitoring
+
+1. **Dashboard View**: Overview of all stacks and services
+2. **Service Stats**: CPU, memory, network usage
+3. **Health Status**: Real-time health indicators
+4. **Log Streaming**: Live log viewing
+
+### Setting Up Notifications
+
+1. **Go to Settings** → **Notifications**
+2. **Add Webhook** for external alerting
+3. **Configure Triggers**:
+   - Service failures
+   - Health check failures
+   - Resource threshold breaches
+
+## Security Considerations
+
+### Access Control
+
+- **Role-Based Access**: Limit production access
+- **Environment Separation**: Separate dev/prod permissions
+- **Audit Logging**: Track all stack modifications
+
+### Secrets Management
+
+- **Environment Variables**: Use for non-sensitive config
+- **Docker Secrets**: Use for sensitive data
+- **External Secrets**: Consider external secret management
+
+### Network Security
+
+- **Overlay Networks**: Isolate stack communications
+- **Port Exposure**: Minimize exposed ports
+- **TLS Termination**: Use reverse proxy for HTTPS
+
+## Quick Reference
+
+### Common Stack Operations
+
+| Operation | Steps | Notes |
+|-----------|-------|-------|
+| **Update Stack** | Stack → Editor → Update | Force pull for latest images |
+| **Restart Service** | Services → Service → Update → Force | Individual service restart |
+| **View Logs** | Services → Service → Logs | Real-time log streaming |
+| **Scale Service** | Services → Service → Update → Replicas | Horizontal scaling |
+| **Rollback Stack** | Stack → Editor → Revert → Update | Use previous configuration |
+
+### Keyboard Shortcuts
+
+- **Ctrl+S**: Save in editor
+- **Ctrl+F**: Search in logs
+- **F5**: Refresh page
+- **Esc**: Close modals
+
+## Related Documentation
+
+- [Docker Swarm Troubleshooting](./docker-swarm-troubleshooting.mdx)
+- [Portainer & Docker Swarm Management](./portainer-docker-swarm-management.mdx)
+- [Server Deployment](./server-deployment.mdx)
+- [Configuration Guide](./configuration.mdx)
