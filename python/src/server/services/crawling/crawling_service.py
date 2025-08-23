@@ -499,7 +499,36 @@ class CrawlingService:
         crawl_results = []
         crawl_type = None
 
-        if self.url_handler.is_txt(url):
+        if url.startswith("raw:"):
+            # Handle raw content (reconstructed from database)
+            if self.progress_id:
+                self.progress_state.update({
+                    "status": "crawling",
+                    "percentage": 10,
+                    "log": "Processing reconstructed content...",
+                })
+                await update_crawl_progress(self.progress_id, self.progress_state)
+
+            # Extract content from raw: prefix
+            raw_content = url[4:]  # Remove 'raw:' prefix
+
+            # Create a mock crawl result with the raw content
+            crawl_results = [{
+                'url': 'file://reconstructed_content',
+                'markdown': raw_content,
+                'html': f'<pre>{raw_content}</pre>'  # Simple HTML wrapper
+            }]
+            crawl_type = "raw_content"
+
+            if self.progress_id:
+                self.progress_state.update({
+                    "status": "crawling",
+                    "percentage": 20,
+                    "log": f"Processed {len(raw_content)} characters of reconstructed content",
+                })
+                await update_crawl_progress(self.progress_id, self.progress_state)
+
+        elif self.url_handler.is_txt(url):
             # Handle text files
             if self.progress_id:
                 self.progress_state.update({
