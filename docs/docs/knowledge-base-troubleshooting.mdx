@@ -44,6 +44,11 @@ Bash/shell code blocks containing directory trees were incorrectly filtered as A
 
 **Status:** **FIXED** - Updated filtering logic to preserve directory structures while filtering actual diagrams.
 
+#### Fix 2: File Access During Recrawl Operations ⚠️ IDENTIFIED (2025-08-23)
+Recrawl operations fail at the file access stage, preventing code extraction from being triggered.
+
+**Status:** **NEEDS FIXING** - Refresh endpoint cannot locate source files using file:// URLs.
+
 **Affected Code Patterns:**
 ```bash
 project/
@@ -64,6 +69,31 @@ project/
 2. Trigger recrawl of sources containing bash directory trees
 3. Verify code examples appear in search results
 4. Check `archon_code_examples` table for new entries
+
+**Problem:** File access during recrawl operations
+
+**Symptoms:**
+- Recrawl operations fail with "Local file not found" errors
+- Code extraction phase never reached due to crawl failures
+- Empty `archon_code_examples` table despite successful content detection
+
+**Root Cause:**
+```
+Failed to crawl file://ARCHON_DATABASE_SETUP_GUIDE.md:
+Local file not found: ARCHON_DATABASE_SETUP_GUIDE.md
+```
+
+**Analysis:**
+1. **File Path Issue**: Refresh endpoint uses `file://` URLs that don't exist in container
+2. **Container File System**: Source files not available in container's local filesystem
+3. **Crawl Failure**: Since crawl fails, code extraction is never triggered
+4. **Pipeline Interruption**: Code extraction fix cannot be tested due to upstream failure
+
+**Solution Required:**
+- Fix file path resolution in refresh/recrawl mechanism
+- Implement proper file access for containerized environments
+- Test with web URLs or direct content upload instead of file refresh
+- Verify code extraction works once crawl succeeds
 
 #### Fix 2: Minimum Length Requirements
 Code blocks must meet minimum length requirements (default: 250 characters).
