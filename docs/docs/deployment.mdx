@@ -54,6 +54,43 @@ docker-compose ps
 - **API Docs**: http://localhost:8080/docs
 - **Documentation**: http://localhost:3838
 
+## Jenkins CI/CD Pipeline
+
+### Jenkins Access & Credentials
+- **URL**: `http://hl-jenkins.techpad.uk:8080/job/archon-plus/job/main/`
+- **Username**: `jenkins`
+- **Password**: `P0w3rPla72012@@`
+- **Status**: ✅ Accessible and functional
+
+### Automated Deployment Process
+The Jenkins pipeline automatically:
+1. **Builds** Docker images on git push to main branch
+2. **Tags** images with build number and git commit hash
+3. **Pushes** to Harbor registry (`hl-harbor.techpad.uk/archon`)
+4. **Attempts** automatic dev deployment (may require manual completion)
+
+### Manual Deployment Completion
+When Jenkins build succeeds but deployment requires manual action:
+
+```bash
+# Check Jenkins build status
+curl -u "jenkins:P0w3rPla72012@@" -s "http://hl-jenkins.techpad.uk:8080/job/archon-plus/job/main/lastBuild/api/json" | jq -r '.number, .result'
+
+# Complete manual deployment to dev environment
+docker service update --force archon-dev_dev-archon-server
+docker service update --force archon-dev_dev-archon-ui
+docker service update --force archon-dev_dev-archon-mcp
+docker service update --force archon-dev_dev-archon-agents
+
+# Verify deployment
+docker service ls | grep archon-dev
+```
+
+### Production Deployment Options
+1. **Portainer UI**: Navigate to `http://10.202.70.20:9000` → Stacks → archon → Update
+2. **Pipeline Script**: `./portainer-templates/pipeline-deploy.sh deploy prod ${IMAGE_TAG}`
+3. **Manual Stack**: `docker stack deploy -c portainer-templates/archon-saas-supabase-prod.yml archon`
+
 ## Hot Module Reload (HMR)
 
 <Admonition type="tip" title="Built-in Hot Reload">
