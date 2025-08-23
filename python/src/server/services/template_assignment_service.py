@@ -15,7 +15,7 @@ from uuid import UUID, uuid4
 from dataclasses import dataclass
 from enum import Enum
 
-from server.config.database import get_database_connection
+from ..utils import get_supabase_client
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +81,10 @@ class TemplateAssignmentService:
         self._cache_ttl_minutes = 30
         self._max_cache_entries = 10000
 
-    async def _get_db_connection(self):
-        """Get database connection"""
+    def _get_supabase_client(self):
+        """Get Supabase client"""
         if self.db_connection is None:
-            self.db_connection = await get_database_connection()
+            self.db_connection = get_supabase_client()
         return self.db_connection
 
     async def assign_template(
@@ -120,7 +120,7 @@ class TemplateAssignmentService:
         Returns:
             Created template assignment
         """
-        db = await self._get_db_connection()
+        db = self._get_supabase_client()
         
         # Validate template exists
         await self._validate_template_exists(template_name)
