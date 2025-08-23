@@ -69,9 +69,9 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
     setError(null);
 
     try {
-      // Load templates and assignments with proper error handling
+      // Load templates and components with proper error handling
       let templatesResult = { templates: [] };
-      let assignmentsResult = [];
+      let componentsResult = { components: [] };
 
       try {
         templatesResult = await templateService.listTemplates({ includeInheritance: true });
@@ -81,16 +81,17 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
       }
 
       try {
-        assignmentsResult = await templateManagementService.assignments.listAssignments({ isActive: true });
-      } catch (assignmentError) {
-        console.warn('Failed to load assignments:', assignmentError);
-        // Continue with empty assignments array
+        componentsResult = await templateManagementService.listComponents();
+      } catch (componentError) {
+        console.warn('Failed to load components:', componentError);
+        // Continue with empty components array
       }
 
       setState(prev => ({
         ...prev,
         templates: Array.isArray(templatesResult.templates) ? templatesResult.templates : [],
-        assignments: Array.isArray(assignmentsResult) ? assignmentsResult : [],
+        components: Array.isArray(componentsResult.components) ? componentsResult.components : [],
+        assignments: [], // TODO: Implement assignments API endpoint
         isLoading: false
       }));
     } catch (err) {

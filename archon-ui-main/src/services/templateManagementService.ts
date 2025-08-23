@@ -677,5 +677,47 @@ export const templateManagementService = {
   assignments: templateAssignmentService,
   resolution: templateResolutionService,
   cache: templateCacheService,
-  testing: templateTestingService
+  testing: templateTestingService,
+
+  // Component management methods
+  async listComponents(options: {
+    filterBy?: string;
+    filterValue?: string;
+    page?: number;
+    perPage?: number;
+  } = {}) {
+    try {
+      // Try MCP first, then fallback to REST API
+      const response = await callMCPTool('manage_template_components_archon-dev', {
+        action: 'list',
+        filter_by: options.filterBy,
+        filter_value: options.filterValue,
+        page: options.page || 1,
+        per_page: options.perPage || 50
+      });
+
+      return {
+        components: response.components || [],
+        pagination: response.pagination
+      };
+    } catch (mcpError) {
+      console.warn('MCP component service unavailable, trying REST API:', mcpError);
+
+      try {
+        // Fallback to REST API
+        const restResponse = await restService.listComponents(options);
+        return {
+          components: restResponse.components || [],
+          pagination: restResponse.pagination
+        };
+      } catch (restError) {
+        console.error('Both MCP and REST API failed for listComponents:', restError);
+        // Return empty result instead of throwing to prevent UI crashes
+        return {
+          components: [],
+          pagination: null
+        };
+      }
+    }
+  }
 };
