@@ -1,0 +1,702 @@
+{
+  "document_type": "prp",
+  "title": "Database Migration Settings System",
+  "version": "1.0",
+  "author": "prp-creator",
+  "date": "2025-08-23",
+  "status": "draft",
+
+  "goal": "Create a user-friendly settings interface for selective migration from Supabase to homelab infrastructure with hybrid deployment, automated sync, and intelligent failback capabilities",
+
+  "why": [
+    "Provide a safe, component-by-component migration path from Supabase to homelab infrastructure",
+    "Enable selective migration of individual components (Redis, ChromaDB, PostgreSQL, MongoDB)",
+    "Support hybrid deployments mixing Supabase and homelab components",
+    "Enable real-time sync between Supabase and homelab during transition period",
+    "Reduce migration risk with automated validation and intelligent failback capabilities",
+    "Allow users to test homelab setup incrementally before full migration",
+    "Provide automatic failback on errors with multiple recovery strategies",
+    "Enable manual failback on user request with data preservation options",
+    "Support permanent hybrid architectures for optimal performance"
+  ],
+
+  "what": {
+    "description": "Comprehensive selective migration management system with hybrid deployment support, intelligent failback, and component-by-component migration capabilities",
+    "success_criteria": [
+      "Settings UI for selective component migration (Redis, ChromaDB, PostgreSQL, MongoDB)",
+      "Hybrid deployment support mixing Supabase and homelab components",
+      "Automated connection testing and validation for all providers",
+      "Component-by-component migration with independent rollback",
+      "Real-time bidirectional sync between Supabase and homelab",
+      "Intelligent automatic failback on errors with multiple recovery strategies",
+      "Manual failback on user request with data preservation options",
+      "Automated schema setup and data migration with progress tracking",
+      "Sync status monitoring and conflict resolution",
+      "Zero-downtime switching between database providers",
+      "Performance monitoring and threshold-based failback triggers",
+      "Emergency failback procedures with instant recovery"
+    ],
+    "user_stories": [
+      "As a homelab administrator, I want to migrate individual components (Redis first, then ChromaDB, etc.)",
+      "As a user, I want to test each homelab component independently before migration",
+      "As a system administrator, I want to run hybrid deployments mixing Supabase and homelab",
+      "As a developer, I want automatic failback if homelab components fail or degrade",
+      "As a user, I want manual failback options to revert problematic components",
+      "As an administrator, I want to preserve data during failback with multiple recovery strategies",
+      "As a user, I want to monitor component health and sync status in real-time",
+      "As a system administrator, I want emergency failback procedures for critical issues",
+      "As a developer, I want to keep working components on homelab while failing back others"
+    ]
+  },
+
+  "context": {
+    "current_settings_architecture": [
+      {"file": "archon-ui-main/src/components/settings/", "purpose": "Existing settings UI components"},
+      {"file": "python/src/server/services/settings_service.py", "purpose": "Settings management service"},
+      {"file": "python/src/server/config/", "purpose": "Configuration management"}
+    ],
+    "migration_requirements": [
+      "PostgreSQL connection with pgvector extension",
+      "ChromaDB connection and collection setup",
+      "Redis connection for real-time notifications",
+      "MongoDB connection (optional) for document storage",
+      "Schema migration and data validation",
+      "Vector embedding migration to ChromaDB"
+    ],
+    "sync_challenges": [
+      "Real-time data synchronization between different database types",
+      "Conflict resolution when data changes in both systems",
+      "Vector embedding sync between pgvector and ChromaDB",
+      "Transaction consistency across multiple database providers",
+      "Performance impact of dual-write operations during sync"
+    ],
+    "hybrid_deployment_scenarios": [
+      "Redis + Supabase: Real-time notifications via Redis, core data in Supabase",
+      "ChromaDB + Supabase: Vector search via ChromaDB, relational data in Supabase",
+      "PostgreSQL + ChromaDB + Supabase: Core data in PostgreSQL, vectors in ChromaDB, fallback to Supabase",
+      "Full homelab with Supabase backup: All components on homelab with Supabase sync for disaster recovery"
+    ],
+    "failback_triggers": [
+      "Automatic: Connection loss, performance degradation, sync lag, health check failures",
+      "Manual: User request, maintenance mode, testing completion, emergency override",
+      "Threshold-based: Response time limits, error rates, data integrity issues",
+      "Component-specific: Individual service failures without affecting other components"
+    ]
+  },
+
+  "implementation_blueprint": {
+    "phase_1_settings_ui": {
+      "description": "Create selective migration and failback settings interface in Archon UI",
+      "tasks": [
+        {
+          "title": "Create selective migration settings page",
+          "files": ["archon-ui-main/src/components/settings/SelectiveMigrationSettings.tsx"],
+          "details": "Settings page for component-by-component migration with hybrid deployment options"
+        },
+        {
+          "title": "Create component selection interface",
+          "files": ["archon-ui-main/src/components/settings/ComponentSelector.tsx"],
+          "details": "UI for selecting which components to migrate (Redis, ChromaDB, PostgreSQL, MongoDB)"
+        },
+        {
+          "title": "Create connection testing components",
+          "files": ["archon-ui-main/src/components/settings/ConnectionTester.tsx"],
+          "details": "UI components for testing individual homelab service connections with health metrics"
+        },
+        {
+          "title": "Create permission validation interface",
+          "files": ["archon-ui-main/src/components/settings/PermissionValidator.tsx"],
+          "details": "UI for testing database permissions, schema access, and security validation before migration"
+        },
+        {
+          "title": "Create migration progress dashboard",
+          "files": ["archon-ui-main/src/components/settings/MigrationProgress.tsx"],
+          "details": "Real-time progress tracking for selective migration operations with component status"
+        },
+        {
+          "title": "Create failback configuration panel",
+          "files": ["archon-ui-main/src/components/settings/FailbackConfiguration.tsx"],
+          "details": "Configure automatic and manual failback policies with trigger thresholds"
+        },
+        {
+          "title": "Create hybrid deployment monitor",
+          "files": ["archon-ui-main/src/components/settings/HybridDeploymentMonitor.tsx"],
+          "details": "Monitor hybrid deployment status with component health and performance metrics"
+        }
+      ]
+    },
+    "phase_2_selective_migration_service": {
+      "description": "Build backend selective migration and hybrid deployment services",
+      "tasks": [
+        {
+          "title": "Create selective migration orchestrator",
+          "files": ["python/src/server/services/migration/selective_migration_service.py"],
+          "details": "Core service for component-by-component migration with hybrid deployment support"
+        },
+        {
+          "title": "Create component migration handlers",
+          "files": ["python/src/server/services/migration/component_migrators.py"],
+          "details": "Individual migration handlers for Redis, ChromaDB, PostgreSQL, and MongoDB"
+        },
+        {
+          "title": "Create connection validation service",
+          "files": ["python/src/server/services/migration/connection_validator.py"],
+          "details": "Validate connections and performance for individual homelab components"
+        },
+        {
+          "title": "Create permission validation service",
+          "files": ["python/src/server/services/migration/permission_validator.py"],
+          "details": "Comprehensive permission testing for database access, schema operations, and security validation"
+        },
+        {
+          "title": "Create security compliance checker",
+          "files": ["python/src/server/services/migration/security_compliance_checker.py"],
+          "details": "Validate security configurations, encryption, and access control compliance"
+        },
+        {
+          "title": "Create hybrid deployment manager",
+          "files": ["python/src/server/services/migration/hybrid_deployment_manager.py"],
+          "details": "Manage mixed Supabase/homelab deployments with dynamic provider switching"
+        },
+        {
+          "title": "Create data sync service",
+          "files": ["python/src/server/services/migration/data_sync_service.py"],
+          "details": "Real-time bidirectional sync between Supabase and homelab with component-level granularity"
+        }
+      ]
+    },
+    "phase_3_failback_engine": {
+      "description": "Implement intelligent failback system with multiple recovery strategies",
+      "tasks": [
+        {
+          "title": "Create failback orchestrator",
+          "files": ["python/src/server/services/migration/failback_orchestrator.py"],
+          "details": "Orchestrate automatic and manual failback operations with multiple recovery strategies"
+        },
+        {
+          "title": "Create component health monitors",
+          "files": ["python/src/server/services/migration/component_monitors.py"],
+          "details": "Monitor individual component health with performance thresholds and failure detection"
+        },
+        {
+          "title": "Create failback methods",
+          "files": ["python/src/server/services/migration/failback_methods.py"],
+          "details": "Implement sync-back, rollback-snapshot, and hybrid failback strategies"
+        },
+        {
+          "title": "Create emergency failback service",
+          "files": ["python/src/server/services/migration/emergency_failback.py"],
+          "details": "Instant failback procedures for critical system failures"
+        },
+        {
+          "title": "Create conflict resolution engine",
+          "files": ["python/src/server/services/migration/conflict_resolver.py"],
+          "details": "Detect and resolve conflicts during sync-back operations"
+        },
+        {
+          "title": "Create vector migration service",
+          "files": ["python/src/server/services/migration/vector_migration_service.py"],
+          "details": "Bidirectional vector migration between pgvector and ChromaDB with validation"
+        }
+      ]
+    },
+    "phase_4_api_integration": {
+      "description": "Create API endpoints for selective migration and failback integration",
+      "tasks": [
+        {
+          "title": "Create selective migration API endpoints",
+          "files": ["python/src/server/api_routes/selective_migration_api.py"],
+          "details": "REST endpoints for component-specific migration operations and hybrid deployment control"
+        },
+        {
+          "title": "Create failback API endpoints",
+          "files": ["python/src/server/api_routes/failback_api.py"],
+          "details": "REST endpoints for manual failback, emergency procedures, and recovery operations"
+        },
+        {
+          "title": "Create component monitoring API",
+          "files": ["python/src/server/api_routes/component_monitoring_api.py"],
+          "details": "Real-time component health, performance metrics, and failback trigger status"
+        },
+        {
+          "title": "Create settings integration",
+          "files": ["python/src/server/services/settings/migration_settings_service.py"],
+          "details": "Integrate selective migration and failback settings with existing settings system"
+        },
+        {
+          "title": "Create WebSocket handlers for real-time updates",
+          "files": ["python/src/server/api_routes/migration_websocket.py"],
+          "details": "Real-time updates for migration progress, component health, and failback events"
+        },
+        {
+          "title": "Update settings service for dynamic provider switching",
+          "files": ["python/src/server/services/settings_service.py"],
+          "details": "Enable runtime switching between database providers with component-level granularity"
+        }
+      ]
+    }
+  },
+
+  "settings_ui_design": {
+    "selective_migration_page": {
+      "sections": [
+        {
+          "name": "Current Configuration",
+          "description": "Display current provider configuration and component status",
+          "components": ["ComponentStatus", "HybridDeploymentView", "ProviderMetrics"]
+        },
+        {
+          "name": "Component Selection",
+          "description": "Select which components to migrate to homelab",
+          "components": ["ComponentSelector", "MigrationOrder", "DependencyViewer"]
+        },
+        {
+          "name": "Homelab Configuration",
+          "description": "Configure homelab database connections",
+          "components": ["PostgreSQLConfig", "ChromaDBConfig", "RedisConfig", "MongoDBConfig"]
+        },
+        {
+          "name": "Connection Testing",
+          "description": "Test individual homelab component connections",
+          "components": ["ComponentTester", "PerformanceMetrics", "HealthChecks"]
+        },
+        {
+          "name": "Permission Validation",
+          "description": "Validate database permissions and security before migration",
+          "components": ["PermissionTester", "SecurityValidator", "ComplianceChecker"]
+        },
+        {
+          "name": "Migration Control",
+          "description": "Start, monitor, and control selective migration process",
+          "components": ["SelectiveMigrationWizard", "ComponentProgress", "ErrorHandler"]
+        },
+        {
+          "name": "Failback Configuration",
+          "description": "Configure automatic and manual failback policies",
+          "components": ["FailbackPolicies", "TriggerThresholds", "RecoveryStrategies"]
+        },
+        {
+          "name": "Hybrid Deployment Monitor",
+          "description": "Monitor hybrid deployment status and component health",
+          "components": ["ComponentHealth", "SyncStatus", "FailbackReadiness"]
+        }
+      ]
+    },
+    "selective_migration_workflow": [
+      {
+        "step": 1,
+        "title": "Select Components",
+        "description": "Choose which components to migrate (Redis, ChromaDB, PostgreSQL, MongoDB)",
+        "validation": "Validate component dependencies and migration order"
+      },
+      {
+        "step": 2,
+        "title": "Configure Homelab",
+        "description": "Enter connection details for selected homelab components",
+        "validation": "Test selected component connections and validate configurations"
+      },
+      {
+        "step": 3,
+        "title": "Validate Permissions",
+        "description": "Test database permissions, schema access, and security configurations",
+        "validation": "Comprehensive permission testing and security compliance validation"
+      },
+      {
+        "step": 4,
+        "title": "Configure Failback",
+        "description": "Set up automatic failback triggers and manual failback policies",
+        "validation": "Test failback mechanisms and validate recovery procedures"
+      },
+      {
+        "step": 5,
+        "title": "Start Selective Migration",
+        "description": "Begin component-by-component migration with progress tracking",
+        "validation": "Real-time validation of migrated component functionality and permissions"
+      },
+      {
+        "step": 6,
+        "title": "Enable Hybrid Sync",
+        "description": "Activate sync between migrated components and Supabase backup",
+        "validation": "Monitor component health, sync performance, and permission consistency"
+      },
+      {
+        "step": 7,
+        "title": "Test Failback",
+        "description": "Test automatic and manual failback procedures",
+        "validation": "Verify failback works correctly, data is preserved, and permissions are maintained"
+      },
+      {
+        "step": 8,
+        "title": "Monitor Hybrid Deployment",
+        "description": "Monitor hybrid deployment with component health tracking",
+        "validation": "Continuous monitoring of component performance, permissions, and failback readiness"
+      },
+      {
+        "step": 9,
+        "title": "Expand or Finalize",
+        "description": "Migrate additional components or finalize current hybrid setup",
+        "validation": "Validate expanded migration permissions or confirm stable hybrid deployment"
+      }
+    ]
+  },
+
+  "hybrid_deployment_configurations": {
+    "redis_only": {
+      "description": "Redis for real-time + caching, Supabase for everything else",
+      "components": {
+        "realtime": "redis",
+        "cache": "redis",
+        "core_data": "supabase",
+        "vectors": "supabase"
+      },
+      "benefits": ["Improved real-time performance", "Local caching", "Minimal migration risk"],
+      "failback_complexity": "low"
+    },
+    "redis_chromadb": {
+      "description": "Redis + ChromaDB for performance, Supabase for core data",
+      "components": {
+        "realtime": "redis",
+        "cache": "redis",
+        "vectors": "chromadb",
+        "core_data": "supabase"
+      },
+      "benefits": ["Best vector search performance", "Fast real-time", "Moderate migration risk"],
+      "failback_complexity": "medium"
+    },
+    "full_homelab": {
+      "description": "All components on homelab with Supabase as backup",
+      "components": {
+        "realtime": "redis",
+        "cache": "redis",
+        "vectors": "chromadb",
+        "core_data": "postgresql",
+        "documents": "mongodb"
+      },
+      "benefits": ["Complete data sovereignty", "Maximum performance", "No external dependencies"],
+      "failback_complexity": "high"
+    }
+  },
+
+  "failback_strategies": {
+    "sync_back": {
+      "description": "Sync recent changes back to Supabase before switching",
+      "data_preservation": "complete",
+      "speed": "slow",
+      "safety": "highest",
+      "use_cases": ["Planned maintenance", "Performance testing", "Gradual rollback"]
+    },
+    "rollback_snapshot": {
+      "description": "Restore Supabase to pre-migration state",
+      "data_preservation": "partial",
+      "speed": "fast",
+      "safety": "medium",
+      "use_cases": ["Emergency situations", "Data corruption", "Critical failures"]
+    },
+    "hybrid_failback": {
+      "description": "Fail back only problematic components",
+      "data_preservation": "selective",
+      "speed": "medium",
+      "safety": "high",
+      "use_cases": ["Component-specific issues", "Performance degradation", "Partial failures"]
+    }
+  },
+
+  "permission_validation_requirements": {
+    "postgresql_permissions": {
+      "required_privileges": [
+        "CREATE", "SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE",
+        "REFERENCES", "TRIGGER", "CREATE SEQUENCE", "USAGE ON SCHEMA"
+      ],
+      "extension_privileges": [
+        "CREATE EXTENSION vector", "CREATE EXTENSION uuid-ossp", "CREATE EXTENSION pg_trgm"
+      ],
+      "function_privileges": [
+        "CREATE FUNCTION", "EXECUTE ON FUNCTIONS", "CREATE AGGREGATE"
+      ],
+      "security_checks": [
+        "SSL connection validation", "Password strength verification",
+        "Connection limit validation", "Role-based access control"
+      ],
+      "test_operations": [
+        "Create test table", "Insert test data", "Create test index",
+        "Create test function", "Test vector operations", "Test JSONB operations"
+      ]
+    },
+    "chromadb_permissions": {
+      "required_operations": [
+        "create_collection", "add_documents", "query_collection",
+        "update_documents", "delete_documents", "list_collections"
+      ],
+      "api_access": [
+        "REST API access", "Authentication validation", "Rate limit testing"
+      ],
+      "security_checks": [
+        "API key validation", "Network access verification",
+        "CORS configuration validation", "SSL/TLS verification"
+      ],
+      "test_operations": [
+        "Create test collection", "Add test embeddings", "Perform similarity search",
+        "Update collection metadata", "Delete test data", "Validate persistence"
+      ]
+    },
+    "redis_permissions": {
+      "required_commands": [
+        "GET", "SET", "DEL", "EXISTS", "EXPIRE", "TTL",
+        "PUBLISH", "SUBSCRIBE", "HGET", "HSET", "HDEL"
+      ],
+      "database_access": [
+        "SELECT database 0", "SELECT database 1", "SELECT database 2", "SELECT database 3"
+      ],
+      "security_checks": [
+        "AUTH command validation", "ACL user validation",
+        "Network access verification", "Memory usage limits"
+      ],
+      "test_operations": [
+        "Set test key-value", "Test pub/sub functionality", "Test hash operations",
+        "Test expiration", "Test database switching", "Test memory usage"
+      ]
+    },
+    "mongodb_permissions": {
+      "required_privileges": [
+        "read", "readWrite", "dbAdmin", "userAdmin", "clusterAdmin"
+      ],
+      "collection_operations": [
+        "createCollection", "dropCollection", "createIndex",
+        "insert", "find", "update", "remove", "aggregate"
+      ],
+      "security_checks": [
+        "Authentication mechanism validation", "SSL/TLS verification",
+        "Role-based access control", "Network access verification"
+      ],
+      "test_operations": [
+        "Create test collection", "Insert test document", "Create test index",
+        "Test GridFS operations", "Test aggregation pipeline", "Test transactions"
+      ]
+    }
+  },
+
+  "permission_testing_workflow": {
+    "pre_migration_validation": [
+      {
+        "phase": "Connection Testing",
+        "description": "Verify basic connectivity to all selected components",
+        "tests": ["Network connectivity", "Authentication", "Basic command execution"]
+      },
+      {
+        "phase": "Permission Validation",
+        "description": "Test all required database permissions and operations",
+        "tests": ["CRUD operations", "Schema modifications", "Function creation", "Extension usage"]
+      },
+      {
+        "phase": "Security Compliance",
+        "description": "Validate security configurations and compliance requirements",
+        "tests": ["Encryption validation", "Access control verification", "Audit logging", "Network security"]
+      },
+      {
+        "phase": "Performance Baseline",
+        "description": "Establish performance baselines for comparison",
+        "tests": ["Response time measurement", "Throughput testing", "Resource usage monitoring"]
+      },
+      {
+        "phase": "Migration Readiness",
+        "description": "Final validation before enabling migration option",
+        "tests": ["All permissions verified", "Security compliance passed", "Performance acceptable"]
+      }
+    ]
+  },
+
+  "automatic_failback_triggers": {
+    "connection_loss": {
+      "threshold": "30_seconds_timeout",
+      "action": "immediate_failback",
+      "recovery_strategy": "hybrid_failback"
+    },
+    "performance_degradation": {
+      "threshold": "response_time_over_5000ms",
+      "action": "warning_then_failback",
+      "recovery_strategy": "sync_back"
+    },
+    "permission_failures": {
+      "threshold": "permission_denied_error",
+      "action": "immediate_failback",
+      "recovery_strategy": "rollback_snapshot"
+    },
+    "sync_lag": {
+      "threshold": "sync_lag_over_5_minutes",
+      "action": "alert_then_failback",
+      "recovery_strategy": "rollback_snapshot"
+    },
+    "health_check_failures": {
+      "threshold": "3_consecutive_failures",
+      "action": "immediate_failback",
+      "recovery_strategy": "hybrid_failback"
+    },
+    "data_integrity_issues": {
+      "threshold": "validation_failure",
+      "action": "immediate_failback",
+      "recovery_strategy": "rollback_snapshot"
+    }
+  },
+
+  "component_migration_order": {
+    "recommended_sequence": [
+      {
+        "component": "redis",
+        "order": 1,
+        "risk_level": "low",
+        "dependencies": [],
+        "rollback_time": "< 1 minute",
+        "benefits": ["Improved real-time performance", "Local caching"],
+        "permission_requirements": ["Basic Redis commands", "Pub/sub operations", "Database selection"],
+        "validation_tests": ["Connection test", "Command execution", "Pub/sub functionality"]
+      },
+      {
+        "component": "chromadb",
+        "order": 2,
+        "risk_level": "medium",
+        "dependencies": ["redis_stable"],
+        "rollback_time": "< 5 minutes",
+        "benefits": ["Better vector search", "Dedicated vector database"],
+        "permission_requirements": ["Collection management", "Document operations", "Query operations"],
+        "validation_tests": ["API access", "Collection creation", "Vector operations", "Persistence validation"]
+      },
+      {
+        "component": "postgresql",
+        "order": 3,
+        "risk_level": "high",
+        "dependencies": ["redis_stable", "chromadb_stable"],
+        "rollback_time": "< 30 minutes",
+        "benefits": ["Data sovereignty", "Full control", "No external dependencies"],
+        "permission_requirements": ["Full CRUD operations", "Schema modifications", "Extension creation", "Function creation"],
+        "validation_tests": ["Database creation", "Table operations", "Index creation", "Extension installation", "Function execution"]
+      },
+      {
+        "component": "mongodb",
+        "order": 4,
+        "risk_level": "low",
+        "dependencies": ["postgresql_stable"],
+        "rollback_time": "< 5 minutes",
+        "benefits": ["Large document storage", "GridFS capabilities"],
+        "permission_requirements": ["Collection management", "Document operations", "Index creation", "GridFS operations"],
+        "validation_tests": ["Database access", "Collection operations", "GridFS functionality", "Index creation"]
+      }
+    ]
+  },
+
+  "safety_features": {
+    "backup_strategy": [
+      "Automatic component-specific backups before migration",
+      "Incremental backups during selective migration",
+      "Point-in-time recovery capabilities for each component",
+      "Cross-provider backup validation and integrity checks",
+      "Automated backup rotation and cleanup policies"
+    ],
+    "failback_capabilities": [
+      "One-click emergency failback for all components",
+      "Selective component failback without affecting others",
+      "Automatic failback on error detection with configurable triggers",
+      "Manual failback with multiple recovery strategy options",
+      "Failback validation and testing before switching traffic"
+    ],
+    "validation_checks": [
+      "Component-specific data integrity validation",
+      "Performance benchmark comparison per component",
+      "Comprehensive permission validation before migration",
+      "Security compliance verification for all components",
+      "Functionality testing automation for hybrid deployments",
+      "User acceptance testing workflows for selective migration",
+      "Continuous health monitoring with alerting",
+      "Permission consistency monitoring during operation"
+    ],
+    "permission_validation": [
+      "Pre-migration permission testing for all selected components",
+      "Real-time permission monitoring during migration",
+      "Permission consistency validation across hybrid deployments",
+      "Security compliance checking with industry standards",
+      "Access control verification and audit trail maintenance"
+    ],
+    "monitoring_and_alerting": [
+      "Real-time component health monitoring",
+      "Performance threshold alerting",
+      "Sync lag monitoring and alerts",
+      "Failback readiness status tracking",
+      "Component dependency health checks"
+    ]
+  },
+
+  "validation": {
+    "level_1_syntax": [
+      "ruff check --fix python/src/server/services/migration/",
+      "mypy python/src/server/services/migration/selective_migration_service.py",
+      "mypy python/src/server/services/migration/failback_orchestrator.py",
+      "npm run type-check --prefix archon-ui-main"
+    ],
+    "level_2_unit_tests": [
+      "pytest tests/services/migration/test_selective_migration.py -v",
+      "pytest tests/services/migration/test_failback_strategies.py -v",
+      "pytest tests/services/migration/test_component_monitors.py -v",
+      "pytest tests/services/migration/test_permission_validator.py -v",
+      "pytest tests/services/migration/test_security_compliance_checker.py -v",
+      "pytest tests/api/test_selective_migration_api.py -v",
+      "npm test -- --testPathPattern=selective-migration --prefix archon-ui-main"
+    ],
+    "level_3_integration": [
+      "pytest tests/integration/test_redis_migration_failback.py -v",
+      "pytest tests/integration/test_chromadb_migration_failback.py -v",
+      "pytest tests/integration/test_hybrid_deployment.py -v",
+      "pytest tests/integration/test_automatic_failback_triggers.py -v",
+      "pytest tests/integration/test_permission_validation_workflow.py -v",
+      "pytest tests/integration/test_security_compliance_validation.py -v"
+    ],
+    "level_4_end_to_end": [
+      "Start development server: uvicorn main:app --reload",
+      "Navigate to /settings/migration and test component selection",
+      "Test comprehensive permission validation for all components",
+      "Verify security compliance checking passes before migration",
+      "Test Redis migration with permission validation and automatic failback",
+      "Test ChromaDB migration with security validation and manual failback",
+      "Verify hybrid deployment monitoring and health checks",
+      "Test emergency failback procedures with permission consistency",
+      "Validate permission monitoring during ongoing operations"
+    ]
+  },
+
+  "additional_context": {
+    "implementation_complexity": {
+      "selective_migration": "Medium - requires component abstraction and provider switching",
+      "hybrid_deployment": "Medium - needs dynamic provider configuration",
+      "automatic_failback": "High - requires comprehensive monitoring and trigger systems",
+      "manual_failback": "Low - straightforward user-initiated procedures",
+      "data_preservation": "High - complex sync and validation requirements"
+    },
+    "performance_considerations": [
+      "Component-specific performance monitoring and benchmarking",
+      "Hybrid deployment overhead from multiple provider connections",
+      "Failback trigger sensitivity vs false positive balance",
+      "Sync lag monitoring and optimization for real-time failback",
+      "Resource usage optimization for monitoring and health checks"
+    ],
+    "security_implications": [
+      "Comprehensive permission validation before any migration operations",
+      "Secure credential management for multiple database providers",
+      "Role-based access control validation for all database components",
+      "Audit trail for all migration, failback, and permission operations",
+      "Access control for emergency failback procedures",
+      "Data encryption validation during sync and failback operations",
+      "Network security verification for hybrid deployment communications",
+      "Security compliance checking against industry standards",
+      "Permission consistency monitoring during ongoing operations",
+      "Automated security vulnerability scanning for database configurations"
+    ],
+    "permission_security_framework": [
+      "Principle of least privilege enforcement for all database connections",
+      "Regular permission auditing and compliance reporting",
+      "Automated detection of permission escalation attempts",
+      "Secure storage and rotation of database credentials",
+      "Multi-factor authentication for administrative operations",
+      "Encryption at rest and in transit validation",
+      "Network access control and firewall rule validation",
+      "Database activity monitoring and anomaly detection"
+    ]
+  }
+}

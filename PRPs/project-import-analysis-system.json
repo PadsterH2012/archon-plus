@@ -1,0 +1,255 @@
+{
+  "document_type": "prp",
+  "title": "Project Import & Analysis System",
+  "version": "1.0",
+  "author": "prp-creator",
+  "date": "2025-08-23",
+  "status": "draft",
+
+  "goal": "Enable importing existing projects into Archon with automated analysis, documentation generation, and task creation for comprehensive project understanding and continuation",
+
+  "why": [
+    "Enable seamless integration of existing projects into Archon's structured workflow environment",
+    "Provide automated analysis and documentation of legacy codebases for better understanding",
+    "Create actionable task lists for continuing development on imported projects",
+    "Leverage Archon's RAG system to build comprehensive knowledge bases from existing code",
+    "Reduce onboarding time for developers working on existing projects",
+    "Ensure safe, recorded development environment for legacy project continuation"
+  ],
+
+  "what": {
+    "description": "Comprehensive project import system that analyzes existing codebases, generates documentation, creates tasks, and integrates with Archon's knowledge management system",
+    "success_criteria": [
+      "Successfully import projects from GitHub repositories (with/without auth)",
+      "Successfully import projects from local filesystem paths",
+      "Automatically scan and analyze codebase structure, dependencies, and architecture",
+      "Generate AI-powered project summaries and documentation",
+      "Create structured task lists for identified documentation and development needs",
+      "Optionally integrate codebase into RAG system for enhanced context",
+      "Maintain project metadata including repository info, location, and analysis results",
+      "Provide safe rollback and re-analysis capabilities"
+    ],
+    "user_stories": [
+      "As a developer, I want to import my existing GitHub project so I can continue development in Archon's structured environment",
+      "As a team lead, I want to analyze legacy codebases to understand what needs documentation and improvement",
+      "As a developer, I want the system to automatically identify missing documentation and create tasks for it",
+      "As a project manager, I want to see AI-generated summaries of imported projects to understand their current state",
+      "As a developer, I want the imported project's code to be searchable through Archon's RAG system for better context"
+    ]
+  },
+
+  "context": {
+    "documentation": [
+      {"source": "python/src/server/services/projects/project_service.py", "why": "Current project creation and management patterns"},
+      {"source": "python/src/server/services/projects/task_service.py", "why": "Task creation and management system"},
+      {"source": "python/src/server/services/crawling/crawling_service.py", "why": "Existing crawling and analysis infrastructure"},
+      {"source": "python/src/server/services/crawling/code_extraction_service.py", "why": "Code analysis and extraction capabilities"},
+      {"source": "python/src/mcp/modules/export_import_tools.py", "why": "Existing import/export functionality patterns"},
+      {"source": "archon-ui-main/src/components/project-tasks/ImportDialog.tsx", "why": "Current import UI patterns and user experience"}
+    ],
+    "existing_code": [
+      {"file": "python/src/server/api_routes/projects_api.py", "purpose": "Project API endpoints and request handling"},
+      {"file": "python/src/server/services/projects/project_creation_service.py", "purpose": "Project creation workflow and AI integration"},
+      {"file": "python/src/server/services/knowledge/knowledge_item_service.py", "purpose": "Knowledge base integration patterns"},
+      {"file": "migration/complete_setup.sql", "purpose": "Database schema for projects and related tables"}
+    ],
+    "gotchas": [
+      "GitHub API rate limiting requires careful handling and optional authentication",
+      "Large repositories need chunked analysis to avoid memory issues and timeouts",
+      "File system permissions and access patterns vary across different environments",
+      "Code analysis must handle multiple programming languages and project structures",
+      "RAG integration should be optional to avoid overwhelming the knowledge base",
+      "Task generation must be intelligent to avoid creating hundreds of trivial tasks",
+      "Repository cloning requires secure handling of authentication credentials",
+      "Analysis progress tracking is crucial for large projects to provide user feedback"
+    ],
+    "current_state": "Archon has robust project management, task tracking, and RAG systems. Basic import/export exists for Archon projects but no external project import capability. Need to build bridge between external codebases and Archon's structured environment.",
+    "dependencies": [
+      "GitPython", "requests", "aiofiles", "pathlib", "ast", "tree-sitter", "pygments"
+    ],
+    "environment_variables": [
+      "GITHUB_TOKEN", "ARCHON_IMPORT_TEMP_DIR", "ARCHON_MAX_IMPORT_SIZE", "ARCHON_ANALYSIS_TIMEOUT"
+    ]
+  },
+
+  "implementation_blueprint": {
+    "phase_1_core_import_infrastructure": {
+      "description": "Build core import system with repository and filesystem support",
+      "tasks": [
+        {
+          "title": "Create project import service architecture",
+          "files": ["python/src/server/services/projects/project_import_service.py"],
+          "details": "Core service class with repository cloning, filesystem scanning, and import orchestration"
+        },
+        {
+          "title": "Implement GitHub repository import with authentication",
+          "files": ["python/src/server/services/projects/repository_import_service.py"],
+          "details": "GitHub API integration, repository cloning, branch selection, and credential management"
+        },
+        {
+          "title": "Implement local filesystem project import",
+          "files": ["python/src/server/services/projects/filesystem_import_service.py"],
+          "details": "Local directory scanning, file analysis, and project structure detection"
+        },
+        {
+          "title": "Add project import API endpoints",
+          "files": ["python/src/server/api_routes/project_import_api.py"],
+          "details": "REST endpoints for import initiation, progress tracking, and configuration"
+        }
+      ]
+    },
+    "phase_2_codebase_analysis": {
+      "description": "Implement intelligent codebase analysis and documentation generation",
+      "tasks": [
+        {
+          "title": "Create codebase analysis engine",
+          "files": ["python/src/server/services/analysis/codebase_analysis_service.py"],
+          "details": "Multi-language code analysis, dependency detection, architecture mapping, and complexity assessment"
+        },
+        {
+          "title": "Implement AI-powered project summarization",
+          "files": ["python/src/server/services/analysis/project_summarization_service.py"],
+          "details": "Generate project descriptions, technology stack analysis, and development recommendations using AI"
+        },
+        {
+          "title": "Build documentation gap analysis",
+          "files": ["python/src/server/services/analysis/documentation_analysis_service.py"],
+          "details": "Identify missing documentation, outdated comments, and areas needing explanation"
+        },
+        {
+          "title": "Create intelligent task generation system",
+          "files": ["python/src/server/services/analysis/task_generation_service.py"],
+          "details": "Generate meaningful tasks for documentation, refactoring, testing, and improvement based on analysis"
+        }
+      ]
+    },
+    "phase_3_rag_integration": {
+      "description": "Integrate imported codebases with Archon's RAG system",
+      "tasks": [
+        {
+          "title": "Implement selective code indexing for RAG",
+          "files": ["python/src/server/services/projects/code_indexing_service.py"],
+          "details": "Selective code chunking, embedding generation, and RAG integration with skip options"
+        },
+        {
+          "title": "Create project-specific knowledge sources",
+          "files": ["python/src/server/services/projects/project_knowledge_service.py"],
+          "details": "Link imported code to project-specific knowledge sources for targeted RAG queries"
+        },
+        {
+          "title": "Implement code context enhancement",
+          "files": ["python/src/server/services/analysis/code_context_service.py"],
+          "details": "Generate contextual descriptions and relationships for better RAG retrieval"
+        }
+      ]
+    },
+    "phase_4_ui_and_workflow": {
+      "description": "Build user interface and complete import workflow",
+      "tasks": [
+        {
+          "title": "Create project import wizard UI",
+          "files": ["archon-ui-main/src/components/project-import/ProjectImportWizard.tsx"],
+          "details": "Multi-step import wizard with repository/filesystem selection, configuration, and progress tracking"
+        },
+        {
+          "title": "Implement import progress dashboard",
+          "files": ["archon-ui-main/src/components/project-import/ImportProgressDashboard.tsx"],
+          "details": "Real-time progress tracking, analysis results display, and task preview"
+        },
+        {
+          "title": "Add imported project management features",
+          "files": ["archon-ui-main/src/components/projects/ImportedProjectCard.tsx"],
+          "details": "Enhanced project cards showing import metadata, analysis results, and re-analysis options"
+        },
+        {
+          "title": "Integrate import workflow with existing project system",
+          "files": ["archon-ui-main/src/services/projectImportService.ts"],
+          "details": "Service layer integration with existing project management and real-time updates"
+        }
+      ]
+    }
+  },
+
+  "validation": {
+    "level_1_syntax": [
+      "ruff check --fix python/src/server/services/projects/",
+      "ruff check --fix python/src/server/services/analysis/",
+      "mypy python/src/server/services/projects/project_import_service.py",
+      "npm run type-check --prefix archon-ui-main"
+    ],
+    "level_2_unit_tests": [
+      "pytest tests/services/projects/test_project_import_service.py -v",
+      "pytest tests/services/analysis/test_codebase_analysis_service.py -v",
+      "pytest tests/api/test_project_import_api.py -v",
+      "npm test -- --testPathPattern=project-import --prefix archon-ui-main"
+    ],
+    "level_3_integration": [
+      "pytest tests/integration/test_github_import_flow.py -v",
+      "pytest tests/integration/test_filesystem_import_flow.py -v",
+      "pytest tests/integration/test_rag_integration.py -v",
+      "curl -X POST http://localhost:8181/api/projects/import/github -d '{\"repository_url\": \"https://github.com/test/repo\"}'"
+    ],
+    "level_4_end_to_end": [
+      "Start development server: uvicorn main:app --reload",
+      "Navigate to /projects and click 'Import Project'",
+      "Test GitHub repository import with public repo",
+      "Test local filesystem import with sample project",
+      "Verify task generation and RAG integration",
+      "Test re-analysis and metadata updates"
+    ]
+  },
+
+  "additional_context": {
+    "project_metadata_schema": {
+      "repository_url": "GitHub repository URL with optional authentication",
+      "ai_generated_summary": "AI-powered project description and technology analysis",
+      "codebase_location": "{{hostname}}:{{folder_path}} for local projects",
+      "repository_branch": "Active branch being tracked",
+      "date_added": "ISO timestamp of import completion",
+      "last_analysis": "Timestamp of most recent codebase analysis",
+      "analysis_version": "Version of analysis engine used",
+      "import_source": "github|filesystem|manual",
+      "project_size": "Lines of code, file count, repository size",
+      "technology_stack": "Detected languages, frameworks, and dependencies",
+      "documentation_coverage": "Percentage of documented code and missing areas",
+      "complexity_metrics": "Cyclomatic complexity, maintainability index",
+      "rag_integration_status": "enabled|disabled|partial with indexing details"
+    },
+    "security_considerations": [
+      "Secure handling of GitHub authentication tokens with encryption at rest",
+      "Sandbox imported code analysis to prevent malicious code execution",
+      "Validate repository URLs and filesystem paths to prevent directory traversal",
+      "Implement rate limiting for GitHub API calls to avoid quota exhaustion",
+      "Secure temporary file handling during repository cloning and analysis",
+      "Audit trail for all import operations and access to imported projects",
+      "Permission-based access control for imported project data"
+    ],
+    "performance_optimizations": [
+      "Chunked analysis for large repositories to prevent memory exhaustion",
+      "Parallel processing of multiple files during codebase analysis",
+      "Incremental analysis to detect changes since last import",
+      "Caching of analysis results to avoid re-processing unchanged code",
+      "Background processing for RAG indexing to avoid blocking user interface",
+      "Progressive loading of analysis results in the user interface",
+      "Configurable analysis depth based on project size and complexity"
+    ],
+    "integration_points": [
+      "Extend existing project creation workflow with import options",
+      "Integrate with current task management system for generated tasks",
+      "Leverage existing RAG infrastructure for code indexing",
+      "Use current progress tracking system for import operations",
+      "Extend project metadata schema in existing database tables",
+      "Integrate with existing knowledge source management",
+      "Use current Socket.IO infrastructure for real-time progress updates"
+    ],
+    "future_enhancements": [
+      "Support for additional version control systems (GitLab, Bitbucket)",
+      "Integration with CI/CD systems for automated re-analysis",
+      "Machine learning models for better task prioritization",
+      "Code quality scoring and improvement recommendations",
+      "Automated dependency vulnerability scanning",
+      "Integration with external documentation systems",
+      "Support for monorepo analysis and sub-project extraction"
+    ]
+  }
+}

@@ -1,0 +1,245 @@
+{
+  "document_type": "prp",
+  "title": "Homelab Database Migration - Supabase to Native Stack",
+  "version": "1.0",
+  "author": "prp-creator",
+  "date": "2025-08-23",
+  "status": "draft",
+
+  "goal": "Migrate Archon from Supabase to native homelab infrastructure using PostgreSQL, ChromaDB, Redis, and MongoDB",
+
+  "why": [
+    "Leverage existing homelab infrastructure (PostgreSQL, MongoDB, Redis, ChromaDB)",
+    "Eliminate external dependencies and improve data sovereignty",
+    "Reduce operational costs by using self-hosted services",
+    "Improve performance with local network latency",
+    "Enable offline operation and air-gapped deployment",
+    "Gain full control over database configuration and optimization"
+  ],
+
+  "what": {
+    "description": "Complete migration from Supabase to homelab native stack with PostgreSQL as primary database, ChromaDB for vectors, Redis for real-time, and MongoDB for document storage",
+    "success_criteria": [
+      "PostgreSQL replaces Supabase for all relational data operations",
+      "ChromaDB handles all vector search operations with performance parity",
+      "Redis provides real-time notifications replacing Supabase realtime",
+      "MongoDB stores large documents and metadata (optional enhancement)",
+      "Zero data loss during migration process",
+      "Maintain or improve current performance benchmarks",
+      "All existing API endpoints continue to function identically"
+    ],
+    "user_stories": [
+      "As a homelab administrator, I want Archon to use my existing PostgreSQL instance",
+      "As a developer, I want vector search to work seamlessly with my ChromaDB setup",
+      "As a user, I want real-time updates to continue working through Redis",
+      "As a system administrator, I want to eliminate external cloud dependencies"
+    ]
+  },
+
+  "context": {
+    "homelab_infrastructure": {
+      "postgresql": {
+        "status": "Available",
+        "version": "15+",
+        "extensions_needed": ["pgvector", "uuid-ossp"],
+        "role": "Primary database for all relational data"
+      },
+      "chromadb": {
+        "status": "Available", 
+        "version": "Latest",
+        "role": "Dedicated vector search and embeddings storage"
+      },
+      "redis": {
+        "status": "Available",
+        "version": "7+",
+        "role": "Real-time notifications, caching, session storage"
+      },
+      "mongodb": {
+        "status": "Available",
+        "version": "6+", 
+        "role": "Optional document storage for large content"
+      }
+    },
+    "current_supabase_usage": [
+      {"component": "Database Operations", "replacement": "PostgreSQL with SQLAlchemy"},
+      {"component": "Vector Search", "replacement": "ChromaDB with Python client"},
+      {"component": "Real-time Subscriptions", "replacement": "Redis pub/sub + Socket.IO"},
+      {"component": "Authentication", "replacement": "Custom JWT with Redis sessions"},
+      {"component": "File Storage", "replacement": "Local filesystem or MongoDB GridFS"}
+    ],
+    "migration_challenges": [
+      "Supabase RPC functions need conversion to stored procedures or application logic",
+      "Real-time subscriptions require Redis pub/sub implementation",
+      "Vector operations need migration from pgvector to ChromaDB",
+      "Connection pooling and transaction management changes",
+      "Authentication system needs custom implementation"
+    ]
+  },
+
+  "implementation_blueprint": {
+    "phase_1_database_abstraction": {
+      "description": "Create database abstraction layer supporting multiple providers",
+      "tasks": [
+        {
+          "title": "Create database provider interfaces",
+          "files": ["python/src/server/database/interfaces/"],
+          "details": "Abstract interfaces for database, vector, and real-time operations"
+        },
+        {
+          "title": "Implement PostgreSQL provider",
+          "files": ["python/src/server/database/providers/postgresql_provider.py"],
+          "details": "PostgreSQL implementation using SQLAlchemy with async support"
+        },
+        {
+          "title": "Implement ChromaDB vector provider", 
+          "files": ["python/src/server/database/providers/chromadb_provider.py"],
+          "details": "ChromaDB integration for vector operations and similarity search"
+        },
+        {
+          "title": "Implement Redis notification provider",
+          "files": ["python/src/server/database/providers/redis_provider.py"],
+          "details": "Redis pub/sub for real-time notifications and caching"
+        }
+      ]
+    },
+    "phase_2_schema_migration": {
+      "description": "Migrate database schema and data from Supabase to PostgreSQL",
+      "tasks": [
+        {
+          "title": "Create PostgreSQL schema migration scripts",
+          "files": ["migration/homelab_postgresql_setup.sql"],
+          "details": "Convert Supabase schema to native PostgreSQL with pgvector"
+        },
+        {
+          "title": "Build data migration tools",
+          "files": ["python/src/server/migration/supabase_to_postgresql.py"],
+          "details": "Export data from Supabase and import to PostgreSQL with validation"
+        },
+        {
+          "title": "Migrate vector embeddings to ChromaDB",
+          "files": ["python/src/server/migration/vectors_to_chromadb.py"],
+          "details": "Transfer all embeddings from pgvector to ChromaDB collections"
+        },
+        {
+          "title": "Setup Redis for real-time notifications",
+          "files": ["python/src/server/services/realtime/redis_realtime_service.py"],
+          "details": "Replace Supabase realtime with Redis pub/sub + Socket.IO"
+        }
+      ]
+    },
+    "phase_3_service_updates": {
+      "description": "Update all services to use homelab infrastructure",
+      "tasks": [
+        {
+          "title": "Update client manager for multi-provider support",
+          "files": ["python/src/server/services/client_manager.py"],
+          "details": "Support PostgreSQL, ChromaDB, Redis, and MongoDB connections"
+        },
+        {
+          "title": "Update search services for ChromaDB",
+          "files": ["python/src/server/services/search/"],
+          "details": "Modify all search strategies to use ChromaDB instead of pgvector"
+        },
+        {
+          "title": "Update storage services for PostgreSQL",
+          "files": ["python/src/server/services/storage/"],
+          "details": "Replace Supabase client calls with PostgreSQL operations"
+        },
+        {
+          "title": "Update real-time services for Redis",
+          "files": ["python/src/server/services/realtime/"],
+          "details": "Replace Supabase subscriptions with Redis pub/sub"
+        }
+      ]
+    },
+    "phase_4_deployment_configuration": {
+      "description": "Create homelab deployment configuration",
+      "tasks": [
+        {
+          "title": "Create homelab Docker Compose template",
+          "files": ["portainer-templates/archon-homelab-native.yml"],
+          "details": "Docker Compose for Archon using homelab PostgreSQL, ChromaDB, Redis"
+        },
+        {
+          "title": "Create environment configuration",
+          "files": ["portainer-templates/.env.homelab"],
+          "details": "Environment variables for homelab database connections"
+        },
+        {
+          "title": "Create migration scripts",
+          "files": ["scripts/migrate-to-homelab.sh"],
+          "details": "Automated migration from Supabase to homelab infrastructure"
+        },
+        {
+          "title": "Update documentation",
+          "files": ["docs/deployment/homelab-setup.md"],
+          "details": "Complete guide for homelab deployment and migration"
+        }
+      ]
+    }
+  },
+
+  "homelab_configuration": {
+    "postgresql_setup": {
+      "host": "your-postgresql-host",
+      "port": 5432,
+      "database": "archon",
+      "extensions": ["pgvector", "uuid-ossp", "pg_trgm"],
+      "connection_pool": "asyncpg with SQLAlchemy",
+      "performance_tuning": "Optimized for vector operations and JSONB queries"
+    },
+    "chromadb_setup": {
+      "host": "your-chromadb-host", 
+      "port": 8000,
+      "collections": ["documents", "code_examples", "project_context"],
+      "embedding_function": "sentence-transformers/all-MiniLM-L6-v2",
+      "persistence": "Local filesystem with backup strategy"
+    },
+    "redis_setup": {
+      "host": "your-redis-host",
+      "port": 6379,
+      "databases": {
+        "0": "Real-time notifications",
+        "1": "Session storage", 
+        "2": "Cache layer",
+        "3": "Task queues"
+      },
+      "persistence": "RDB + AOF for durability"
+    },
+    "mongodb_setup": {
+      "host": "your-mongodb-host",
+      "port": 27017,
+      "database": "archon_documents",
+      "collections": ["large_documents", "file_metadata", "backup_data"],
+      "usage": "Optional for large document storage and GridFS"
+    }
+  },
+
+  "migration_strategy": {
+    "data_export": [
+      "Export all tables from Supabase using pg_dump",
+      "Extract vector embeddings with metadata",
+      "Backup current configuration and environment variables",
+      "Create data validation checksums"
+    ],
+    "infrastructure_setup": [
+      "Configure PostgreSQL with required extensions",
+      "Setup ChromaDB collections and embedding functions", 
+      "Configure Redis for pub/sub and caching",
+      "Test all database connections and performance"
+    ],
+    "application_migration": [
+      "Deploy database abstraction layer",
+      "Update service configurations for homelab",
+      "Migrate data with validation at each step",
+      "Switch traffic to homelab infrastructure",
+      "Verify all functionality and performance"
+    ],
+    "rollback_plan": [
+      "Keep Supabase instance running during migration",
+      "Maintain data synchronization during testing",
+      "Quick switch back to Supabase if issues arise",
+      "Complete rollback procedure documented"
+    ]
+  }
+}

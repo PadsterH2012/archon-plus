@@ -34,6 +34,7 @@ from .api_routes import socketio_handlers  # This registers all Socket.IO event 
 
 # Import modular API routers
 from .api_routes.settings_api import router as settings_router
+from .api_routes.template_injection_api import router as template_injection_router
 from .api_routes.template_management_api import router as template_management_router
 from .api_routes.tests_api import router as tests_router
 from .api_routes.workflow_api import router as workflow_router
@@ -219,6 +220,7 @@ app.include_router(coverage_router)
 app.include_router(bug_report_router)
 app.include_router(workflow_router)
 app.include_router(workflow_websocket_router)
+app.include_router(template_injection_router)
 app.include_router(template_management_router)
 
 

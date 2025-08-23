@@ -1,0 +1,294 @@
+version: '3.8'
+
+# Archon Stack with Homelab Native Infrastructure
+# This template deploys Archon using existing homelab services:
+# - PostgreSQL (external) - Primary database
+# - ChromaDB (external) - Vector search
+# - Redis (external) - Real-time notifications and caching
+# - MongoDB (external, optional) - Document storage
+#
+# Services:
+# - archon-server: Core API and business logic (Port: 8181)
+# - archon-mcp: Model Context Protocol interface (Port: 8051)  
+# - archon-agents: AI operations and streaming (Port: 8052)
+# - archon-ui: Web interface (Port: 3737)
+
+services:
+  # Core Server Service (FastAPI + Socket.IO + Crawling)
+  archon-server:
+    image: ghcr.io/padsterh2012/archon-server:homelab-native
+    environment:
+      # Database Provider Configuration
+      - DATABASE_PROVIDER=homelab_native
+      
+      # PostgreSQL Configuration (Homelab)
+      - POSTGRESQL_HOST=${POSTGRESQL_HOST:-10.202.70.30}
+      - POSTGRESQL_PORT=${POSTGRESQL_PORT:-5432}
+      - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE:-archon}
+      - POSTGRESQL_USER=${POSTGRESQL_USER:-archon_user}
+      - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
+      - POSTGRESQL_POOL_SIZE=${POSTGRESQL_POOL_SIZE:-20}
+      - POSTGRESQL_MAX_OVERFLOW=${POSTGRESQL_MAX_OVERFLOW:-30}
+      
+      # ChromaDB Configuration (Homelab)
+      - CHROMADB_HOST=${CHROMADB_HOST:-10.202.70.31}
+      - CHROMADB_PORT=${CHROMADB_PORT:-8000}
+      - CHROMADB_COLLECTION_PREFIX=${CHROMADB_COLLECTION_PREFIX:-archon}
+      - CHROMADB_EMBEDDING_MODEL=${CHROMADB_EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      
+      # Redis Configuration (Homelab)
+      - REDIS_HOST=${REDIS_HOST:-10.202.70.32}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB_REALTIME=${REDIS_DB_REALTIME:-0}
+      - REDIS_DB_CACHE=${REDIS_DB_CACHE:-1}
+      - REDIS_DB_SESSIONS=${REDIS_DB_SESSIONS:-2}
+      
+      # MongoDB Configuration (Optional, Homelab)
+      - MONGODB_HOST=${MONGODB_HOST:-10.202.70.33}
+      - MONGODB_PORT=${MONGODB_PORT:-27017}
+      - MONGODB_DATABASE=${MONGODB_DATABASE:-archon_documents}
+      - MONGODB_USER=${MONGODB_USER:-}
+      - MONGODB_PASSWORD=${MONGODB_PASSWORD:-}
+      
+      # Service Discovery
+      - SERVICE_DISCOVERY_MODE=homelab
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      
+      # Port Configuration
+      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
+      - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-8051}
+      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
+      
+      # Authentication Configuration
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters-long}
+      - JWT_EXPIRY=${JWT_EXPIRY:-3600}
+      - SESSION_TIMEOUT=${SESSION_TIMEOUT:-86400}
+      
+      # Optional: External AI Services
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-openai}
+      
+      # Optional: Logging
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+    ports:
+      - target: 8181
+        published: ${ARCHON_SERVER_PORT:-8181}
+        protocol: tcp
+        mode: ingress
+    networks:
+      - archon-network
+    healthcheck:
+      test: ["CMD", "sh", "-c", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8181/health')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Model Context Protocol Server
+  archon-mcp:
+    image: ghcr.io/padsterh2012/archon-mcp:homelab-native
+    environment:
+      # Database Provider Configuration
+      - DATABASE_PROVIDER=homelab_native
+      
+      # PostgreSQL Configuration (Homelab)
+      - POSTGRESQL_HOST=${POSTGRESQL_HOST:-10.202.70.30}
+      - POSTGRESQL_PORT=${POSTGRESQL_PORT:-5432}
+      - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE:-archon}
+      - POSTGRESQL_USER=${POSTGRESQL_USER:-archon_user}
+      - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
+      
+      # ChromaDB Configuration (Homelab)
+      - CHROMADB_HOST=${CHROMADB_HOST:-10.202.70.31}
+      - CHROMADB_PORT=${CHROMADB_PORT:-8000}
+      - CHROMADB_COLLECTION_PREFIX=${CHROMADB_COLLECTION_PREFIX:-archon}
+
+      # Service Discovery
+      - SERVICE_DISCOVERY_MODE=homelab
+      - TRANSPORT=sse
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+      # Service URLs for inter-service communication
+      - API_SERVICE_URL=http://archon-server:8181
+      - AGENTS_SERVICE_URL=http://archon-agents:8052
+
+      # Port Configuration
+      - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-8051}
+      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
+      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
+
+      # Optional: Logging
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+    ports:
+      - target: 8051
+        published: ${ARCHON_MCP_PORT:-8051}
+        protocol: tcp
+        mode: ingress
+    networks:
+      - archon-network
+    healthcheck:
+      test: ["CMD", "sh", "-c", "python -c \"import socket; s=socket.socket(); s.connect(('localhost', 8051)); s.close()\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    depends_on:
+      - archon-server
+      - archon-agents
+
+  # AI Agents Service (ML/Reranking)
+  archon-agents:
+    image: ghcr.io/padsterh2012/archon-agents:homelab-native
+    environment:
+      # Database Provider Configuration
+      - DATABASE_PROVIDER=homelab_native
+      
+      # PostgreSQL Configuration (Homelab)
+      - POSTGRESQL_HOST=${POSTGRESQL_HOST:-10.202.70.30}
+      - POSTGRESQL_PORT=${POSTGRESQL_PORT:-5432}
+      - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE:-archon}
+      - POSTGRESQL_USER=${POSTGRESQL_USER:-archon_user}
+      - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
+      
+      # ChromaDB Configuration (Homelab)
+      - CHROMADB_HOST=${CHROMADB_HOST:-10.202.70.31}
+      - CHROMADB_PORT=${CHROMADB_PORT:-8000}
+      - CHROMADB_COLLECTION_PREFIX=${CHROMADB_COLLECTION_PREFIX:-archon}
+
+      # Service Discovery
+      - SERVICE_DISCOVERY_MODE=homelab
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+      # Port Configuration
+      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
+
+      # Optional: Logging
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+    ports:
+      - target: 8052
+        published: ${ARCHON_AGENTS_PORT:-8052}
+        protocol: tcp
+        mode: ingress
+    networks:
+      - archon-network
+    healthcheck:
+      test: ["CMD", "sh", "-c", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8052/health')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Frontend Web Interface
+  archon-ui:
+    image: ghcr.io/padsterh2012/archon-ui:latest
+    environment:
+      - VITE_API_URL=http://${HOST:-localhost}:${ARCHON_SERVER_PORT:-8181}
+      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
+      - HOST=${HOST:-localhost}
+    ports:
+      - target: 5173
+        published: ${ARCHON_UI_PORT:-3737}
+        protocol: tcp
+        mode: ingress
+    networks:
+      - archon-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    depends_on:
+      - archon-server
+
+networks:
+  archon-network:
+    driver: overlay
+    attachable: true
+
+# Environment Variables Required for Homelab Setup:
+# 
+# PostgreSQL Configuration:
+# POSTGRESQL_HOST=10.202.70.30
+# POSTGRESQL_PASSWORD=your-secure-postgresql-password
+# POSTGRESQL_USER=archon_user
+# POSTGRESQL_DATABASE=archon
+#
+# ChromaDB Configuration:
+# CHROMADB_HOST=10.202.70.31
+# CHROMADB_PORT=8000
+#
+# Redis Configuration:
+# REDIS_HOST=10.202.70.32
+# REDIS_PORT=6379
+# REDIS_PASSWORD=your-redis-password (if auth enabled)
+#
+# MongoDB Configuration (Optional):
+# MONGODB_HOST=10.202.70.33
+# MONGODB_USER=archon_user
+# MONGODB_PASSWORD=your-mongodb-password
+#
+# Authentication:
+# JWT_SECRET=your-super-secret-jwt-token-with-at-least-32-characters-long
+#
+# Optional:
+# OPENAI_API_KEY=your-openai-api-key
+# LOGFIRE_TOKEN=your-logfire-token
+# HOST=your-domain.com
+# LOG_LEVEL=INFO

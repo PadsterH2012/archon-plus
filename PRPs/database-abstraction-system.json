@@ -1,0 +1,326 @@
+{
+  "document_type": "prp",
+  "title": "Database Abstraction System for Multi-Provider Support",
+  "version": "1.0",
+  "author": "prp-creator",
+  "date": "2025-08-23",
+  "status": "draft",
+
+  "goal": "Abstract Archon's database layer to support multiple database providers beyond Supabase, enabling on-premises and alternative cloud deployments",
+
+  "why": [
+    "Enable on-premises deployments for organizations with strict data sovereignty requirements",
+    "Reduce vendor lock-in and provide flexibility in database provider selection",
+    "Support cost optimization through alternative database solutions",
+    "Enable hybrid cloud deployments with local database instances",
+    "Provide disaster recovery options with database provider redundancy",
+    "Support air-gapped environments that cannot use external cloud services"
+  ],
+
+  "what": {
+    "description": "Comprehensive database abstraction layer that maintains Archon's functionality while supporting multiple database backends including PostgreSQL, MySQL, SQLite, and cloud alternatives",
+    "success_criteria": [
+      "Complete abstraction of database operations through unified interface",
+      "Support for PostgreSQL (native), MySQL, SQLite, and cloud alternatives",
+      "Maintain vector search capabilities across all supported databases",
+      "Preserve real-time functionality through configurable notification systems",
+      "Zero-downtime migration between database providers",
+      "Maintain performance parity with current Supabase implementation",
+      "Support for both SQL and NoSQL hybrid approaches where beneficial"
+    ],
+    "user_stories": [
+      "As a system administrator, I want to deploy Archon with PostgreSQL on-premises for data sovereignty",
+      "As a developer, I want to use SQLite for local development without external dependencies",
+      "As an enterprise customer, I want to use my existing MySQL infrastructure with Archon",
+      "As a DevOps engineer, I want to migrate between database providers without data loss",
+      "As a security officer, I want to ensure Archon works in air-gapped environments"
+    ]
+  },
+
+  "context": {
+    "documentation": [
+      {"source": "python/src/server/services/client_manager.py", "why": "Current Supabase client management and connection patterns"},
+      {"source": "project_docs/database/database-operations-query-patterns.md", "why": "Comprehensive database operation patterns and vector search usage"},
+      {"source": "python/src/server/services/search/base_search_strategy.py", "why": "Vector search implementation and RPC function usage"},
+      {"source": "archon_complete_database_setup.sql", "why": "Complete database schema and Supabase-specific features"},
+      {"source": "python/src/server/socketio_app.py", "why": "Real-time functionality that needs abstraction"}
+    ],
+    "existing_code": [
+      {"file": "python/src/server/services/storage/", "purpose": "Storage services that directly use Supabase client"},
+      {"file": "python/src/server/services/search/", "purpose": "Search services using vector operations and RPC functions"},
+      {"file": "python/src/server/services/projects/", "purpose": "Project services with database operations"},
+      {"file": "python/requirements.server.txt", "purpose": "Current database dependencies"}
+    ],
+    "gotchas": [
+      "Vector search requires pgvector extension or equivalent vector database capabilities",
+      "Real-time subscriptions need alternative notification mechanisms for non-Supabase providers",
+      "RPC functions must be abstracted to stored procedures or application-level logic",
+      "Row Level Security (RLS) policies need database-specific implementations",
+      "JSONB operations require database-specific JSON handling approaches",
+      "Connection pooling strategies vary significantly between database providers",
+      "Migration scripts must handle schema differences between database types",
+      "Performance characteristics differ significantly between providers"
+    ],
+    "current_state": "Archon is tightly coupled to Supabase with direct client usage throughout the codebase. Vector operations use pgvector, real-time features use Supabase subscriptions, and authentication relies on Supabase Auth. Need complete abstraction layer.",
+    "dependencies": [
+      "sqlalchemy", "alembic", "asyncpg", "aiomysql", "aiosqlite", "psycopg2-binary", "pymongo", "redis", "qdrant-client", "chromadb"
+    ],
+    "environment_variables": [
+      "DATABASE_PROVIDER", "DATABASE_URL", "DATABASE_HOST", "DATABASE_PORT", "DATABASE_NAME", "DATABASE_USER", "DATABASE_PASSWORD", "VECTOR_DATABASE_PROVIDER", "VECTOR_DATABASE_URL", "REDIS_URL"
+    ]
+  },
+
+  "implementation_blueprint": {
+    "phase_1_database_abstraction_layer": {
+      "description": "Create core database abstraction interfaces and base implementations",
+      "tasks": [
+        {
+          "title": "Design database abstraction interfaces",
+          "files": ["python/src/server/database/interfaces/database_interface.py"],
+          "details": "Define abstract base classes for database operations, vector search, and real-time notifications"
+        },
+        {
+          "title": "Implement PostgreSQL provider (Supabase-compatible)",
+          "files": ["python/src/server/database/providers/postgresql_provider.py"],
+          "details": "PostgreSQL implementation maintaining compatibility with existing Supabase functionality"
+        },
+        {
+          "title": "Create database provider factory and configuration",
+          "files": ["python/src/server/database/database_factory.py"],
+          "details": "Factory pattern for database provider instantiation based on configuration"
+        },
+        {
+          "title": "Implement connection management abstraction",
+          "files": ["python/src/server/database/connection_manager.py"],
+          "details": "Unified connection pooling and lifecycle management across providers"
+        }
+      ]
+    },
+    "phase_2_vector_search_abstraction": {
+      "description": "Abstract vector search operations for multiple vector database backends",
+      "tasks": [
+        {
+          "title": "Create vector search interface",
+          "files": ["python/src/server/database/interfaces/vector_interface.py"],
+          "details": "Abstract interface for vector operations, similarity search, and embedding storage"
+        },
+        {
+          "title": "Implement pgvector provider",
+          "files": ["python/src/server/database/vector_providers/pgvector_provider.py"],
+          "details": "PostgreSQL pgvector implementation for vector operations"
+        },
+        {
+          "title": "Implement Qdrant provider",
+          "files": ["python/src/server/database/vector_providers/qdrant_provider.py"],
+          "details": "Qdrant vector database provider for high-performance vector search"
+        },
+        {
+          "title": "Implement ChromaDB provider",
+          "files": ["python/src/server/database/vector_providers/chroma_provider.py"],
+          "details": "ChromaDB provider for local and lightweight vector operations"
+        }
+      ]
+    },
+    "phase_3_alternative_database_providers": {
+      "description": "Implement support for MySQL, SQLite, and other database backends",
+      "tasks": [
+        {
+          "title": "Implement MySQL provider",
+          "files": ["python/src/server/database/providers/mysql_provider.py"],
+          "details": "MySQL database provider with JSON column support and performance optimizations"
+        },
+        {
+          "title": "Implement SQLite provider",
+          "files": ["python/src/server/database/providers/sqlite_provider.py"],
+          "details": "SQLite provider for development and lightweight deployments"
+        },
+        {
+          "title": "Create schema migration system",
+          "files": ["python/src/server/database/migrations/migration_manager.py"],
+          "details": "Database-agnostic migration system supporting schema differences"
+        },
+        {
+          "title": "Implement real-time notification abstraction",
+          "files": ["python/src/server/database/notifications/notification_manager.py"],
+          "details": "Unified real-time notifications using Redis, WebSockets, or database-specific triggers"
+        }
+      ]
+    },
+    "phase_4_service_layer_integration": {
+      "description": "Update all services to use abstracted database layer",
+      "tasks": [
+        {
+          "title": "Update client manager for provider abstraction",
+          "files": ["python/src/server/services/client_manager.py"],
+          "details": "Replace Supabase client with database provider factory"
+        },
+        {
+          "title": "Update storage services for database abstraction",
+          "files": ["python/src/server/services/storage/"],
+          "details": "Modify all storage services to use abstracted database interface"
+        },
+        {
+          "title": "Update search services for vector abstraction",
+          "files": ["python/src/server/services/search/"],
+          "details": "Modify search strategies to use abstracted vector interface"
+        },
+        {
+          "title": "Update project services for provider independence",
+          "files": ["python/src/server/services/projects/"],
+          "details": "Ensure all project services work with any database provider"
+        }
+      ]
+    }
+  },
+
+  "validation": {
+    "level_1_syntax": [
+      "ruff check --fix python/src/server/database/",
+      "mypy python/src/server/database/interfaces/",
+      "mypy python/src/server/database/providers/",
+      "pytest tests/database/test_interfaces.py -v"
+    ],
+    "level_2_unit_tests": [
+      "pytest tests/database/providers/test_postgresql_provider.py -v",
+      "pytest tests/database/providers/test_mysql_provider.py -v",
+      "pytest tests/database/providers/test_sqlite_provider.py -v",
+      "pytest tests/database/vector_providers/ -v"
+    ],
+    "level_3_integration": [
+      "pytest tests/integration/test_database_migration.py -v",
+      "pytest tests/integration/test_vector_search_parity.py -v",
+      "pytest tests/integration/test_real_time_notifications.py -v",
+      "pytest tests/integration/test_provider_switching.py -v"
+    ],
+    "level_4_end_to_end": [
+      "Deploy with PostgreSQL provider and verify full functionality",
+      "Deploy with MySQL provider and run complete test suite",
+      "Deploy with SQLite provider for development environment",
+      "Test migration from Supabase to PostgreSQL with data preservation",
+      "Verify vector search performance across all providers"
+    ]
+  },
+
+  "additional_context": {
+    "on_premises_database_alternatives": {
+      "postgresql_self_hosted": {
+        "description": "Self-hosted PostgreSQL with pgvector extension",
+        "pros": ["Full compatibility with existing schema", "Mature vector search", "ACID compliance", "Strong ecosystem"],
+        "cons": ["Requires manual setup and maintenance", "No built-in real-time subscriptions"],
+        "setup_complexity": "Medium",
+        "vector_support": "Excellent (pgvector)",
+        "real_time_solution": "PostgreSQL NOTIFY/LISTEN + Redis pub/sub"
+      },
+      "mysql_enterprise": {
+        "description": "MySQL 8.0+ with JSON support and custom vector implementation",
+        "pros": ["Widely adopted", "Strong enterprise support", "Good JSON handling", "Familiar to many teams"],
+        "cons": ["No native vector support", "Requires custom vector implementation", "Limited JSONB equivalent"],
+        "setup_complexity": "Medium",
+        "vector_support": "Custom implementation required",
+        "real_time_solution": "MySQL triggers + Redis pub/sub"
+      },
+      "sqlite_embedded": {
+        "description": "SQLite with sqlite-vss extension for vector search",
+        "pros": ["Zero configuration", "Perfect for development", "Single file database", "No network dependencies"],
+        "cons": ["Single writer limitation", "Not suitable for high concurrency", "Limited vector performance"],
+        "setup_complexity": "Low",
+        "vector_support": "Good (sqlite-vss)",
+        "real_time_solution": "File watching + WebSocket broadcasting"
+      },
+      "cockroachdb": {
+        "description": "Distributed SQL database with PostgreSQL compatibility",
+        "pros": ["Horizontal scaling", "PostgreSQL compatibility", "Built-in replication", "Cloud-native"],
+        "cons": ["Complex setup", "Higher resource requirements", "Limited vector support"],
+        "setup_complexity": "High",
+        "vector_support": "Limited (requires custom implementation)",
+        "real_time_solution": "Change feeds + Redis pub/sub"
+      }
+    },
+    "vector_database_alternatives": {
+      "qdrant": {
+        "description": "High-performance vector database with filtering capabilities",
+        "pros": ["Excellent vector performance", "Advanced filtering", "REST API", "Self-hostable"],
+        "cons": ["Additional service to manage", "Learning curve", "Separate from main database"],
+        "use_case": "High-performance vector search with complex filtering"
+      },
+      "chromadb": {
+        "description": "Lightweight vector database for embeddings",
+        "pros": ["Simple setup", "Python-native", "Good for development", "Minimal dependencies"],
+        "cons": ["Limited scalability", "Basic filtering", "Newer ecosystem"],
+        "use_case": "Development and small-scale deployments"
+      },
+      "weaviate": {
+        "description": "Vector database with GraphQL API and multi-modal support",
+        "pros": ["GraphQL interface", "Multi-modal search", "Good ecosystem", "Cloud and self-hosted"],
+        "cons": ["Complex setup", "Resource intensive", "Overkill for simple use cases"],
+        "use_case": "Complex multi-modal search requirements"
+      },
+      "milvus": {
+        "description": "Cloud-native vector database for massive scale",
+        "pros": ["Massive scalability", "Multiple index types", "Kubernetes-native", "Strong performance"],
+        "cons": ["Complex architecture", "High resource requirements", "Steep learning curve"],
+        "use_case": "Large-scale enterprise deployments"
+      }
+    },
+    "migration_strategies": {
+      "supabase_to_postgresql": {
+        "steps": [
+          "Export data using Supabase CLI or pg_dump",
+          "Set up PostgreSQL with pgvector extension",
+          "Run schema migration scripts",
+          "Import data with vector embeddings",
+          "Update connection configuration",
+          "Test vector search functionality",
+          "Switch real-time notifications to Redis"
+        ],
+        "complexity": "Low",
+        "downtime": "Minimal (blue-green deployment possible)"
+      },
+      "postgresql_to_mysql": {
+        "steps": [
+          "Export data excluding vector columns",
+          "Set up MySQL with JSON support",
+          "Run schema conversion scripts",
+          "Implement custom vector storage solution",
+          "Migrate data with schema transformations",
+          "Update application configuration",
+          "Test all functionality thoroughly"
+        ],
+        "complexity": "High",
+        "downtime": "Moderate (schema differences require careful handling)"
+      }
+    },
+    "performance_considerations": {
+      "vector_search_performance": {
+        "postgresql_pgvector": "Excellent for < 1M vectors, good indexing options",
+        "qdrant": "Excellent for any scale, optimized for vector operations",
+        "chromadb": "Good for development, limited for production scale",
+        "mysql_custom": "Depends on implementation, generally slower than specialized solutions"
+      },
+      "real_time_performance": {
+        "supabase_realtime": "Native, low latency, built-in",
+        "redis_pubsub": "Excellent, requires additional service",
+        "websocket_polling": "Good, higher resource usage",
+        "database_triggers": "Variable, depends on database load"
+      }
+    },
+    "deployment_configurations": {
+      "development": {
+        "recommended": "SQLite + ChromaDB",
+        "rationale": "Zero configuration, fast setup, no external dependencies"
+      },
+      "small_production": {
+        "recommended": "PostgreSQL + pgvector",
+        "rationale": "Proven reliability, good performance, single database"
+      },
+      "enterprise_on_premises": {
+        "recommended": "PostgreSQL + Qdrant + Redis",
+        "rationale": "High performance, full control, enterprise features"
+      },
+      "high_scale_cloud": {
+        "recommended": "CockroachDB + Milvus + Redis",
+        "rationale": "Horizontal scaling, cloud-native, massive vector capacity"
+      }
+    }
+  }
+}

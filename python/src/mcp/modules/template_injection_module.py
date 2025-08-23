@@ -88,7 +88,10 @@ def register_template_injection_tools(mcp: FastMCP):
                     description="Standard operational workflow for development tasks",
                     template_type="project",
                     template_data={
-                        "template_content": "{{group::understand_homelab_env}}\\n\\n{{USER_TASK}}\\n\\n{{group::send_task_to_review}}",
+                        "template_content": (
+                            "{{group::understand_homelab_env}}\\n\\n"
+                            "{{USER_TASK}}\\n\\n{{group::send_task_to_review}}"
+                        ),
                         "user_task_position": 2,
                         "estimated_duration": 30,
                         "required_tools": ["view", "manage_task_archon-prod"]
@@ -136,7 +139,7 @@ def register_template_injection_tools(mcp: FastMCP):
                         "success": False,
                         "error": "name is required for create action"
                     })
-                
+
                 if not title:
                     return json.dumps({
                         "success": False,
@@ -193,7 +196,7 @@ def register_template_injection_tools(mcp: FastMCP):
                     "page": page,
                     "per_page": min(per_page, 100)
                 }
-                
+
                 if filter_by and filter_value:
                     params[f"filter_{filter_by}"] = filter_value
 
@@ -310,7 +313,10 @@ def register_template_injection_tools(mcp: FastMCP):
 
                 async with httpx.AsyncClient(timeout=timeout) as client:
                     response = await client.post(
-                        urljoin(api_url, f"/api/template-injection/templates/{template_id}/validate")
+                        urljoin(
+                            api_url,
+                            f"/api/template-injection/templates/{template_id}/validate"
+                        )
                     )
 
                     if response.status_code == 200:
@@ -365,7 +371,10 @@ def register_template_injection_tools(mcp: FastMCP):
             else:
                 return json.dumps({
                     "success": False,
-                    "error": f"Unknown action: {action}. Valid actions: create, list, get, update, delete, validate"
+                    "error": (
+                        f"Unknown action: {action}. "
+                        "Valid actions: create, list, get, update, delete, validate"
+                    )
                 })
 
         except Exception as e:
@@ -653,11 +662,165 @@ def register_template_injection_tools(mcp: FastMCP):
                             "error": f"Failed to list components: {error_detail}"
                         })
 
-            # Additional actions (get, update, delete, validate) would follow similar patterns
+            elif action == "get":
+                if not component_id:
+                    return json.dumps({
+                        "success": False,
+                        "error": "component_id is required for get action"
+                    })
+
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    response = await client.get(
+                        urljoin(api_url, f"/api/template-injection/components/{component_id}")
+                    )
+
+                    if response.status_code == 200:
+                        result = response.json()
+                        return json.dumps({
+                            "success": True,
+                            "component": result.get("component"),
+                            "message": "Component retrieved successfully"
+                        })
+                    elif response.status_code == 404:
+                        return json.dumps({
+                            "success": False,
+                            "error": "Component not found"
+                        })
+                    else:
+                        error_detail = response.text
+                        return json.dumps({
+                            "success": False,
+                            "error": f"Failed to get component: {error_detail}"
+                        })
+
+            elif action == "update":
+                if not component_id:
+                    return json.dumps({
+                        "success": False,
+                        "error": "component_id is required for update action"
+                    })
+
+                # Build update data from provided parameters
+                update_data = {}
+                if description is not None:
+                    update_data["description"] = description
+                if component_type is not None:
+                    update_data["component_type"] = component_type
+                if instruction_text is not None:
+                    update_data["instruction_text"] = instruction_text
+                if required_tools is not None:
+                    update_data["required_tools"] = required_tools
+                if estimated_duration is not None:
+                    update_data["estimated_duration"] = estimated_duration
+                if category is not None:
+                    update_data["category"] = category
+                if priority is not None:
+                    update_data["priority"] = priority
+                if tags is not None:
+                    update_data["tags"] = tags
+
+                if not update_data:
+                    return json.dumps({
+                        "success": False,
+                        "error": "At least one field must be provided for update"
+                    })
+
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    response = await client.put(
+                        urljoin(api_url, f"/api/template-injection/components/{component_id}"),
+                        json=update_data
+                    )
+
+                    if response.status_code == 200:
+                        result = response.json()
+                        return json.dumps({
+                            "success": True,
+                            "component": result.get("component"),
+                            "message": result.get("message", "Component updated successfully")
+                        })
+                    elif response.status_code == 404:
+                        return json.dumps({
+                            "success": False,
+                            "error": "Component not found"
+                        })
+                    else:
+                        error_detail = response.text
+                        return json.dumps({
+                            "success": False,
+                            "error": f"Failed to update component: {error_detail}"
+                        })
+
+            elif action == "delete":
+                if not component_id:
+                    return json.dumps({
+                        "success": False,
+                        "error": "component_id is required for delete action"
+                    })
+
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    response = await client.delete(
+                        urljoin(api_url, f"/api/template-injection/components/{component_id}")
+                    )
+
+                    if response.status_code == 200:
+                        result = response.json()
+                        return json.dumps({
+                            "success": True,
+                            "message": result.get("message", "Component deleted successfully")
+                        })
+                    elif response.status_code == 404:
+                        return json.dumps({
+                            "success": False,
+                            "error": "Component not found"
+                        })
+                    else:
+                        error_detail = response.text
+                        return json.dumps({
+                            "success": False,
+                            "error": f"Failed to delete component: {error_detail}"
+                        })
+
+            elif action == "validate":
+                if not component_id:
+                    return json.dumps({
+                        "success": False,
+                        "error": "component_id is required for validate action"
+                    })
+
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    response = await client.post(
+                        urljoin(
+                            api_url,
+                            f"/api/template-injection/components/{component_id}/validate"
+                        )
+                    )
+
+                    if response.status_code == 200:
+                        result = response.json()
+                        return json.dumps({
+                            "success": True,
+                            "validation": result.get("validation"),
+                            "message": result.get("message", "Component validation completed")
+                        })
+                    elif response.status_code == 404:
+                        return json.dumps({
+                            "success": False,
+                            "error": "Component not found"
+                        })
+                    else:
+                        error_detail = response.text
+                        return json.dumps({
+                            "success": False,
+                            "error": f"Failed to validate component: {error_detail}"
+                        })
+
             else:
                 return json.dumps({
                     "success": False,
-                    "error": f"Action '{action}' not yet implemented. Available: create, list"
+                    "error": (
+                        f"Action '{action}' not yet implemented. "
+                        "Available: create, list, get, update, delete, validate"
+                    )
                 })
 
         except Exception as e:
