@@ -383,53 +383,65 @@ def extract_code_blocks(markdown_content: str, min_length: int = None) -> list[d
 
             # Check for ASCII art diagrams if diagram filtering is enabled
             if enable_diagram_filtering:
-                # Common indicators of ASCII art diagrams
-                diagram_indicators = [
-                    "┌",
-                    "┐",
-                    "└",
-                    "┘",
-                    "│",
-                    "─",
-                    "├",
-                    "┤",
-                    "┬",
-                    "┴",
-                    "┼",  # Box drawing chars
-                    "+-+",
-                    "|_|",
-                    "___",
-                    "...",  # ASCII art patterns
-                    "→",
-                    "←",
-                    "↑",
-                    "↓",
-                    "⟶",
-                    "⟵",  # Arrows
-                ]
-
-                # Count lines that are mostly special characters or whitespace
-                special_char_lines = 0
-                for line in non_empty_lines[:10]:  # Check first 10 lines
-                    # Count non-alphanumeric characters
-                    special_chars = sum(1 for c in line if not c.isalnum() and not c.isspace())
-                    if len(line) > 0 and special_chars / len(line) > 0.7:
-                        special_char_lines += 1
-
-                # Check for diagram indicators
-                diagram_indicator_count = sum(
-                    1 for indicator in diagram_indicators if indicator in code_content
+                # Skip diagram filtering for bash/shell code blocks with directory trees
+                is_directory_tree = (
+                    language in ["bash", "shell", "sh", "zsh", "fish", "cmd", "powershell", "ps1"] and
+                    any(indicator in code_content for indicator in ["├", "└", "│", "─"]) and
+                    any(pattern in code_content.lower() for pattern in ["/", "\\", ".py", ".js", ".ts", ".md", ".sql", ".txt", ".json", ".yml", ".yaml", ".sh"])
                 )
 
-                # If looks like a diagram, skip it
-                if (
-                    special_char_lines >= 3 or diagram_indicator_count >= 5
-                ) and code_pattern_count < 5:
-                    search_logger.debug(
-                        f"Skipping ASCII art diagram | special_lines={special_char_lines} | diagram_indicators={diagram_indicator_count}"
+                if not is_directory_tree:
+                    # Common indicators of ASCII art diagrams (excluding directory tree chars for non-bash)
+                    diagram_indicators = [
+                        "┌",
+                        "┐",
+                        "┘",
+                        "┤",
+                        "┬",
+                        "┴",
+                        "┼",  # Box drawing chars (excluding tree chars ├, └, │, ─)
+                        "+-+",
+                        "|_|",
+                        "___",
+                        "...",  # ASCII art patterns
+                        "→",
+                        "←",
+                        "↑",
+                        "↓",
+                        "⟶",
+                        "⟵",  # Arrows
+                    ]
+
+                    # For bash/shell, include tree chars in diagram detection
+                    if language not in ["bash", "shell", "sh", "zsh", "fish", "cmd", "powershell", "ps1"]:
+                        diagram_indicators.extend(["├", "└", "│", "─"])
+
+                    # Count lines that are mostly special characters or whitespace
+                    special_char_lines = 0
+                    for line in non_empty_lines[:10]:  # Check first 10 lines
+                        # Count non-alphanumeric characters
+                        special_chars = sum(1 for c in line if not c.isalnum() and not c.isspace())
+                        if len(line) > 0 and special_chars / len(line) > 0.7:
+                            special_char_lines += 1
+
+                    # Check for diagram indicators
+                    diagram_indicator_count = sum(
+                        1 for indicator in diagram_indicators if indicator in code_content
                     )
-                    i += 2
-                    continue
+
+                    # If looks like a diagram, skip it (more restrictive thresholds)
+                    if (
+                        special_char_lines >= 5 or diagram_indicator_count >= 8
+                    ) and code_pattern_count < 3:
+                        search_logger.debug(
+                            f"Skipping ASCII art diagram | special_lines={special_char_lines} | diagram_indicators={diagram_indicator_count} | code_patterns={code_pattern_count}"
+                        )
+                        i += 2
+                        continue
+                else:
+                    search_logger.debug(
+                        f"Preserving directory tree structure in {language} code block | length={len(code_content)}"
+                    )
 
         # Extract context before (configurable window size)
         context_start = max(0, start_pos - context_window_size)
