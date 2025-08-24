@@ -106,10 +106,10 @@ const MCPResponseSchema = z.object({
 export type MCPTool = z.infer<typeof MCPToolSchema>;
 export type MCPParameter = z.infer<typeof MCPParameterSchema>;
 
-import { getWebSocketUrl } from '../config/api';
+import { getWebSocketUrl, getApiBasePath } from '../config/api';
 
 class MCPService {
-  private baseUrl = ''; // Use relative URL to go through Vite proxy
+  private baseUrl = getApiBasePath(); // Use proper API base path from config
   private wsUrl = getWebSocketUrl(); // Use WebSocket URL from config
   private logWebSocket: WebSocket | null = null;
   private reconnectTimeout: NodeJS.Timeout | null = null;

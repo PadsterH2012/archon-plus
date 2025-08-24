@@ -9,41 +9,50 @@
 export function getApiUrl(): string {
   // Check if VITE_API_URL is provided (set by docker-compose)
   if (import.meta.env.VITE_API_URL) {
+    console.log('🔍 [API Config] Using VITE_API_URL:', import.meta.env.VITE_API_URL);
     return import.meta.env.VITE_API_URL;
-  }
-
-  // For relative URLs in production (goes through proxy)
-  if (import.meta.env.PROD) {
-    return '';
   }
 
   // For development, construct from window location
   const protocol = window.location.protocol;
   const host = window.location.hostname;
   const port = import.meta.env.ARCHON_SERVER_PORT;
-  
-  if (!port) {
-    throw new Error(
-      'ARCHON_SERVER_PORT environment variable is required. ' +
-      'Please set it in your environment variables. ' +
-      'Default value: 8181'
-    );
+
+  if (port) {
+    const constructedUrl = `${protocol}//${host}:${port}`;
+    console.log('🔍 [API Config] Constructed URL from ARCHON_SERVER_PORT:', constructedUrl);
+    return constructedUrl;
   }
-  
-  return `${protocol}//${host}:${port}`;
+
+  // Fallback: try to determine backend port based on current frontend port
+  const currentPort = window.location.port;
+  let backendPort = '8181'; // Default backend port
+
+  if (currentPort === '4737') {
+    // Development frontend -> development backend
+    backendPort = '9181';
+  } else if (currentPort === '3737') {
+    // Production frontend -> production backend
+    backendPort = '8181';
+  }
+
+  const fallbackUrl = `${protocol}//${host}:${backendPort}`;
+  console.log('🔍 [API Config] Using fallback URL based on frontend port:', {
+    frontendPort: currentPort,
+    backendPort,
+    fallbackUrl
+  });
+
+  return fallbackUrl;
 }
 
 // Get the base path for API endpoints
 export function getApiBasePath(): string {
   const apiUrl = getApiUrl();
-  
-  // If using relative URLs (empty string), just return /api
-  if (!apiUrl) {
-    return '/api';
-  }
-  
-  // Otherwise, append /api to the base URL
-  return `${apiUrl}/api`;
+  const basePath = `${apiUrl}/api`;
+
+  console.log('🔍 [API Config] API Base Path:', basePath);
+  return basePath;
 }
 
 // Get WebSocket URL for real-time connections
