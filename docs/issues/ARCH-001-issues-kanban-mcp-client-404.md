@@ -518,4 +518,97 @@ The automated testing suite proved invaluable:
 - ✅ **Ready for next iteration**: Can test next fix immediately
 
 ---
-**Next Update:** Will be added when direct HTTP approach is implemented.
+
+## 📝 **Update 2025-08-24 15:00 - ROOT CAUSE IDENTIFIED**
+
+### 🎯 **CRITICAL DISCOVERY: Container Structure Mismatch**
+
+**Comprehensive root cause analysis using codebase retrieval, web search, and Docker configuration analysis has identified the fundamental issue.**
+
+### 🔍 **Root Cause: Missing `agents` Directory in Server Container**
+
+**Key Finding from `Dockerfile.server` (Lines 59-62):**
+```dockerfile
+# Copy server code and tests
+COPY src/server/ src/server/
+COPY src/__init__.py src/
+COPY tests/ tests/
+```
+
+**❌ CRITICAL ISSUE: The `src/agents/` directory is NOT copied to the server container!**
+
+### 📊 **Container Structure Analysis**
+
+**What's Actually in Server Container:**
+```
+/app/
+├── src/
+│   ├── __init__.py
+│   └── server/          # ✅ Copied
+│       └── api_routes/
+│           └── mcp_api.py
+└── tests/               # ✅ Copied
+```
+
+**What's Missing:**
+```
+/app/
+├── src/
+│   ├── agents/          # ❌ NOT COPIED!
+│   │   ├── __init__.py
+│   │   └── mcp_client.py
+```
+
+### 🎯 **Why All Our Import Attempts Failed**
+
+1. **File Path**: `mcp_api.py` tries: `from ...agents.mcp_client import get_mcp_client`
+2. **Container Reality**: The `agents` directory doesn't exist in server container
+3. **Result**: `ModuleNotFoundError: No module named 'src.agents'`
+
+**Failed Attempts Analysis:**
+- ✅ **Relative Import**: Correct syntax, ❌ File doesn't exist
+- ✅ **Sys.Path Fix**: Correct approach, ❌ Directory doesn't exist
+- ✅ **Service Restart**: Proper deployment, ❌ Fundamental architecture issue
+
+### 🏗️ **Archon's Intentional Microservice Architecture**
+
+**This separation is BY DESIGN:**
+- **Server Container**: Only `src/server/` (web API, crawling, processing)
+- **Agents Container**: Only `src/agents/` (PydanticAI agents)
+- **MCP Container**: Only `src/mcp/` (MCP protocol server)
+
+**From `Dockerfile.agents`:**
+```dockerfile
+# Copy ONLY agents code - no dependencies on server code
+# Agents use MCP tools for all operations
+COPY src/agents/ src/agents/
+```
+
+### 💡 **The Correct Archon Pattern: HTTP/JSON-RPC to MCP Server**
+
+**Server should call MCP server directly via HTTP, not import agents:**
+```python
+# Correct approach (from agents/mcp_client.py pattern)
+request_data = {"jsonrpc": "2.0", "method": tool_name, "params": kwargs, "id": 1}
+response = await client.post(f"{mcp_url}/rpc", json=request_data)
+return response.json().get("result", {})
+```
+
+### 🧪 **Automated Testing Success**
+
+The automated testing suite proved invaluable:
+- ✅ **Immediate Detection**: Caught that all import-based approaches failed
+- ✅ **Systematic Analysis**: Guided investigation to container architecture
+- ✅ **Root Cause Discovery**: Led to fundamental architecture understanding
+- ✅ **Ready for Solution**: Will immediately detect when correct approach works
+
+### 📋 **Resolution Plan: Direct HTTP MCP Implementation**
+
+**Next Steps:**
+1. **Replace Import with HTTP Call**: Use direct JSON-RPC to MCP server
+2. **Follow Microservice Pattern**: Align with Archon's container architecture
+3. **Test with Automation**: Verify resolution immediately
+4. **Document Solution**: Update for future reference
+
+---
+**Next Update:** Will be added when direct HTTP MCP implementation is complete.

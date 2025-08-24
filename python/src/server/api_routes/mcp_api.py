@@ -1305,14 +1305,46 @@ async def call_mcp_tool(request: dict):
             api_logger.info(f"Calling MCP tool: {tool_name} with arguments: {arguments}")
 
             try:
-                # Use the existing working MCP client (Archon standard pattern)
-                from ...agents.mcp_client import get_mcp_client
+                # Direct HTTP call to MCP server (follows Archon microservice architecture)
+                import httpx
+                import json
 
-                # Get the MCP client
-                mcp_client = await get_mcp_client()
+                # Get MCP server URL from service discovery
+                try:
+                    from ..config.service_discovery import get_mcp_url
+                    mcp_url = get_mcp_url()
+                except ImportError:
+                    # Fallback for container environment
+                    import os
+                    mcp_port = os.getenv("ARCHON_MCP_PORT", "8051")
+                    mcp_url = f"http://archon-mcp:{mcp_port}"
 
-                # Call the tool using the proper MCP client
-                result = await mcp_client.call_tool(tool_name, **arguments)
+                # Prepare JSON-RPC request (MCP protocol standard)
+                request_data = {
+                    "jsonrpc": "2.0",
+                    "method": tool_name,
+                    "params": arguments,
+                    "id": 1
+                }
+
+                # Call MCP server directly via HTTP
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.post(
+                        f"{mcp_url}/rpc",
+                        json=request_data,
+                        headers={"Content-Type": "application/json"}
+                    )
+
+                    response.raise_for_status()
+                    result_data = response.json()
+
+                    # Handle JSON-RPC error responses
+                    if "error" in result_data:
+                        error = result_data["error"]
+                        raise Exception(f"MCP tool error: {error.get('message', 'Unknown error')}")
+
+                    # Extract result from JSON-RPC response
+                    result = result_data.get("result", {})
 
                 api_logger.info(f"MCP tool {tool_name} completed successfully")
                 safe_set_attribute(span, "tool_result", "success")
