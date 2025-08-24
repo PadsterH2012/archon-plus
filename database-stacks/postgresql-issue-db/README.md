@@ -8,25 +8,65 @@ This stack provides a PostgreSQL database with pgvector extension for Archon's i
 - **pgAdmin 4** for database administration
 - **Database Initialization** service for setting up extensions
 
+## Files
+
+- `docker-compose.yml` - Main stack configuration
+- `.env` - Environment variables and configuration
+- `README.md` - This documentation
+- `deploy-webhook.sh` - Automated webhook deployment script
+- `test-webhook.sh` - Webhook and deployment testing script
+- `WEBHOOK_DEPLOYMENT.md` - Detailed webhook deployment guide
+- `.gitignore` - Git ignore rules for security
+
 ## Quick Start
 
-### 1. Deploy via Portainer
+### 1. Deploy via Portainer Webhook (Recommended)
+
+```bash
+# Quick deployment using webhook
+curl -X POST http://10.202.70.20:9000/api/stacks/webhooks/74794986-c457-4937-9359-0c0b0adf3b04
+
+# Or use the deployment script
+./deploy-webhook.sh
+
+# Test the deployment
+./test-webhook.sh
+```
+
+### 2. Deploy via Portainer UI
 
 1. Go to **Stacks** → **Add Stack**
 2. Name: `archon-postgresql-issue-db`
 3. **Repository**: Select this repository
 4. **Compose path**: `database-stacks/postgresql-issue-db/docker-compose.yml`
 5. **Environment file**: `database-stacks/postgresql-issue-db/.env`
-6. Deploy
+6. **Enable webhook** for automated deployments
+7. Deploy
 
-### 2. Manual Deployment
+### 2. Webhook Deployment (Recommended)
+
+Trigger deployment via Portainer webhook:
+
+```bash
+# Trigger webhook deployment
+curl -X POST http://10.202.70.20:9000/api/stacks/webhooks/74794986-c457-4937-9359-0c0b0adf3b04
+
+# Or using wget
+wget --method=POST http://10.202.70.20:9000/api/stacks/webhooks/74794986-c457-4937-9359-0c0b0adf3b04
+```
+
+**Webhook URL**: `http://10.202.70.20:9000/api/stacks/webhooks/74794986-c457-4937-9359-0c0b0adf3b04`
+
+### 3. Manual Deployment
 
 ```bash
 # Clone the repository
 git clone https://github.com/PadsterH2012/archon-plus.git
 cd archon-plus/database-stacks/postgresql-issue-db
 
-# Deploy the stack
+# Deploy the stack with environment variables
+POSTGRES_PASSWORD=archon_secure_password_2024 \
+PGADMIN_PASSWORD=admin_secure_password_2024 \
 docker stack deploy -c docker-compose.yml issues_db
 ```
 
