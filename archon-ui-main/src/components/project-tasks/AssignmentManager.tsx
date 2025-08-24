@@ -86,7 +86,9 @@ export const AssignmentManager: React.FC<AssignmentManagerProps> = ({
   }, [onAssignmentDelete]);
 
   const getAssignmentsByLevel = (level: HierarchyLevel) => {
-    return assignments.filter(a => a.hierarchy_level === level);
+    // Ensure assignments is always an array
+    const safeAssignments = Array.isArray(assignments) ? assignments : [];
+    return safeAssignments.filter(a => a.hierarchy_level === level);
   };
 
   const getAssignmentIcon = (level: HierarchyLevel) => {
@@ -107,9 +109,11 @@ export const AssignmentManager: React.FC<AssignmentManagerProps> = ({
     return 'secondary';
   };
 
-  const filteredAssignments = selectedLevel 
-    ? assignments.filter(a => a.hierarchy_level === selectedLevel)
-    : assignments;
+  // Ensure assignments is always an array before filtering
+  const safeAssignments = Array.isArray(assignments) ? assignments : [];
+  const filteredAssignments = selectedLevel
+    ? safeAssignments.filter(a => a.hierarchy_level === selectedLevel)
+    : safeAssignments;
 
   return (
     <div className={`assignment-manager ${className}`}>
