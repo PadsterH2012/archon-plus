@@ -1,22 +1,23 @@
 /**
  * Issue Service
- * 
+ *
  * Service for managing issues through MCP tools integration.
  * Provides methods for querying, creating, updating, and managing issues.
  */
 
-import { 
-  Issue, 
-  QueryIssuesResponse, 
-  UpdateIssueStatusResponse, 
+import {
+  Issue,
+  QueryIssuesResponse,
+  UpdateIssueStatusResponse,
   CreateIssueResponse,
   GetIssueHistoryResponse,
   CreateIssueRequest,
   UpdateIssueRequest
 } from '../types/issue';
+import { mcpService } from './mcpService';
 
 // Get API base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8181/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8181';
 
 export class IssueServiceError extends Error {
   constructor(
@@ -29,53 +30,24 @@ export class IssueServiceError extends Error {
   }
 }
 
-// Helper function to call MCP tools via API
+// Helper function to call MCP tools via direct MCP protocol
 async function callMCPTool<T = any>(toolName: string, params: Record<string, any>): Promise<T> {
   try {
-    const response = await fetch(`${API_BASE_URL}/mcp/tools/call`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        tool_name: toolName,
-        arguments: params
-      })
-    });
+    console.log(`[IssueService] Calling MCP tool: ${toolName}`, params);
 
-    if (!response.ok) {
-      let errorMessage = `HTTP error! status: ${response.status}`;
-      try {
-        const errorBody = await response.text();
-        if (errorBody) {
-          const errorJson = JSON.parse(errorBody);
-          errorMessage = errorJson.detail || errorJson.error || errorMessage;
-        }
-      } catch (e) {
-        // Ignore parse errors, use default message
-      }
-      
-      throw new IssueServiceError(
-        errorMessage, 
-        'HTTP_ERROR', 
-        response.status
-      );
-    }
+    // Use the direct MCP protocol approach from mcpService
+    const result = await mcpService.callTool(toolName, params);
 
-    const result = await response.json();
-    
+    console.log(`[IssueService] MCP tool ${toolName} result:`, result);
+
     // Parse the JSON response from MCP tool (it returns a JSON string)
     if (typeof result === 'string') {
       return JSON.parse(result);
     }
-    
+
     return result;
   } catch (error) {
-    if (error instanceof IssueServiceError) {
-      throw error;
-    }
-    
-    console.error(`Failed to call MCP tool ${toolName}:`, error);
+    console.error(`[IssueService] Failed to call MCP tool ${toolName}:`, error);
     throw new IssueServiceError(
       `Failed to call MCP tool: ${error instanceof Error ? error.message : 'Unknown error'}`,
       'MCP_CALL_FAILED'
