@@ -192,11 +192,19 @@ def register_issue_management_tools(mcp: FastMCP):
 
                     # Update issue status if provided
                     if issue_status and issue_status != old_status:
-                        cursor.execute("""
-                            UPDATE issues
-                            SET status = %s, updated_date = CURRENT_TIMESTAMP
-                            WHERE issue_id = %s
-                        """, (issue_status, issue_info['issue_id']))
+                        # Handle closed status with closed_date constraint
+                        if issue_status == 'closed':
+                            cursor.execute("""
+                                UPDATE issues
+                                SET status = %s, updated_date = CURRENT_TIMESTAMP, closed_date = CURRENT_TIMESTAMP
+                                WHERE issue_id = %s
+                            """, (issue_status, issue_info['issue_id']))
+                        else:
+                            cursor.execute("""
+                                UPDATE issues
+                                SET status = %s, updated_date = CURRENT_TIMESTAMP, closed_date = NULL
+                                WHERE issue_id = %s
+                            """, (issue_status, issue_info['issue_id']))
 
                         # Add sync comment
                         cursor.execute("""
@@ -349,12 +357,19 @@ def register_issue_management_tools(mcp: FastMCP):
                     issue_info = dict(issue_info)
                     old_status = issue_info['status']
 
-                    # Update the issue status
-                    cursor.execute("""
-                        UPDATE issues
-                        SET status = %s, updated_date = CURRENT_TIMESTAMP
-                        WHERE issue_key = %s
-                    """, (new_status, issue_key))
+                    # Update the issue status with proper closed_date handling
+                    if new_status == 'closed':
+                        cursor.execute("""
+                            UPDATE issues
+                            SET status = %s, updated_date = CURRENT_TIMESTAMP, closed_date = CURRENT_TIMESTAMP
+                            WHERE issue_key = %s
+                        """, (new_status, issue_key))
+                    else:
+                        cursor.execute("""
+                            UPDATE issues
+                            SET status = %s, updated_date = CURRENT_TIMESTAMP, closed_date = NULL
+                            WHERE issue_key = %s
+                        """, (new_status, issue_key))
 
                     # Add comment if provided
                     if comment:
