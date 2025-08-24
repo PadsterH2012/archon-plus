@@ -106,10 +106,10 @@ const MCPResponseSchema = z.object({
 export type MCPTool = z.infer<typeof MCPToolSchema>;
 export type MCPParameter = z.infer<typeof MCPParameterSchema>;
 
-import { getWebSocketUrl, getApiBasePath } from '../config/api';
+import { getWebSocketUrl, getApiUrl } from '../config/api';
 
 class MCPService {
-  private baseUrl = getApiBasePath(); // Use proper API base path from config
+  private baseUrl = getApiUrl(); // Use API URL without /api suffix to avoid double /api/api/
   private wsUrl = getWebSocketUrl(); // Use WebSocket URL from config
   private logWebSocket: WebSocket | null = null;
   private reconnectTimeout: NodeJS.Timeout | null = null;
