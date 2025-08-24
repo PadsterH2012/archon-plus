@@ -393,6 +393,19 @@ def register_modules():
         logger.error(f"✗ Error registering Shell module: {e}")
         logger.error(traceback.format_exc())
 
+    # Import and register Issue Management module (NEW - SAFE ADDITION)
+    try:
+        from src.mcp.modules.issue_management_module import register_issue_management_tools
+
+        register_issue_management_tools(mcp)
+        modules_registered += 1
+        logger.info("✓ Issue management module registered (placeholder)")
+    except ImportError as e:
+        logger.warning(f"⚠ Issue management module not available: {e}")
+    except Exception as e:
+        logger.error(f"✗ Error registering issue management module: {e}")
+        logger.error(traceback.format_exc())
+
     logger.info(f"📦 Total modules registered: {modules_registered}")
 
     if modules_registered == 0:
