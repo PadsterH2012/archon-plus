@@ -81,7 +81,7 @@ docker stack deploy -c docker-compose.yml issues_db
 
 ### pgAdmin Web Interface
 - **URL**: `http://10.202.70.20:5050`
-- **Email**: `admin@archon.local`
+- **Email**: `admin@example.com`
 - **Password**: Set in `.env` file
 
 ## Configuration
