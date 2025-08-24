@@ -30,7 +30,7 @@ router = APIRouter(prefix="/api/mcp", tags=["mcp"])
 class ServerConfig(BaseModel):
     transport: str = "sse"
     host: str = "localhost"
-    port: int = 8051
+    port: int = 9051  # Updated for dev environment
 
 
 class ServerResponse(BaseModel):
