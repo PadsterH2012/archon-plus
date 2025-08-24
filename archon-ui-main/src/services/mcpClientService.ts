@@ -400,7 +400,7 @@ class MCPClientService {
   async createArchonClient(): Promise<MCPClient> {
     // Get MCP configuration from environment variables
     const mcpHost = import.meta.env.VITE_MCP_HOST || window.location.hostname;
-    const mcpPort = import.meta.env.VITE_MCP_PORT || import.meta.env.ARCHON_MCP_PORT || '8051';
+    const mcpPort = import.meta.env.VITE_MCP_PORT || import.meta.env.ARCHON_MCP_PORT || '9051';
     const mcpName = import.meta.env.VITE_MCP_NAME || 'Archon';
 
     // Construct MCP URL using environment-specific configuration

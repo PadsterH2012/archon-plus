@@ -29,7 +29,7 @@ services:
       
       # Port Configuration (internal ports stay standard, external ports are mapped)
       - ARCHON_SERVER_PORT=8181
-      - ARCHON_MCP_PORT=8051
+      - ARCHON_MCP_PORT=9051
       - ARCHON_AGENTS_PORT=8052
 
       # Service Host Overrides for Development Environment
@@ -104,7 +104,7 @@ services:
       - AGENTS_SERVICE_URL=http://dev-archon-agents:8052
       
       # Port Configuration (internal ports stay standard, external ports are mapped)
-      - ARCHON_MCP_PORT=8051
+      - ARCHON_MCP_PORT=9051
       - ARCHON_SERVER_PORT=8181
       - ARCHON_AGENTS_PORT=8052
 
@@ -116,14 +116,14 @@ services:
       # Optional: Logging
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
     ports:
-      - target: 8051
+      - target: 9051
         published: ${ARCHON_MCP_PORT:-9051}
         protocol: tcp
         mode: ingress
     networks:
       - archon-dev-network
     healthcheck:
-      test: ["CMD", "sh", "-c", "python -c \"import socket; s=socket.socket(); s.connect(('localhost', 8051)); s.close()\""]
+      test: ["CMD", "sh", "-c", "python -c \"import socket; s=socket.socket(); s.connect(('localhost', 9051)); s.close()\""]
       interval: 30s
       timeout: 10s
       retries: 3
