@@ -432,4 +432,90 @@ async with httpx.AsyncClient() as client:
 - ⏳ **Issues Kanban Loading**: Blocked on Python module resolution
 
 ---
-**Next Update:** Will be added when Python module path issue is resolved.
+
+## 📝 **Update 2025-08-24 14:20 - Redeployment Test Results**
+
+### ❌ **Sys.Path Fix Did Not Resolve Issue**
+- Redeployed backend with sys.path manipulation
+- Automated tests confirm: Still getting `import_error` status
+- Python module resolution still failing despite path fix
+
+### 🧪 **Automated Test Results**
+```
+❌ ARCH-001 NOT RESOLVED | Status: import_error | Details: Python module import error
+📊 Current ARCH-001 Status: import_error
+🎯 Resolved: False
+```
+
+### 🔍 **Analysis: Sys.Path Fix Insufficient**
+
+**What We Tried:**
+```python
+import sys
+import os
+src_path = os.path.join(os.path.dirname(__file__), '../../..')
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
+from src.agents.mcp_client import get_mcp_client
+```
+
+**Why It's Still Failing:**
+1. **Container Environment**: Path manipulation might not work in Docker container
+2. **Working Directory**: Container might be running from different directory
+3. **Module Structure**: `src.agents` might not be properly structured as Python package
+4. **Import Context**: Import happening in different context than expected
+
+### 🎯 **Recommended Next Approach: Direct HTTP to MCP Server**
+
+Since the Python module import is persistently failing, let's bypass the agents module entirely:
+
+```python
+# Option: Direct HTTP call to MCP server
+import httpx
+import json
+
+async def call_mcp_tool_direct(tool_name: str, arguments: dict):
+    """Call MCP server directly via HTTP"""
+    mcp_url = "http://localhost:8051"  # or wherever MCP server runs
+
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": tool_name,
+            "arguments": arguments
+        }
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(f"{mcp_url}/rpc", json=payload)
+        return response.json()
+```
+
+### 📋 **Alternative Solutions to Try**
+
+**Option 1: Direct MCP HTTP Call (Recommended)**
+- Bypass Python module import entirely
+- Call MCP server directly via HTTP/JSON-RPC
+- Most reliable approach
+
+**Option 2: Fix Module Structure**
+- Check if `src/__init__.py` and `src/agents/__init__.py` exist
+- Verify Python package structure in container
+- Debug actual Python path in container
+
+**Option 3: Use Existing Working Pattern**
+- Find how other parts of Archon successfully call MCP tools
+- Copy the exact pattern that works
+
+### 🧪 **Automated Testing Advantage**
+
+The automated testing suite proved invaluable:
+- ✅ **Immediate feedback**: Knew fix didn't work within 30 seconds
+- ✅ **No manual testing**: Didn't need to open browser and click around
+- ✅ **Precise error detection**: Confirmed exact same error persists
+- ✅ **Ready for next iteration**: Can test next fix immediately
+
+---
+**Next Update:** Will be added when direct HTTP approach is implemented.
