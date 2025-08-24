@@ -1305,7 +1305,16 @@ async def call_mcp_tool(request: dict):
             api_logger.info(f"Calling MCP tool: {tool_name} with arguments: {arguments}")
 
             try:
-                # Import and use the proper MCP client (absolute import)
+                # Fix Python path and import MCP client
+                import sys
+                import os
+
+                # Add src directory to Python path
+                src_path = os.path.join(os.path.dirname(__file__), '../../..')
+                if src_path not in sys.path:
+                    sys.path.insert(0, src_path)
+
+                # Import MCP client with fixed path
                 from src.agents.mcp_client import get_mcp_client
 
                 # Get the MCP client

@@ -350,4 +350,86 @@ from src.agents.mcp_client import get_mcp_client
 - ⏳ **Issues Kanban Loading**: Blocked on import path fix
 
 ---
-**Next Update:** Will be added when module path error is resolved.
+
+## 📝 **Update 2025-08-24 14:30 - Persistent Module Path Error**
+
+### ❌ **Absolute Import Still Failing**
+- Changed to absolute import `from src.agents.mcp_client import get_mcp_client`
+- Still getting "No module named 'src.agents'" error
+- Indicates Python module path configuration issue
+
+### 🚨 **Persistent Issue: Python Module Resolution**
+
+**Current Error (Still Occurring):**
+```
+POST http://10.202.70.20:4737/api/mcp/tools/call 500 (Internal Server Error)
+Failed to query issues by project: IssueServiceError: MCP tool call failed: No module named 'src.agents'
+```
+
+**Analysis:**
+- ✅ **Import Syntax**: Correct absolute import path
+- ✅ **File Exists**: `python/src/agents/mcp_client.py` exists
+- ❌ **Module Resolution**: Python can't find `src.agents` module
+
+### 🔍 **Root Cause: Python Path Configuration**
+
+**Possible Issues:**
+1. **PYTHONPATH**: `src` directory not in Python path
+2. **Working Directory**: Python running from wrong directory
+3. **Module Structure**: Missing `__init__.py` files
+4. **Import Context**: Different import approach needed
+
+**Current File Structure:**
+```
+python/
+├── src/
+│   ├── __init__.py
+│   ├── agents/
+│   │   ├── __init__.py
+│   │   └── mcp_client.py
+│   └── server/
+│       └── api_routes/
+│           └── mcp_api.py
+```
+
+### 🔧 **Alternative Solutions to Try**
+
+**Option 1: Relative Import (Corrected)**
+```python
+from ...agents.mcp_client import get_mcp_client
+```
+
+**Option 2: Sys Path Manipulation**
+```python
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
+from src.agents.mcp_client import get_mcp_client
+```
+
+**Option 3: Direct HTTP Call to MCP Server**
+```python
+# Bypass agents module, call MCP server directly
+import httpx
+async with httpx.AsyncClient() as client:
+    response = await client.post(f"{mcp_url}/rpc", json=request_data)
+```
+
+### 🎯 **Next Steps**
+
+1. **Try Sys Path Fix**: Add src to Python path dynamically
+2. **Test Direct MCP Call**: Bypass agents module entirely
+3. **Check Python Environment**: Verify module resolution in container
+4. **Implement Fallback**: Use direct HTTP to MCP server if needed
+
+### 📊 **Progress Status**
+- ✅ **CORS Issues**: Resolved
+- ✅ **404 Endpoint Errors**: Resolved
+- ✅ **MCP Tool Infrastructure**: Working
+- ✅ **Parameter Validation**: Resolved
+- ✅ **Import Error**: Resolved (mcp_server undefined)
+- 🔄 **Module Path Error**: Persistent (trying alternative approaches)
+- ⏳ **Issues Kanban Loading**: Blocked on Python module resolution
+
+---
+**Next Update:** Will be added when Python module path issue is resolved.
