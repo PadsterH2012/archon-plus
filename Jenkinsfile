@@ -217,7 +217,7 @@ pipeline {
             steps {
                 script {
                     // Main branch auto-deploys to dev environment - production is manual
-                    def webhookId = "2bcf99e2-495b-412e-b50f-d2bf672cc99d"  // Dev webhook
+                    def webhookId = "842a5971-342a-407c-b037-7de86e690ab1"  // Dev webhook
                     def environment = "development"
 
                     sh """
