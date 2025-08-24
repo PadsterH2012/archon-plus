@@ -73,55 +73,27 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
       let templatesResult = { templates: [] };
       let componentsResult = { components: [] };
 
-      console.log('🔍 [TemplateManagement] Starting data load...');
-
       try {
-        console.log('🔍 [TemplateManagement] Loading templates...');
         templatesResult = await templateService.listTemplates({ includeInheritance: true });
-        console.log('🔍 [TemplateManagement] Templates result:', templatesResult);
-        console.log('🔍 [TemplateManagement] Templates array check:', {
-          isArray: Array.isArray(templatesResult?.templates),
-          length: templatesResult?.templates?.length,
-          type: typeof templatesResult?.templates,
-          value: templatesResult?.templates
-        });
       } catch (templateError) {
-        console.warn('❌ [TemplateManagement] Failed to load templates:', templateError);
+        console.warn('Failed to load templates:', templateError);
         // Continue with empty templates array
       }
 
       try {
-        console.log('🔍 [TemplateManagement] Loading components...');
         componentsResult = await templateManagementService.listComponents();
-        console.log('🔍 [TemplateManagement] Components result:', componentsResult);
-        console.log('🔍 [TemplateManagement] Components array check:', {
-          isArray: Array.isArray(componentsResult?.components),
-          length: componentsResult?.components?.length,
-          type: typeof componentsResult?.components,
-          value: componentsResult?.components
-        });
       } catch (componentError) {
-        console.warn('❌ [TemplateManagement] Failed to load components:', componentError);
+        console.warn('Failed to load components:', componentError);
         // Continue with empty components array
       }
 
-      const finalTemplates = Array.isArray(templatesResult?.templates) ? templatesResult.templates : [];
-      const finalComponents = Array.isArray(componentsResult?.components) ? componentsResult.components : [];
-
-      console.log('🔍 [TemplateManagement] Final arrays:', {
-        templates: { isArray: Array.isArray(finalTemplates), length: finalTemplates.length },
-        components: { isArray: Array.isArray(finalComponents), length: finalComponents.length }
-      });
-
       setState(prev => ({
         ...prev,
-        templates: finalTemplates,
-        components: finalComponents,
+        templates: Array.isArray(templatesResult?.templates) ? templatesResult.templates : [],
+        components: Array.isArray(componentsResult?.components) ? componentsResult.components : [],
         assignments: [], // TODO: Implement assignments API endpoint
         isLoading: false
       }));
-
-      console.log('✅ [TemplateManagement] Data load completed successfully');
     } catch (err) {
       console.error('❌ [TemplateManagement] Failed to load template management data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -196,26 +168,13 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
   // Filter data based on search and filters
   const filteredTemplates = React.useMemo(() => {
     try {
-      console.log('🔍 [TemplateManagement] Filtering templates, state:', {
-        stateExists: !!state,
-        stateType: typeof state,
-        templatesExists: !!state?.templates,
-        templatesType: typeof state?.templates,
-        templatesIsArray: Array.isArray(state?.templates),
-        templatesLength: state?.templates?.length,
-        searchQuery: state?.searchQuery,
-        templateFilter: state?.templateFilter
-      });
-
       // Comprehensive state safety check
       if (!state || typeof state !== 'object') {
-        console.warn('❌ [TemplateManagement] Invalid state object');
         return [];
       }
 
       // Ensure templates is always an array
       const templates = Array.isArray(state.templates) ? state.templates : [];
-      console.log('🔍 [TemplateManagement] Templates array for filtering:', templates);
 
       return templates.filter(template => {
         // Ensure template object exists and has required properties
@@ -438,23 +397,12 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
 
       {/* Tab Navigation */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
-        {(() => {
-          console.log('🔍 [TemplateManagement] Rendering tab navigation, counts:', {
-            filteredTemplatesLength: filteredTemplates?.length,
-            stateComponentsLength: (state?.components || []).length,
-            filteredAssignmentsLength: filteredAssignments?.length
-          });
-
-          const tabs = [
-            { id: 'templates', label: 'Templates', icon: FileText, count: filteredTemplates?.length || 0 },
-            { id: 'components', label: 'Components', icon: Layers, count: (state?.components || []).length },
-            { id: 'assignments', label: 'Assignments', icon: GitBranch, count: filteredAssignments?.length || 0 },
-            { id: 'analytics', label: 'Analytics', icon: BarChart3, count: 0 }
-          ];
-
-          console.log('🔍 [TemplateManagement] Tabs array:', tabs);
-          return tabs;
-        })().map((tab) => (
+        {[
+          { id: 'templates', label: 'Templates', icon: FileText, count: filteredTemplates?.length || 0 },
+          { id: 'components', label: 'Components', icon: Layers, count: (state?.components || []).length },
+          { id: 'assignments', label: 'Assignments', icon: GitBranch, count: filteredAssignments?.length || 0 },
+          { id: 'analytics', label: 'Analytics', icon: BarChart3, count: 0 }
+        ].map((tab) => (
           <button
             key={tab?.id || Math.random()}
             onClick={() => tab?.id && handleTabChange(tab.id as TemplateManagementState['activeTab'])}
@@ -502,52 +450,52 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {(() => {
-                  console.log('🔍 [TemplateManagement] Rendering templates grid:', {
-                    filteredTemplatesExists: !!filteredTemplates,
-                    filteredTemplatesIsArray: Array.isArray(filteredTemplates),
-                    filteredTemplatesLength: filteredTemplates?.length,
-                    filteredTemplates: filteredTemplates
-                  });
+                {(Array.isArray(filteredTemplates) ? filteredTemplates : []).map((template, index) => {
+                  // Debug template object structure
+                  console.log(`🔍 [TemplateManagement] Rendering template ${index}:`, template);
 
-                  const templatesArray = Array.isArray(filteredTemplates) ? filteredTemplates : [];
-                  console.log('🔍 [TemplateManagement] Safe templates array:', templatesArray);
-                  return templatesArray;
-                })().map((template) => (
-                  <Card key={template?.id || Math.random()} className="cursor-pointer hover:shadow-md transition-shadow">
-                    <div className="p-4" onClick={() => template && handleTemplateEdit(template)}>
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-                            {template.title}
-                          </h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {template.name}
-                          </p>
+                  // Ensure template is an object with required properties
+                  if (!template || typeof template !== 'object') {
+                    console.warn(`❌ [TemplateManagement] Invalid template at index ${index}:`, template);
+                    return null;
+                  }
+
+                  return (
+                    <Card key={template?.id || `template-${index}`} className="cursor-pointer hover:shadow-md transition-shadow">
+                      <div className="p-4" onClick={() => template && handleTemplateEdit(template)}>
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
+                              {template.title || template.name || 'Untitled Template'}
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              {template.name || 'No name'}
+                            </p>
+                          </div>
+                          <Badge
+                            variant={(template.status || template.is_active) === 'active' || template.is_active ? 'success' : 'secondary'}
+                            size="sm"
+                          >
+                            {template.status || (template.is_active ? 'active' : 'inactive')}
+                          </Badge>
                         </div>
-                        <Badge 
-                          variant={template.status === 'active' ? 'success' : 'secondary'}
-                          size="sm"
-                        >
-                          {template.status}
-                        </Badge>
+
+                        {template.description && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                            {template.description}
+                          </p>
+                        )}
+
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>{template.template_type || 'Unknown'}</span>
+                          <span>
+                            {template.is_public ? 'Public' : 'Private'}
+                          </span>
+                        </div>
                       </div>
-                      
-                      {template.description && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                          {template.description}
-                        </p>
-                      )}
-                      
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>{template.template_type}</span>
-                        <span>
-                          {template.is_public ? 'Public' : 'Private'}
-                        </span>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </div>
