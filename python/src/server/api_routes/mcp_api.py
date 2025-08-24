@@ -1305,14 +1305,14 @@ async def call_mcp_tool(request: dict):
             api_logger.info(f"Calling MCP tool: {tool_name} with arguments: {arguments}")
 
             try:
-                # Get the MCP client from the server
-                mcp_client = mcp_server.get_client()
-                if not mcp_client:
-                    api_logger.error("No MCP client available")
-                    raise HTTPException(status_code=503, detail={"error": "MCP client not available"})
+                # Import and use the proper MCP client
+                from ...agents.mcp_client import get_mcp_client
 
-                # Call the tool
-                result = await mcp_client.call_tool(tool_name, arguments)
+                # Get the MCP client
+                mcp_client = await get_mcp_client()
+
+                # Call the tool using the proper MCP client
+                result = await mcp_client.call_tool(tool_name, **arguments)
 
                 api_logger.info(f"MCP tool {tool_name} completed successfully")
                 safe_set_attribute(span, "tool_result", "success")

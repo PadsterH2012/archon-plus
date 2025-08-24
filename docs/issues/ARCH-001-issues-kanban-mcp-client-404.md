@@ -238,4 +238,55 @@ Backend expects `tool_name` parameter but validation is failing.
 - ⏳ **Issues Kanban Loading**: Blocked on parameter fix
 
 ---
-**Next Update:** Will be added when parameter validation issue is resolved.
+
+## 📝 **Update 2025-08-24 14:00 - Parameter Fixed, Import Error Found**
+
+### ✅ **Parameter Validation Issue Resolved**
+- Backend now accepts both 'tool_name' and 'name' parameters
+- Frontend successfully sends requests to backend
+- No more 400 Bad Request errors
+
+### 🚨 **New Issue: Missing Import Error**
+
+**Current Error:**
+```
+POST http://10.202.70.20:4737/api/mcp/tools/call 500 (Internal Server Error)
+Failed to query issues by project: IssueServiceError: MCP tool call failed: name 'mcp_server' is not defined
+```
+
+**Analysis:**
+- ✅ **Parameter Validation**: Working (no more 400 errors)
+- ✅ **Endpoint Reached**: Backend processing request
+- ❌ **Import Missing**: `mcp_server` variable not defined in scope
+
+### 🔍 **Root Cause: Missing Import**
+
+**Code Issue in mcp_api.py:**
+```python
+# Line 1308: Using mcp_server but not imported
+mcp_client = mcp_server.get_client()
+```
+
+**Missing Import:**
+The `mcp_server` variable is not imported or defined in the mcp_api.py file.
+
+**Required Fix:**
+Need to import or define `mcp_server` to access the MCP client.
+
+### 🔧 **Next Steps**
+
+1. **Check MCP Server Import**: Find correct import for mcp_server
+2. **Add Missing Import**: Import mcp_server in mcp_api.py
+3. **Test MCP Client Access**: Verify mcp_server.get_client() works
+4. **Complete Tool Call**: Ensure full MCP tool calling pipeline works
+
+### 📊 **Progress Status**
+- ✅ **CORS Issues**: Resolved
+- ✅ **404 Endpoint Errors**: Resolved
+- ✅ **MCP Tool Infrastructure**: Working
+- ✅ **Parameter Validation**: Resolved
+- 🔄 **Import Error**: In Progress
+- ⏳ **Issues Kanban Loading**: Blocked on import fix
+
+---
+**Next Update:** Will be added when import error is resolved.
