@@ -402,4 +402,129 @@ def register_issue_management_tools(mcp: FastMCP):
                 "issue_key": issue_key
             }, indent=2)
 
+    @mcp.tool()
+    async def get_issue_history(
+        ctx: Context,
+        issue_key: str,
+        limit: int = 20
+    ) -> str:
+        """
+        Get complete history and audit trail for an issue.
+
+        This tool provides agents with complete diagnostic context by showing:
+        - All status changes with timestamps
+        - Comments and notes from team members
+        - Field changes (assignments, priorities, etc.)
+        - Complete audit trail for effective diagnosis
+
+        Args:
+            issue_key: Issue key (e.g., API-1, ARCH-3)
+            limit: Maximum number of history entries to return (default: 20)
+
+        Returns:
+            JSON string with complete issue history timeline
+        """
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    # First get basic issue information
+                    cursor.execute("""
+                        SELECT i.issue_id, i.title, i.status, i.priority, i.severity,
+                               i.created_date, i.updated_date, i.external_id as task_id,
+                               p.project_name, p.project_key
+                        FROM issues i
+                        JOIN projects p ON i.project_id = p.project_id
+                        WHERE i.issue_key = %s
+                    """, (issue_key,))
+
+                    issue_info = cursor.fetchone()
+                    if not issue_info:
+                        return json.dumps({
+                            "success": False,
+                            "error": f"Issue {issue_key} not found",
+                            "issue_key": issue_key
+                        }, indent=2)
+
+                    issue_info = dict(issue_info)
+
+                    # Get complete history from issue_history table
+                    cursor.execute("""
+                        SELECT
+                            h.created_date,
+                            h.action_type,
+                            h.field_name,
+                            h.old_value,
+                            h.new_value,
+                            h.notes,
+                            u.username,
+                            u.full_name
+                        FROM issue_history h
+                        LEFT JOIN users u ON h.user_id = u.user_id
+                        WHERE h.issue_id = %s
+                        ORDER BY h.created_date DESC
+                        LIMIT %s
+                    """, (issue_info['issue_id'], limit))
+
+                    history_entries = [dict(row) for row in cursor.fetchall()]
+
+                    # Format timeline entries
+                    timeline = []
+                    for entry in history_entries:
+                        timeline_entry = {
+                            "timestamp": entry['created_date'].isoformat() if entry['created_date'] else None,
+                            "action": entry['action_type'],
+                            "user": entry['username'] or 'system',
+                            "user_full_name": entry['full_name']
+                        }
+
+                        # Add field change information if available
+                        if entry['field_name']:
+                            timeline_entry["field"] = entry['field_name']
+                            timeline_entry["old_value"] = entry['old_value']
+                            timeline_entry["new_value"] = entry['new_value']
+
+                        # Add notes/comments if available
+                        if entry['notes']:
+                            timeline_entry["comment"] = entry['notes']
+
+                        timeline.append(timeline_entry)
+
+            # Calculate time in current status
+            current_time = issue_info['updated_date']
+            created_time = issue_info['created_date']
+            time_in_current_status = None
+
+            if current_time and created_time:
+                duration = current_time - created_time
+                time_in_current_status = f"{duration.total_seconds() / 60:.1f} minutes"
+
+            result = {
+                "success": True,
+                "issue_key": issue_key,
+                "issue_title": issue_info['title'],
+                "current_status": issue_info['status'],
+                "priority": issue_info['priority'],
+                "severity": issue_info['severity'],
+                "project_name": issue_info['project_name'],
+                "project_key": issue_info['project_key'],
+                "task_id": issue_info['task_id'],
+                "created_date": issue_info['created_date'].isoformat() if issue_info['created_date'] else None,
+                "updated_date": issue_info['updated_date'].isoformat() if issue_info['updated_date'] else None,
+                "time_in_current_status": time_in_current_status,
+                "history_count": len(timeline),
+                "timeline": timeline,
+                "message": f"Retrieved {len(timeline)} history entries for {issue_key}"
+            }
+
+            logger.info(f"Issue history retrieved | issue={issue_key} | entries={len(timeline)}")
+            return json.dumps(result, indent=2)
+
+        except Exception as e:
+            logger.error(f"Error retrieving issue history: {e}")
+            return json.dumps({
+                "success": False,
+                "error": f"Issue history retrieval error: {str(e)}",
+                "issue_key": issue_key
+            }, indent=2)
+
     logger.info("✓ Issue management tools registered with PostgreSQL integration")
