@@ -1309,15 +1309,13 @@ async def call_mcp_tool(request: dict):
                 import httpx
                 import json
 
-                # Get MCP server URL from service discovery
-                try:
-                    from ..config.service_discovery import get_mcp_url
-                    mcp_url = get_mcp_url()
-                except ImportError:
-                    # Fallback for container environment
-                    import os
-                    mcp_port = os.getenv("ARCHON_MCP_PORT", "8051")
-                    mcp_url = f"http://archon-mcp:{mcp_port}"
+                # Get MCP server URL from environment configuration
+                import os
+
+                # Use environment-specific MCP configuration
+                mcp_host = os.getenv("ARCHON_MCP_HOST", "dev-archon-mcp")  # dev-archon-mcp for dev env
+                mcp_port = os.getenv("ARCHON_MCP_PORT", "9051")  # 9051 for dev env
+                mcp_url = f"http://{mcp_host}:{mcp_port}"
 
                 # Prepare JSON-RPC request (MCP protocol standard)
                 request_data = {
