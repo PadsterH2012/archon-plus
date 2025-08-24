@@ -42,6 +42,17 @@ module.exports = {
       ],
     },
     
+    // DATABASE MANAGEMENT
+    {
+      type: 'category',
+      label: 'Database Management',
+      items: [
+        'database-management',
+        'issue-management',
+        'issue-management-api',
+      ],
+    },
+
     // REFERENCE SECTION
     {
       type: 'category',

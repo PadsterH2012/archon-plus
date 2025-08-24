@@ -1,0 +1,361 @@
+---
+title: Issue Management Database
+description: Comprehensive issue tracking system with AI agent integration and task management linking
+sidebar_position: 8
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+
+# Issue Management Database
+
+A comprehensive PostgreSQL-based issue tracking system designed for AI agents and human users, with automatic project creation and task management integration.
+
+## 🎯 Overview
+
+The Issue Management Database provides:
+
+- **Automatic Project Creation** - AI agents can work with any project name
+- **Complete Audit Trail** - Every change is tracked with timestamps and user context
+- **Task Management Integration** - Link issues to external task systems via `external_id`
+- **AI Agent Support** - Designed for autonomous operation by AI agents
+- **Flexible Tagging** - Comprehensive categorization system
+- **File Attachments** - Metadata tracking for screenshots, logs, and documents
+
+## 🚀 Quick Start for AI Agents
+
+<Tabs>
+<TabItem value="agent-workflow" label="Agent Workflow" default>
+
+```sql
+-- STEP 1: Set agent user for audit trail
+SELECT set_config('app.current_user_id', '3', false); -- archon-agent
+
+-- STEP 2: Get or create project (automatically handles both cases)
+SELECT * FROM get_or_create_project(
+    'Your Project Name',                   -- Will be created if doesn't exist
+    'Auto-created project description',   -- Description for new projects
+    'archon-agent'                        -- Agent creating the project
+);
+-- Returns: project_id, project_name, project_key, was_created
+
+-- STEP 3: Create issue using the project_id from Step 2
+INSERT INTO issues (
+    title, description, project_id, reporter_id, assignee_id, external_id
+) VALUES (
+    'Issue title here',
+    'Detailed description of the issue',
+    PROJECT_ID_FROM_STEP_2,  -- Use project_id from get_or_create_project
+    3,                       -- reporter_id (archon-agent)
+    3,                       -- assignee_id (archon-agent)
+    'TASK-123'              -- OPTIONAL: Link to task management system
+);
+```
+
+</TabItem>
+<TabItem value="complete-example" label="Complete Example">
+
+```sql
+-- Complete agent workflow example
+DO $$
+DECLARE
+    project_info RECORD;
+    new_issue_id INTEGER;
+BEGIN
+    -- Set current agent user
+    PERFORM set_config('app.current_user_id', '3', false); -- archon-agent
+    
+    -- Get or create project
+    SELECT * INTO project_info FROM get_or_create_project(
+        'AI Development Project',
+        'Project for AI agent development and testing',
+        'archon-agent'
+    );
+    
+    -- Log project status
+    IF project_info.was_created THEN
+        RAISE NOTICE 'Created new project: % (ID: %, Key: %)', 
+            project_info.project_name, project_info.project_id, project_info.project_key;
+    ELSE
+        RAISE NOTICE 'Using existing project: % (ID: %, Key: %)', 
+            project_info.project_name, project_info.project_id, project_info.project_key;
+    END IF;
+    
+    -- Create issue with the project
+    INSERT INTO issues (
+        title, description, project_id, reporter_id, assignee_id,
+        priority, severity, external_id
+    ) VALUES (
+        'Implement new AI feature',
+        'Add machine learning capabilities to the system with proper error handling and logging.',
+        project_info.project_id,  -- Use the project_id we got/created
+        3,                        -- archon-agent as reporter
+        3,                        -- archon-agent as assignee
+        'high',
+        'major',
+        'TASK-' || EXTRACT(EPOCH FROM NOW())::TEXT  -- Generate unique task ID
+    ) RETURNING issue_id INTO new_issue_id;
+    
+    RAISE NOTICE 'Created issue ID: % in project: %', new_issue_id, project_info.project_name;
+END $$;
+```
+
+</TabItem>
+</Tabs>
+
+## 🔗 Database Connection
+
+```bash
+# Connection Details
+Host: 10.202.70.20
+Port: 5433
+Database: archon_issues
+Username: archon_user
+Password: your_very_secure_password_here_change_this
+
+# Connection String
+postgresql://archon_user:your_very_secure_password_here_change_this@10.202.70.20:5433/archon_issues
+```
+
+## 📋 Core Concepts
+
+### **Projects (Mandatory)**
+Every issue must belong to a project. Projects organize issues and provide context.
+
+- **project_id** - Unique identifier (required for all operations)
+- **project_name** - Human-readable name (used by agents)
+- **project_key** - Short code for issue prefixes (e.g., ARCH-123)
+
+### **Issues**
+Core tracking entities with complete metadata and audit trails.
+
+- **issue_key** - Unique identifier (auto-generated: PROJECT-123)
+- **title** - Brief description (minimum 5 characters)
+- **description** - Detailed information
+- **status** - Workflow state (open, in_progress, testing, closed, reopened)
+- **priority** - Business importance (critical, high, medium, low)
+- **severity** - Technical impact (critical, major, minor, trivial)
+- **external_id** - Link to task management systems (optional)
+
+### **Task Integration**
+Link issues to external task management systems via the `external_id` field.
+
+```sql
+-- Link issue to task
+UPDATE issues 
+SET external_id = 'TASK-456'
+WHERE issue_key = 'ARCH-2';
+
+-- Find issues by task ID
+SELECT i.issue_key, i.title, i.external_id as task_id, p.project_name
+FROM issues i
+JOIN projects p ON i.project_id = p.project_id
+WHERE i.external_id = 'TASK-456';
+```
+
+## 🔍 Common Operations
+
+### **Find Issues**
+
+<Tabs>
+<TabItem value="by-project" label="By Project">
+
+```sql
+-- All issues in a project
+SELECT * FROM v_open_issues WHERE project_name = 'Archon Plus';
+
+-- Issues with specific status
+SELECT i.issue_key, i.title, i.status, p.project_name
+FROM issues i
+JOIN projects p ON i.project_id = p.project_id
+WHERE p.project_name = 'Your Project Name'
+  AND i.status = 'open'
+ORDER BY i.created_date DESC;
+```
+
+</TabItem>
+<TabItem value="by-assignee" label="By Assignee">
+
+```sql
+-- My assigned issues
+SELECT * FROM v_open_issues 
+WHERE assignee_username = 'paddy' 
+  AND project_name = 'Archon Plus';
+
+-- Issues assigned to AI agents
+SELECT * FROM v_open_issues 
+WHERE assignee_username IN ('archon-agent', 'claude-agent');
+```
+
+</TabItem>
+<TabItem value="search" label="Search">
+
+```sql
+-- Full-text search within project
+SELECT * FROM search_issues(
+    'database timeout',  -- search term
+    1,                   -- project_id (required)
+    NULL,                -- status filter (optional)
+    10                   -- limit
+);
+
+-- Search across all projects (not recommended)
+SELECT i.issue_key, i.title, p.project_name
+FROM issues i
+JOIN projects p ON i.project_id = p.project_id
+WHERE to_tsvector('english', i.title || ' ' || COALESCE(i.description, '')) 
+      @@ plainto_tsquery('english', 'your search term');
+```
+
+</TabItem>
+</Tabs>
+
+### **Update Issues**
+
+```sql
+-- Set current user for audit trail
+SELECT set_config('app.current_user_id', '2', false); -- your user_id
+
+-- Update status
+UPDATE issues 
+SET status = 'in_progress'
+WHERE issue_key = 'ARCH-2' 
+  AND project_id = 1; -- Always include project verification
+
+-- Assign to user
+UPDATE issues 
+SET assignee_id = 3  -- archon-agent
+WHERE issue_key = 'ARCH-2' 
+  AND project_id = 1;
+
+-- Add resolution
+UPDATE issues 
+SET status = 'closed',
+    resolution = 'Fixed database connection timeout by increasing pool size'
+WHERE issue_key = 'ARCH-2';
+```
+
+### **Add Tags**
+
+```sql
+-- Add tags to issue
+INSERT INTO issue_tags (issue_id, tag_id, added_by)
+SELECT 
+    (SELECT issue_id FROM issues WHERE issue_key = 'ARCH-2'),
+    tag_id,
+    2  -- user adding tag
+FROM tags 
+WHERE tag_name IN ('bug', 'production', 'database');
+
+-- View available tags
+SELECT tag_name, description, usage_count 
+FROM tags 
+ORDER BY usage_count DESC;
+```
+
+## 📊 Reporting and Analytics
+
+### **Project Statistics**
+
+```sql
+-- Project overview
+SELECT * FROM v_project_stats WHERE project_name = 'Archon Plus';
+
+-- Task integration report
+SELECT * FROM get_task_integration_stats('Archon Plus');
+```
+
+### **Recent Activity**
+
+```sql
+-- Recent changes
+SELECT created_date, issue_key, action_type, notes, user_name
+FROM v_recent_activity 
+WHERE project_name = 'Archon Plus'
+ORDER BY created_date DESC 
+LIMIT 10;
+```
+
+## 🤖 AI Agent Users
+
+The system includes pre-configured AI agent users:
+
+- **archon-agent** (ID: 3) - General AI development tasks
+- **claude-agent** (ID: 4) - Code analysis and assistance  
+- **task-manager-agent** (ID: 5) - Task coordination
+- **qa-agent** (ID: 6) - Quality assurance and testing
+
+```sql
+-- Create issue as AI agent
+SELECT set_config('app.current_user_id', '3', false); -- archon-agent
+
+-- Use get_or_create_project for autonomous operation
+SELECT * FROM get_or_create_project('AI Agent Project', 'AI development', 'archon-agent');
+```
+
+## 📎 File Attachments
+
+Add metadata for file attachments (files stored separately):
+
+```sql
+INSERT INTO attachments (
+    issue_id, filename, original_filename, file_path, 
+    file_size, mime_type, uploaded_by, description
+) VALUES (
+    (SELECT issue_id FROM issues WHERE issue_key = 'ARCH-2'),
+    'uuid-filename.png',
+    'screenshot.png',
+    '/attachments/2025/08/uuid-filename.png',
+    245760,  -- 240KB
+    'image/png',
+    2,       -- user_id
+    'Error screenshot showing database timeout'
+);
+```
+
+## 🔍 Audit Trail
+
+Every change is automatically logged:
+
+```sql
+-- View complete change history for an issue
+SELECT 
+    h.created_date,
+    h.action_type,
+    h.field_name,
+    h.old_value,
+    h.new_value,
+    h.notes,
+    u.full_name as changed_by
+FROM issue_history h
+LEFT JOIN users u ON h.user_id = u.user_id
+JOIN issues i ON h.issue_id = i.issue_id
+WHERE i.issue_key = 'ARCH-2'
+ORDER BY h.created_date DESC;
+```
+
+## ⚠️ Important Notes
+
+### **Mandatory Requirements**
+1. **Always specify project context** in queries and operations
+2. **Set current_user_id** before making changes for audit trail
+3. **Use get_or_create_project()** for agent operations
+4. **Include project verification** in update operations
+
+### **Best Practices**
+- Use `get_or_create_project()` for autonomous agent operations
+- Filter by project in all queries for performance and security
+- Link issues to tasks via `external_id` for integration
+- Add meaningful tags for categorization
+- Include detailed descriptions and context
+- Update status through proper workflow transitions
+
+## 📚 Additional Resources
+
+- [Complete Usage Guide](/database-stacks/postgresql-issue-db/docs/USAGE_GUIDE.md)
+- [API Integration Examples](/database-stacks/postgresql-issue-db/docs/API_INTEGRATION.md)
+- [Quick Reference](/database-stacks/postgresql-issue-db/docs/QUICK_REFERENCE.md)
+- [SQL Scripts](/database-stacks/postgresql-issue-db/sql/)
+
+The Issue Management Database provides a robust foundation for tracking development issues while supporting both human users and AI agents with automatic project creation and comprehensive audit trails.

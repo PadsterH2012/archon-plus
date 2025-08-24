@@ -1,0 +1,398 @@
+---
+title: Database Management
+description: Database infrastructure, setup, and management for Archon services
+sidebar_position: 7
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Database Management
+
+Archon uses multiple database systems to support different aspects of the platform. This guide covers the database infrastructure, setup, and management procedures.
+
+## 🗄️ Database Architecture
+
+### **Primary Databases**
+
+<Tabs>
+<TabItem value="supabase" label="Supabase (Production)" default>
+
+**Purpose**: Main application database for Archon services
+- **Host**: Supabase Cloud
+- **Type**: PostgreSQL
+- **Usage**: User data, projects, tasks, embeddings
+- **Access**: Via Supabase API and direct PostgreSQL connection
+
+**Projects**:
+- `homelab-archon-plus` (EU-West-2) - Main production
+- `homelab-archon-plus-b` (EU-North-1) - Development/testing
+
+</TabItem>
+<TabItem value="postgresql" label="PostgreSQL (Homelab)">
+
+**Purpose**: Issue management and local development
+- **Host**: 10.202.70.20:5433
+- **Type**: PostgreSQL 15.4
+- **Database**: `archon_issues`
+- **Usage**: Issue tracking, bug reports, development tasks
+
+**Features**:
+- Complete audit trail
+- AI agent integration
+- Task management linking
+- File attachment metadata
+
+</TabItem>
+<TabItem value="redis" label="Redis (Caching)">
+
+**Purpose**: Caching and session management
+- **Host**: 10.202.70.20:6379
+- **Type**: Redis
+- **Usage**: Session storage, API caching, temporary data
+
+</TabItem>
+</Tabs>
+
+## 🔧 Database Setup
+
+### **Issue Management Database**
+
+The issue management database is fully automated with setup scripts:
+
+```bash
+# Navigate to SQL scripts
+cd database-stacks/postgresql-issue-db/sql
+
+# Run complete setup
+PGPASSWORD='your_very_secure_password_here_change_this' \
+psql -h 10.202.70.20 -p 5433 -U archon_user -d archon_issues -f setup_database.sql
+```
+
+**What gets created**:
+- 7 core tables (projects, users, issues, history, attachments, tags)
+- 4 useful views for common queries
+- 8+ utility functions including `get_or_create_project()`
+- 9 automated triggers for audit trails
+- Initial data (users, projects, tags)
+
+### **Supabase Configuration**
+
+Access Supabase databases through the management API:
+
+```bash
+# List projects
+curl -X GET "https://api.supabase.com/v1/projects" \
+  -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN"
+
+# Get project details
+curl -X GET "https://api.supabase.com/v1/projects/{project_id}" \
+  -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN"
+```
+
+## 📊 Database Monitoring
+
+### **Health Checks**
+
+<Tabs>
+<TabItem value="postgresql" label="PostgreSQL Health">
+
+```sql
+-- Connection test
+SELECT current_database(), current_user, version();
+
+-- Database size
+SELECT pg_size_pretty(pg_database_size('archon_issues'));
+
+-- Table sizes
+SELECT 
+    tablename, 
+    pg_size_pretty(pg_total_relation_size(tablename)) as size
+FROM pg_tables 
+WHERE schemaname = 'public'
+ORDER BY pg_total_relation_size(tablename) DESC;
+
+-- Active connections
+SELECT count(*) as active_connections 
+FROM pg_stat_activity 
+WHERE state = 'active';
+```
+
+</TabItem>
+<TabItem value="performance" label="Performance Metrics">
+
+```sql
+-- Slow queries
+SELECT query, mean_exec_time, calls, total_exec_time
+FROM pg_stat_statements 
+ORDER BY mean_exec_time DESC 
+LIMIT 10;
+
+-- Index usage
+SELECT 
+    schemaname,
+    tablename,
+    indexname,
+    idx_scan as times_used,
+    pg_size_pretty(pg_relation_size(indexname::regclass)) as index_size
+FROM pg_stat_user_indexes
+ORDER BY idx_scan DESC;
+
+-- Cache hit ratio
+SELECT 
+    sum(heap_blks_read) as heap_read,
+    sum(heap_blks_hit) as heap_hit,
+    round(sum(heap_blks_hit) / (sum(heap_blks_hit) + sum(heap_blks_read)) * 100, 2) as cache_hit_ratio
+FROM pg_statio_user_tables;
+```
+
+</TabItem>
+</Tabs>
+
+### **Issue Database Statistics**
+
+```sql
+-- Project statistics
+SELECT * FROM v_project_stats;
+
+-- Recent activity
+SELECT * FROM v_recent_activity LIMIT 10;
+
+-- Task integration status
+SELECT * FROM v_task_integration_summary;
+
+-- User activity
+SELECT 
+    u.full_name,
+    u.user_type,
+    COUNT(DISTINCT i.issue_id) as issues_reported,
+    COUNT(DISTINCT h.issue_id) as issues_modified,
+    MAX(h.created_date) as last_activity
+FROM users u
+LEFT JOIN issues i ON u.user_id = i.reporter_id
+LEFT JOIN issue_history h ON u.user_id = h.user_id
+GROUP BY u.user_id, u.full_name, u.user_type
+ORDER BY last_activity DESC;
+```
+
+## 🔄 Backup and Recovery
+
+### **Automated Backups**
+
+**PostgreSQL (Homelab)**:
+```bash
+# Daily backup script
+#!/bin/bash
+BACKUP_DIR="/backups/postgresql"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+# Create backup
+pg_dump -h 10.202.70.20 -p 5433 -U archon_user -d archon_issues \
+  > "$BACKUP_DIR/archon_issues_$DATE.sql"
+
+# Compress backup
+gzip "$BACKUP_DIR/archon_issues_$DATE.sql"
+
+# Keep only last 30 days
+find $BACKUP_DIR -name "*.gz" -mtime +30 -delete
+```
+
+**Supabase**:
+- Automatic daily backups (managed by Supabase)
+- Point-in-time recovery available
+- Manual backups via API or dashboard
+
+### **Recovery Procedures**
+
+```bash
+# Restore from backup
+psql -h 10.202.70.20 -p 5433 -U archon_user -d archon_issues \
+  < backup_file.sql
+
+# Restore specific tables
+pg_restore -h 10.202.70.20 -p 5433 -U archon_user -d archon_issues \
+  -t issues -t issue_history backup_file.dump
+```
+
+## 🔧 Maintenance Tasks
+
+### **Regular Maintenance**
+
+<Tabs>
+<TabItem value="weekly" label="Weekly Tasks">
+
+```sql
+-- Update table statistics
+ANALYZE;
+
+-- Check for unused indexes
+SELECT 
+    schemaname,
+    tablename,
+    indexname,
+    idx_scan
+FROM pg_stat_user_indexes
+WHERE idx_scan = 0
+ORDER BY pg_relation_size(indexname::regclass) DESC;
+
+-- Vacuum large tables
+VACUUM ANALYZE issues;
+VACUUM ANALYZE issue_history;
+```
+
+</TabItem>
+<TabItem value="monthly" label="Monthly Tasks">
+
+```sql
+-- Full vacuum (during maintenance window)
+VACUUM FULL;
+
+-- Reindex if needed
+REINDEX DATABASE archon_issues;
+
+-- Check database bloat
+SELECT 
+    tablename,
+    pg_size_pretty(pg_total_relation_size(tablename)) as size,
+    pg_size_pretty(pg_relation_size(tablename)) as table_size,
+    pg_size_pretty(pg_total_relation_size(tablename) - pg_relation_size(tablename)) as index_size
+FROM pg_tables 
+WHERE schemaname = 'public'
+ORDER BY pg_total_relation_size(tablename) DESC;
+```
+
+</TabItem>
+</Tabs>
+
+### **Data Cleanup**
+
+```sql
+-- Archive old closed issues (optional)
+-- Move issues closed > 1 year ago to archive table
+CREATE TABLE IF NOT EXISTS issues_archive AS 
+SELECT * FROM issues WHERE 1=0;
+
+-- Clean up old audit history (keep last 2 years)
+DELETE FROM issue_history 
+WHERE created_date < CURRENT_DATE - INTERVAL '2 years'
+  AND action_type NOT IN ('created', 'closed');
+
+-- Remove orphaned attachments
+DELETE FROM attachments a
+WHERE NOT EXISTS (
+    SELECT 1 FROM issues i WHERE i.issue_id = a.issue_id
+);
+```
+
+## 🔐 Security and Access Control
+
+### **User Management**
+
+```sql
+-- View database users
+SELECT usename, usesuper, usecreatedb, useconnlimit 
+FROM pg_user;
+
+-- Grant permissions to new user
+GRANT CONNECT ON DATABASE archon_issues TO new_user;
+GRANT USAGE ON SCHEMA public TO new_user;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO new_user;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO new_user;
+```
+
+### **Connection Security**
+
+- SSL/TLS encryption for all connections
+- IP-based access restrictions
+- Strong password policies
+- Regular credential rotation
+
+### **Data Protection**
+
+- Audit trail for all changes
+- Soft deletes preserve data integrity
+- Encrypted backups
+- GDPR compliance considerations
+
+## 📈 Scaling Considerations
+
+### **Performance Optimization**
+
+1. **Query Optimization**
+   - Use project-specific filters in all queries
+   - Leverage existing indexes
+   - Monitor slow query log
+
+2. **Index Management**
+   - Regular index usage analysis
+   - Remove unused indexes
+   - Add indexes for new query patterns
+
+3. **Connection Pooling**
+   - Use pgBouncer for connection management
+   - Configure appropriate pool sizes
+   - Monitor connection usage
+
+### **Storage Management**
+
+```sql
+-- Monitor storage growth
+SELECT 
+    date_trunc('month', created_date) as month,
+    count(*) as issues_created,
+    pg_size_pretty(sum(length(description))) as description_size
+FROM issues
+GROUP BY date_trunc('month', created_date)
+ORDER BY month DESC;
+
+-- Attachment storage tracking
+SELECT 
+    date_trunc('month', uploaded_date) as month,
+    count(*) as files_uploaded,
+    pg_size_pretty(sum(file_size)) as total_size
+FROM attachments
+GROUP BY date_trunc('month', uploaded_date)
+ORDER BY month DESC;
+```
+
+## 🚨 Troubleshooting
+
+### **Common Issues**
+
+**Connection Problems**:
+```bash
+# Test connection
+pg_isready -h 10.202.70.20 -p 5433 -U archon_user
+
+# Check if service is running
+systemctl status postgresql
+```
+
+**Performance Issues**:
+```sql
+-- Check for locks
+SELECT * FROM pg_locks WHERE NOT granted;
+
+-- Active queries
+SELECT pid, now() - pg_stat_activity.query_start AS duration, query 
+FROM pg_stat_activity 
+WHERE (now() - pg_stat_activity.query_start) > interval '5 minutes';
+```
+
+**Storage Issues**:
+```bash
+# Check disk space
+df -h /var/lib/postgresql
+
+# Check database size
+du -sh /var/lib/postgresql/data
+```
+
+## 📚 Additional Resources
+
+- [Issue Management Database Guide](./issue-management.mdx)
+- [Database Setup Scripts](/database-stacks/postgresql-issue-db/sql/)
+- [Supabase Documentation](https://supabase.com/docs)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+
+Regular database maintenance ensures optimal performance and reliability for all Archon services.
