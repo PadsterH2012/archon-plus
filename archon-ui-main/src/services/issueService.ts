@@ -14,7 +14,6 @@ import {
   CreateIssueRequest,
   UpdateIssueRequest
 } from '../types/issue';
-import { mcpClientService } from './mcpClientService';
 
 // Use relative API path to go through Vite proxy and avoid CORS issues
 const API_BASE_URL = '/api';
@@ -30,28 +29,43 @@ export class IssueServiceError extends Error {
   }
 }
 
-// Helper function to call MCP tools via MCP Client Service (follows Archon standards)
+// Helper function to call MCP tools via backend API (immediate fix for ARCH-001)
 async function callMCPTool<T = any>(toolName: string, params: Record<string, any>): Promise<T> {
   try {
-    console.log(`[IssueService] Calling MCP tool via client service: ${toolName}`, params);
+    console.log(`[IssueService] Calling MCP tool via backend API: ${toolName}`, params);
 
-    // Get the default Archon MCP client
-    const clients = await mcpClientService.getClients();
-    const archonClient = clients.find(client => client.is_default || client.name.toLowerCase().includes('archon'));
+    // Use the fixed /api/mcp/tools/call endpoint
+    const response = await fetch(`${API_BASE_URL}/mcp/tools/call`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        tool_name: toolName,
+        arguments: params
+      })
+    });
 
-    if (!archonClient) {
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorBody = await response.text();
+        if (errorBody) {
+          const errorJson = JSON.parse(errorBody);
+          errorMessage = errorJson.detail?.error || errorJson.error || errorMessage;
+        }
+      } catch (e) {
+        // Ignore parse errors, use default message
+      }
+
       throw new IssueServiceError(
-        'No Archon MCP client found. Please ensure the MCP client is configured.',
-        'CLIENT_NOT_FOUND'
+        errorMessage,
+        'HTTP_ERROR',
+        response.status
       );
     }
 
-    // Call the tool using the MCP client service (follows Archon standards)
-    const result = await mcpClientService.callClientTool({
-      client_id: archonClient.id,
-      tool_name: toolName,
-      arguments: params
-    });
+    const result = await response.json();
 
     console.log(`[IssueService] MCP tool ${toolName} result:`, result);
 

@@ -1300,17 +1300,33 @@ async def call_mcp_tool(request: dict):
                 api_logger.warning("MCP server not running when calling tool")
                 raise HTTPException(status_code=503, detail={"error": "MCP server is not running"})
 
-            # For now, return a placeholder response since the actual MCP tool calling
-            # infrastructure is still being developed
-            api_logger.warning(f"MCP tool calling not yet implemented | tool={tool_name}")
+            # Call the MCP tool using the MCP client
+            api_logger.info(f"Calling MCP tool: {tool_name} with arguments: {arguments}")
 
-            return {
-                "success": False,
-                "error": "MCP tool calling not yet implemented",
-                "tool": tool_name,
-                "arguments": arguments,
-                "message": "This endpoint exists but tool calling functionality is still in development"
-            }
+            try:
+                # Get the MCP client from the server
+                mcp_client = mcp_server.get_client()
+                if not mcp_client:
+                    api_logger.error("No MCP client available")
+                    raise HTTPException(status_code=503, detail={"error": "MCP client not available"})
+
+                # Call the tool
+                result = await mcp_client.call_tool(tool_name, arguments)
+
+                api_logger.info(f"MCP tool {tool_name} completed successfully")
+                safe_set_attribute(span, "tool_result", "success")
+
+                # Return the result (it should already be JSON)
+                return result
+
+            except Exception as tool_error:
+                api_logger.error(f"MCP tool call failed: {str(tool_error)}")
+                safe_set_attribute(span, "tool_error", str(tool_error))
+                raise HTTPException(status_code=500, detail={
+                    "error": f"MCP tool call failed: {str(tool_error)}",
+                    "tool": tool_name,
+                    "arguments": arguments
+                })
 
         except HTTPException:
             raise
