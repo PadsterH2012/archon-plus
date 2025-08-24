@@ -200,8 +200,8 @@ def register_issue_management_tools(mcp: FastMCP):
 
                         # Add sync comment
                         cursor.execute("""
-                            INSERT INTO issue_comments (issue_id, comment_text, created_by)
-                            VALUES (%s, %s, 3)
+                            INSERT INTO issue_history (issue_id, user_id, action_type, notes)
+                            VALUES (%s, 3, 'commented', %s)
                         """, (issue_info['issue_id'], f"Status synced from Archon task {task_id}"))
 
                         conn.commit()
@@ -359,8 +359,8 @@ def register_issue_management_tools(mcp: FastMCP):
                     # Add comment if provided
                     if comment:
                         cursor.execute("""
-                            INSERT INTO issue_comments (issue_id, comment_text, created_by)
-                            VALUES (%s, %s, 3)
+                            INSERT INTO issue_history (issue_id, user_id, action_type, notes)
+                            VALUES (%s, 3, 'commented', %s)
                         """, (issue_info['issue_id'], comment))
 
                     conn.commit()
