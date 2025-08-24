@@ -19,6 +19,17 @@ SELECT set_config('app.current_user_id', '2', false); -- paddy's user_id
 
 ## 📋 Projects (MANDATORY)
 
+### **🤖 Agent Instructions: Get or Create Project**
+```sql
+-- AGENTS: Always use this function to ensure project exists
+SELECT * FROM get_or_create_project(
+    'YOUR_PROJECT_NAME',                    -- Use actual project name from context
+    'Auto-created project description',    -- Optional description
+    'archon-agent'                         -- Agent name creating project
+);
+-- Returns: project_id, project_name, project_key, was_created
+```
+
 ### **View Projects**
 ```sql
 -- All active projects
@@ -26,31 +37,53 @@ SELECT project_id, project_name, project_key FROM projects WHERE is_active = TRU
 
 -- Current projects:
 -- ID 1: Archon Plus (ARCH)
--- ID 2: Database Infrastructure (DB)  
+-- ID 2: Database Infrastructure (DB)
 -- ID 3: AI Agent Development (AI)
 -- ID 4: User Interface (UI)
 -- ID 5: API Development (API)
 -- ID 6: DevOps & Deployment (OPS)
+-- ID 7: Test Project Alpha (TEST) - Agent created
+-- ID 8: Agent Test Project (AGEN) - Agent created
 ```
 
-### **Create Project**
+### **Manual Project Creation**
 ```sql
-INSERT INTO projects (project_name, description, project_key, created_by) 
+INSERT INTO projects (project_name, description, project_key, created_by)
 VALUES ('New Project', 'Description', 'PROJ', 'paddy');
 ```
 
 ## 🎫 Create Issues
 
-### **Simple Issue**
+### **🤖 Agent Workflow: Complete Issue Creation**
+```sql
+-- STEP 1: Set agent user
+SELECT set_config('app.current_user_id', '3', false); -- archon-agent
+
+-- STEP 2: Get or create project (MANDATORY for agents)
+SELECT * FROM get_or_create_project('YOUR_PROJECT_NAME', 'Description', 'archon-agent');
+
+-- STEP 3: Create issue with project_id from Step 2
+INSERT INTO issues (title, description, project_id, reporter_id, assignee_id, external_id)
+VALUES (
+    'Issue title here',
+    'Detailed description',
+    PROJECT_ID_FROM_STEP_2,  -- Use project_id from get_or_create_project
+    3,                       -- reporter_id (archon-agent)
+    3,                       -- assignee_id (archon-agent)
+    'TASK-123'              -- OPTIONAL: task_id link
+);
+```
+
+### **Manual Issue Creation**
 ```sql
 -- MANDATORY: Set user and include project_id
 SELECT set_config('app.current_user_id', '2', false);
 
-INSERT INTO issues (title, description, project_id, reporter_id, assignee_id, external_id) 
+INSERT INTO issues (title, description, project_id, reporter_id, assignee_id, external_id)
 VALUES (
     'Issue title here',
     'Detailed description',
-    1,           -- MANDATORY: project_id (Archon Plus)
+    1,           -- MANDATORY: project_id (must exist)
     2,           -- reporter_id (paddy)
     2,           -- assignee_id (paddy)
     'TASK-123'   -- OPTIONAL: task_id link

@@ -51,18 +51,49 @@ def get_projects(self) -> List[Dict[str, Any]]:
         with conn.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute("""
                 SELECT project_id, project_name, project_key, description
-                FROM projects 
-                WHERE is_active = TRUE 
+                FROM projects
+                WHERE is_active = TRUE
                 ORDER BY project_name
             """)
             return [dict(row) for row in cursor.fetchall()]
+
+def get_or_create_project(self, project_name: str,
+                         description: str = "Auto-created project for issue tracking",
+                         created_by: str = "system") -> Dict[str, Any]:
+    """
+    Get existing project or create new one (AGENT-FRIENDLY METHOD)
+
+    This is the primary method agents should use to ensure project exists
+    before creating issues.
+
+    Args:
+        project_name: Name of the project to find or create
+        description: Description for new project (if created)
+        created_by: Who is creating the project (agent name)
+
+    Returns:
+        Dict with project_id, project_name, project_key, was_created
+    """
+    with self.get_connection() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute("""
+                SELECT * FROM get_or_create_project(%s, %s, %s)
+            """, (project_name, description, created_by))
+            result = dict(cursor.fetchone())
+
+            if result['was_created']:
+                print(f"✅ Created new project: {result['project_name']} (ID: {result['project_id']}, Key: {result['project_key']})")
+            else:
+                print(f"📁 Using existing project: {result['project_name']} (ID: {result['project_id']}, Key: {result['project_key']})")
+
+            return result
 
 def validate_project(self, project_id: int) -> bool:
     """Validate project exists and is active (MANDATORY check)"""
     with self.get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("""
-                SELECT 1 FROM projects 
+                SELECT 1 FROM projects
                 WHERE project_id = %s AND is_active = TRUE
             """, (project_id,))
             return cursor.fetchone() is not None
@@ -73,7 +104,7 @@ def get_project_by_name(self, project_name: str) -> Optional[Dict[str, Any]]:
         with conn.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute("""
                 SELECT project_id, project_name, project_key, description
-                FROM projects 
+                FROM projects
                 WHERE project_name = %s AND is_active = TRUE
             """, (project_name,))
             row = cursor.fetchone()
@@ -82,7 +113,7 @@ def get_project_by_name(self, project_name: str) -> Optional[Dict[str, Any]]:
 
 ### **Issue Creation with Mandatory Project**
 ```python
-def create_issue(self, 
+def create_issue(self,
                 title: str,
                 description: str,
                 project_name: str,      # MANDATORY: Project name
@@ -92,14 +123,15 @@ def create_issue(self,
                 severity: str = 'minor',
                 task_id: Optional[str] = None,  # OPTIONAL: Link to task system
                 tags: Optional[List[str]] = None,
-                environment: Optional[str] = None) -> Dict[str, Any]:
+                environment: Optional[str] = None,
+                auto_create_project: bool = True) -> Dict[str, Any]:
     """
-    Create new issue with mandatory project validation
-    
+    Create new issue with automatic project creation if needed (AGENT-FRIENDLY)
+
     Args:
         title: Issue title (minimum 5 characters)
         description: Detailed description
-        project_name: MANDATORY - Must be valid project name
+        project_name: MANDATORY - Project name (will be created if doesn't exist)
         reporter_id: MANDATORY - User ID creating the issue
         assignee_id: Optional user ID to assign issue to
         priority: critical, high, medium, low
@@ -107,17 +139,28 @@ def create_issue(self,
         task_id: Optional external task management ID
         tags: Optional list of tag names
         environment: production, staging, development, local
-    
+        auto_create_project: If True, creates project if it doesn't exist
+
     Returns:
-        Dict with issue_id, issue_key, and success status
+        Dict with issue_id, issue_key, project info, and success status
     """
-    
-    # MANDATORY: Validate project exists
-    project = self.get_project_by_name(project_name)
-    if not project:
-        raise ValueError(f"Project '{project_name}' not found or inactive")
-    
-    project_id = project['project_id']
+
+    # AGENT-FRIENDLY: Get or create project automatically
+    if auto_create_project:
+        project = self.get_or_create_project(
+            project_name=project_name,
+            description=f"Auto-created project for {project_name} issues",
+            created_by=f"user_{reporter_id}"
+        )
+        project_id = project['project_id']
+        project_was_created = project['was_created']
+    else:
+        # Original behavior: validate project exists
+        project = self.get_project_by_name(project_name)
+        if not project:
+            raise ValueError(f"Project '{project_name}' not found or inactive")
+        project_id = project['project_id']
+        project_was_created = False
     
     with self.get_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -151,36 +194,51 @@ def create_issue(self,
             
             # Get the created issue details
             cursor.execute("""
-                SELECT i.issue_id, i.issue_key, i.title, p.project_name
+                SELECT i.issue_id, i.issue_key, i.title, p.project_name, p.project_key
                 FROM issues i
                 JOIN projects p ON i.project_id = p.project_id
                 WHERE i.issue_id = %s
             """, (issue_id,))
-            
+
             result = dict(cursor.fetchone())
             result['success'] = True
             result['task_id'] = task_id
-            
+            result['project_was_created'] = project_was_created
+            result['project_id'] = project_id
+
             return result
 
-# Example usage
+# Example usage for agents
 issue_manager = IssueManager()
 
-# Create issue with mandatory project and optional task linking
+# AGENT-FRIENDLY: Create issue with automatic project creation
 new_issue = issue_manager.create_issue(
     title="Database connection pool exhaustion",
     description="Connection pool reaching maximum capacity during peak hours",
-    project_name="Archon Plus",  # MANDATORY
-    reporter_id=2,               # MANDATORY (paddy)
-    assignee_id=3,               # archon-agent
+    project_name="Test Project Alpha",  # Will be created if doesn't exist
+    reporter_id=3,                      # archon-agent
+    assignee_id=3,                      # archon-agent
     priority="high",
     severity="major",
-    task_id="TASK-456",          # OPTIONAL: Link to task system
+    task_id="TASK-456",                 # OPTIONAL: Link to task system
     tags=["bug", "production", "database", "performance"],
-    environment="production"
+    environment="production",
+    auto_create_project=True            # AGENT-FRIENDLY: Auto-create project
 )
 
-print(f"Created issue {new_issue['issue_key']} linked to task {new_issue['task_id']}")
+print(f"Created issue {new_issue['issue_key']} in project {new_issue['project_name']}")
+print(f"Project was {'created' if new_issue['project_was_created'] else 'existing'}")
+print(f"Linked to task: {new_issue['task_id']}")
+
+# Example for existing project (original behavior)
+existing_project_issue = issue_manager.create_issue(
+    title="UI responsiveness issue",
+    description="Interface becomes unresponsive on mobile devices",
+    project_name="Archon Plus",        # Must exist or will raise error
+    reporter_id=2,                     # paddy
+    assignee_id=2,                     # paddy
+    auto_create_project=False          # Strict mode: project must exist
+)
 ```
 
 ### **Issue Querying with Project Context**
