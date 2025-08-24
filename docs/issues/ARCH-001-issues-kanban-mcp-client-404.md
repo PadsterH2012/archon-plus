@@ -289,4 +289,65 @@ Need to import or define `mcp_server` to access the MCP client.
 - ⏳ **Issues Kanban Loading**: Blocked on import fix
 
 ---
-**Next Update:** Will be added when import error is resolved.
+
+## 📝 **Update 2025-08-24 14:15 - Import Fixed, Module Path Error Found**
+
+### ✅ **MCP Client Import Issue Resolved**
+- Replaced undefined mcp_server.get_client() with proper MCP client
+- Successfully imported get_mcp_client from agents.mcp_client module
+- Backend now uses proper MCP client architecture
+
+### 🚨 **New Issue: Module Path Error**
+
+**Current Error:**
+```
+POST http://10.202.70.20:4737/api/mcp/tools/call 500 (Internal Server Error)
+Failed to query issues by project: IssueServiceError: MCP tool call failed: No module named 'src.agents'
+```
+
+**Analysis:**
+- ✅ **MCP Client Import**: Working (no more undefined variable errors)
+- ✅ **Endpoint Processing**: Backend processing request successfully
+- ❌ **Module Path**: Import path `from ...agents.mcp_client` incorrect
+
+### 🔍 **Root Cause: Incorrect Import Path**
+
+**Code Issue in mcp_api.py:**
+```python
+# Line 1309: Incorrect relative import path
+from ...agents.mcp_client import get_mcp_client
+```
+
+**Problem:**
+- Current file: `python/src/server/api_routes/mcp_api.py`
+- Target file: `python/src/agents/mcp_client.py`
+- Relative path `...agents` tries to go up 3 levels, but should be 2 levels
+
+**Correct Import Path:**
+```python
+# Should be:
+from ...agents.mcp_client import get_mcp_client  # 3 dots = up 3 levels
+# OR:
+from ..agents.mcp_client import get_mcp_client   # 2 dots = up 2 levels
+# OR absolute:
+from src.agents.mcp_client import get_mcp_client
+```
+
+### 🔧 **Next Steps**
+
+1. **Fix Import Path**: Correct the relative import in mcp_api.py
+2. **Test Module Resolution**: Verify import works in Python environment
+3. **Complete Tool Call**: Ensure full MCP tool calling pipeline works
+4. **Test Issues Loading**: Verify Issues Kanban loads successfully
+
+### 📊 **Progress Status**
+- ✅ **CORS Issues**: Resolved
+- ✅ **404 Endpoint Errors**: Resolved
+- ✅ **MCP Tool Infrastructure**: Working
+- ✅ **Parameter Validation**: Resolved
+- ✅ **Import Error**: Resolved (mcp_server undefined)
+- 🔄 **Module Path Error**: In Progress
+- ⏳ **Issues Kanban Loading**: Blocked on import path fix
+
+---
+**Next Update:** Will be added when module path error is resolved.
