@@ -1,0 +1,72 @@
+{
+  "version": "2",
+  "templates": [
+    {
+      "type": 3,
+      "title": "Archon PostgreSQL Issue Database",
+      "description": "PostgreSQL database with pgvector extension for Archon issue/bug management system. Includes pgAdmin for database management.",
+      "note": "This template creates a PostgreSQL database optimized for Archon's issue management system with vector search capabilities.",
+      "categories": ["Database", "Archon"],
+      "platform": "linux",
+      "logo": "https://raw.githubusercontent.com/docker-library/docs/master/postgres/logo.png",
+      "repository": {
+        "url": "https://github.com/PadsterH2012/archon-plus",
+        "stackfile": "docker-compose.portainer-postgresql.yml"
+      },
+      "env": [
+        {
+          "name": "POSTGRES_PASSWORD",
+          "label": "PostgreSQL Password",
+          "description": "Password for the PostgreSQL archon_user account",
+          "default": "change_this_secure_password"
+        },
+        {
+          "name": "POSTGRES_DB",
+          "label": "Database Name",
+          "description": "Name of the PostgreSQL database",
+          "default": "archon_issues"
+        },
+        {
+          "name": "POSTGRES_USER",
+          "label": "Database User",
+          "description": "PostgreSQL username",
+          "default": "archon_user"
+        },
+        {
+          "name": "POSTGRES_PORT",
+          "label": "PostgreSQL Port",
+          "description": "External port for PostgreSQL (internal is always 5432)",
+          "default": "5433"
+        },
+        {
+          "name": "PGADMIN_EMAIL",
+          "label": "pgAdmin Email",
+          "description": "Email address for pgAdmin login",
+          "default": "admin@archon.local"
+        },
+        {
+          "name": "PGADMIN_PASSWORD",
+          "label": "pgAdmin Password",
+          "description": "Password for pgAdmin web interface",
+          "default": "change_this_admin_password"
+        },
+        {
+          "name": "PGADMIN_PORT",
+          "label": "pgAdmin Port",
+          "description": "External port for pgAdmin web interface",
+          "default": "5050"
+        }
+      ],
+      "volumes": [
+        {
+          "container": "/var/lib/postgresql/data",
+          "bind": "/mnt/network_repo/stack_dbs/postgresql/issue_db"
+        }
+      ],
+      "ports": [
+        "5433:5432/tcp",
+        "5050:80/tcp"
+      ]
+    }
+  ]
+}

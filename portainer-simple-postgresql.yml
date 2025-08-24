@@ -1,0 +1,46 @@
+# Simple Portainer PostgreSQL Stack for Archon
+# Copy and paste this into Portainer Stacks
+#
+# REQUIRED: Set these environment variables in Portainer UI:
+# POSTGRES_PASSWORD=your_secure_password_here
+# PGADMIN_PASSWORD=your_admin_password_here
+
+version: '3.8'
+
+services:
+  postgres:
+    image: ankane/pgvector:v0.5.1
+    container_name: archon-issue-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: archon_issues
+      POSTGRES_USER: archon_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U archon_user -d archon_issues"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: archon-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@archon.local
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  pgadmin_data:

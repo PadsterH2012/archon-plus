@@ -1,0 +1,137 @@
+# Portainer-Ready PostgreSQL Stack for Archon Issue Database
+# This version has embedded defaults and is optimized for Portainer Community Edition
+#
+# Instructions for Portainer:
+# 1. Go to Stacks → Add Stack
+# 2. Name: archon-postgresql-issue-db
+# 3. Paste this compose file
+# 4. Add environment variables (see list below)
+# 5. Deploy
+#
+# Required Environment Variables (add in Portainer UI):
+# POSTGRES_PASSWORD=your_very_secure_password_change_this
+# PGADMIN_PASSWORD=admin_secure_password_change_this
+#
+# Optional Environment Variables (have defaults):
+# POSTGRES_DB=archon_issues
+# POSTGRES_USER=archon_user
+# POSTGRES_PORT=5433
+# PGADMIN_EMAIL=admin@archon.local
+# PGADMIN_PORT=5050
+
+version: '3.8'
+
+services:
+  archon-issue-db:
+    image: postgres:15
+    container_name: Archon-Issue-DB
+    restart: unless-stopped
+    
+    # Environment variables with defaults
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-archon_issues}
+      - POSTGRES_USER=${POSTGRES_USER:-archon_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    
+    # Port mapping
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    
+    # Persistent storage
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - postgres_init:/docker-entrypoint-initdb.d
+    
+    # Health check
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-archon_user} -d ${POSTGRES_DB:-archon_issues}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    
+    # Install pgvector and other extensions
+    command: |
+      bash -c "
+      apt-get update && apt-get install -y build-essential git postgresql-server-dev-15 &&
+      cd /tmp &&
+      git clone --branch v0.5.1 https://github.com/pgvector/pgvector.git &&
+      cd pgvector &&
+      make && make install &&
+      rm -rf /tmp/pgvector &&
+      apt-get remove -y build-essential git postgresql-server-dev-15 &&
+      apt-get autoremove -y &&
+      apt-get clean &&
+      rm -rf /var/lib/apt/lists/* &&
+      docker-entrypoint.sh postgres
+      "
+
+  # pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: Archon-Issue-DB-Admin
+    restart: unless-stopped
+    
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@archon.local}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+    
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    
+    depends_on:
+      - archon-issue-db
+
+  # Database initialization service
+  db-init:
+    image: postgres:15
+    container_name: Archon-DB-Init
+    restart: "no"
+    
+    environment:
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+    
+    depends_on:
+      - archon-issue-db
+    
+    command: |
+      bash -c "
+      echo 'Waiting for PostgreSQL to be ready...'
+      sleep 10
+      
+      echo 'Installing extensions...'
+      psql -h archon-issue-db -U ${POSTGRES_USER:-archon_user} -d ${POSTGRES_DB:-archon_issues} -c '
+      CREATE EXTENSION IF NOT EXISTS vector;
+      CREATE EXTENSION IF NOT EXISTS pgcrypto;
+      CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";
+      CREATE EXTENSION IF NOT EXISTS pg_trgm;
+      '
+      
+      echo 'Database initialization completed!'
+      "
+
+# Named volumes
+volumes:
+  postgres_data:
+    driver: local
+  postgres_init:
+    driver: local
+  pgadmin_data:
+    driver: local

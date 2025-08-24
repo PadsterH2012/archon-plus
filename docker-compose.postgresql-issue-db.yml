@@ -1,0 +1,82 @@
+# Docker Compose for Archon PostgreSQL Issue Database
+# This sets up a dedicated PostgreSQL container for issue/bug management
+# with persistent storage and proper networking
+#
+# Usage:
+#   docker-compose -f docker-compose.postgresql-issue-db.yml up -d archon-issue-db  # Start only PostgreSQL
+#   docker-compose -f docker-compose.postgresql-issue-db.yml up -d  # Start all services (PostgreSQL + pgAdmin)
+#   docker-compose -f docker-compose.postgresql-issue-db.yml down
+#   docker-compose -f docker-compose.postgresql-issue-db.yml logs -f
+
+version: '3.8'
+
+services:
+  archon-issue-db:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgresql
+    container_name: Archon-Issue-DB
+    restart: unless-stopped
+
+    # Environment variables
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-archon_issues}
+      - POSTGRES_USER=${POSTGRES_USER:-archon_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-archon_secure_password}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+      - PGDATA=/var/lib/postgresql/data/pgdata
+
+    # Port mapping
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"  # Using 5433 to avoid conflicts with system PostgreSQL
+
+    # Persistent storage
+    volumes:
+      - /mnt/network_repo/stack_dbs/postgresql/issue_db:/var/lib/postgresql/data
+      - ./migration:/docker-entrypoint-initdb.d/migration:ro  # Optional: mount migration scripts
+
+    # Network configuration
+    networks:
+      - archon-issue-network
+
+    # Health check
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-archon_user} -d ${POSTGRES_DB:-archon_issues}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+    # Resource limits (adjust based on your system)
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Named volumes
+volumes:
+  pgadmin_data:
+    driver: local
+
+# Networks
+networks:
+  archon-issue-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

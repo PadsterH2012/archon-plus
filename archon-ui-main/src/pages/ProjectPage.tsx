@@ -8,6 +8,7 @@ import { ComponentsTab } from '../components/project-tasks/ComponentsTab';
 // import { FeaturesTab } from '../components/project-tasks/FeaturesTab';
 // import { DataTab } from '../components/project-tasks/DataTab';
 import { TasksTab } from '../components/project-tasks/TasksTab';
+import { IssuesTab } from '../components/project-tasks/IssuesTab';
 import { Button } from '../components/ui/Button';
 import { ChevronRight, ShoppingCart, Code, Briefcase, Layers, Plus, X, AlertCircle, Loader2, Heart, BarChart3, Trash2, Pin, ListTodo, Activity, CheckCircle2, Clipboard } from 'lucide-react';
 
@@ -926,6 +927,9 @@ export function ProjectPage({
               <TabsTrigger value="tasks" className="py-3 font-mono transition-all duration-300" color="orange">
                 Tasks
               </TabsTrigger>
+              <TabsTrigger value="issues" className="py-3 font-mono transition-all duration-300" color="pink">
+                Issues
+              </TabsTrigger>
             </TabsList>
             
             {/* Tab content without AnimatePresence to prevent unmounting */}
@@ -985,6 +989,14 @@ export function ProjectPage({
                       projectId={selectedProject.id} 
                     />
                   )}
+                </TabsContent>
+              )}
+              {activeTab === 'issues' && (
+                <TabsContent value="issues" className="mt-0">
+                  <IssuesTab
+                    projectId={selectedProject.id}
+                    projectName={selectedProject.title}
+                  />
                 </TabsContent>
               )}
             </div>

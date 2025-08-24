@@ -1,0 +1,49 @@
+# Docker Compose for pgAdmin (PostgreSQL Management Interface)
+# This provides a web-based management interface for the PostgreSQL database
+#
+# Usage:
+#   docker-compose -f docker-compose.pgadmin.yml up -d
+#   docker-compose -f docker-compose.pgadmin.yml down
+#
+# Access pgAdmin at: http://localhost:5050
+# Default login: admin@archon.local / admin_password (change in .env file)
+
+version: '3.8'
+
+services:
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: Archon-Issue-DB-Admin
+    restart: unless-stopped
+    
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@archon.local}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin_password}
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+    
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    
+    networks:
+      - archon-issue-network
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Named volumes
+volumes:
+  pgadmin_data:
+    driver: local
+
+# Networks (connect to the same network as PostgreSQL)
+networks:
+  archon-issue-network:
+    external: true
