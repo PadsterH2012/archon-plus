@@ -14,10 +14,10 @@ import {
   CreateIssueRequest,
   UpdateIssueRequest
 } from '../types/issue';
-import { mcpService } from './mcpService';
+import { mcpClientService } from './mcpClientService';
 
-// Get API base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8181';
+// Use relative API path to go through Vite proxy and avoid CORS issues
+const API_BASE_URL = '/api';
 
 export class IssueServiceError extends Error {
   constructor(
@@ -30,13 +30,28 @@ export class IssueServiceError extends Error {
   }
 }
 
-// Helper function to call MCP tools via direct MCP protocol
+// Helper function to call MCP tools via MCP Client Service (follows Archon standards)
 async function callMCPTool<T = any>(toolName: string, params: Record<string, any>): Promise<T> {
   try {
-    console.log(`[IssueService] Calling MCP tool: ${toolName}`, params);
+    console.log(`[IssueService] Calling MCP tool via client service: ${toolName}`, params);
 
-    // Use the direct MCP protocol approach from mcpService
-    const result = await mcpService.callTool(toolName, params);
+    // Get the default Archon MCP client
+    const clients = await mcpClientService.getClients();
+    const archonClient = clients.find(client => client.is_default || client.name.toLowerCase().includes('archon'));
+
+    if (!archonClient) {
+      throw new IssueServiceError(
+        'No Archon MCP client found. Please ensure the MCP client is configured.',
+        'CLIENT_NOT_FOUND'
+      );
+    }
+
+    // Call the tool using the MCP client service (follows Archon standards)
+    const result = await mcpClientService.callClientTool({
+      client_id: archonClient.id,
+      tool_name: toolName,
+      arguments: params
+    });
 
     console.log(`[IssueService] MCP tool ${toolName} result:`, result);
 
@@ -47,6 +62,10 @@ async function callMCPTool<T = any>(toolName: string, params: Record<string, any
 
     return result;
   } catch (error) {
+    if (error instanceof IssueServiceError) {
+      throw error;
+    }
+
     console.error(`[IssueService] Failed to call MCP tool ${toolName}:`, error);
     throw new IssueServiceError(
       `Failed to call MCP tool: ${error instanceof Error ? error.message : 'Unknown error'}`,
