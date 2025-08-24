@@ -1079,7 +1079,7 @@ async def get_mcp_config():
             import os
 
             # Use external MCP port for client connections, fall back to internal port
-            mcp_port = int(os.getenv("MCP_EXTERNAL_PORT", os.getenv("ARCHON_MCP_PORT", "8051")))
+            mcp_port = int(os.getenv("MCP_EXTERNAL_PORT", os.getenv("ARCHON_MCP_PORT", "9051")))
             # Use MCP_HOST environment variable or fall back to localhost
             mcp_host = os.getenv("MCP_HOST", "localhost")
 
