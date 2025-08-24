@@ -182,4 +182,60 @@ const result = await mcpClientService.callClientTool({
 - Frontend development server on port 4737
 
 ---
-**Next Update:** Will be added when investigation continues or solution is implemented.
+
+## 📝 **Update 2025-08-24 13:45 - Progress Made, New Issue Identified**
+
+### ✅ **Immediate Fix Deployed Successfully**
+- Backend `/api/mcp/tools/call` endpoint now functional (no longer returns placeholder)
+- Frontend successfully connects to backend API (no more 404 errors)
+- MCP tool calling infrastructure is working
+
+### 🚨 **New Issue: Parameter Validation Error**
+
+**Current Error:**
+```
+POST http://10.202.70.20:4737/api/mcp/tools/call 400 (Bad Request)
+Failed to query issues by project: IssueServiceError: Tool name is required
+```
+
+**Analysis:**
+- ✅ **Endpoint Working**: 400 Bad Request instead of 404 Not Found
+- ✅ **Connection Successful**: Frontend reaches backend API
+- ❌ **Parameter Issue**: Backend validation failing on "Tool name is required"
+
+### 🔍 **Root Cause Investigation**
+
+**Request Format Issue:**
+The frontend is sending:
+```json
+{
+  "tool_name": "query_issues_by_project_archon-dev",
+  "arguments": { "project_name": "...", "limit": 100 }
+}
+```
+
+**Backend Validation:**
+Backend expects `tool_name` parameter but validation is failing.
+
+**Possible Causes:**
+1. **Parameter Name Mismatch**: Backend expects different parameter name
+2. **Request Body Structure**: Backend expects different JSON structure
+3. **Validation Logic**: Backend validation logic has bug
+4. **Content-Type**: Request headers not properly set
+
+### 🔧 **Next Steps**
+
+1. **Check Backend Parameter Validation**: Examine `mcp_api.py` request validation
+2. **Debug Request Format**: Log actual request being sent vs expected format
+3. **Test Direct API Call**: Use curl to test backend endpoint directly
+4. **Fix Parameter Mapping**: Align frontend request with backend expectations
+
+### 📊 **Progress Status**
+- ✅ **CORS Issues**: Resolved
+- ✅ **404 Endpoint Errors**: Resolved
+- ✅ **MCP Tool Infrastructure**: Working
+- 🔄 **Parameter Validation**: In Progress
+- ⏳ **Issues Kanban Loading**: Blocked on parameter fix
+
+---
+**Next Update:** Will be added when parameter validation issue is resolved.

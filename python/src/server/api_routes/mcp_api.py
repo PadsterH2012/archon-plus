@@ -1283,11 +1283,12 @@ async def call_mcp_tool(request: dict):
         safe_set_attribute(span, "method", "POST")
 
         try:
-            tool_name = request.get("name")
+            # Support both "name" and "tool_name" for compatibility
+            tool_name = request.get("tool_name") or request.get("name")
             arguments = request.get("arguments", {})
 
             if not tool_name:
-                raise HTTPException(status_code=400, detail={"error": "Tool name is required"})
+                raise HTTPException(status_code=400, detail={"error": "Tool name is required (use 'tool_name' or 'name' parameter)"})
 
             api_logger.info(f"Calling MCP tool | tool={tool_name}")
             safe_set_attribute(span, "tool_name", tool_name)
