@@ -451,8 +451,15 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {(Array.isArray(filteredTemplates) ? filteredTemplates : []).map((template, index) => {
-                  // Debug template object structure
+                  // Debug template object structure including nested properties
                   console.log(`🔍 [TemplateManagement] Rendering template ${index}:`, template);
+                  console.log(`🔍 [TemplateManagement] Template nested properties:`, {
+                    workflow_assignments: template.workflow_assignments,
+                    component_templates: template.component_templates,
+                    inheritance_rules: template.inheritance_rules,
+                    tags: template.tags,
+                    template_data: template.template_data
+                  });
 
                   // Ensure template is an object with required properties
                   if (!template || typeof template !== 'object') {
@@ -460,9 +467,19 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({
                     return null;
                   }
 
+                  // Ensure all nested objects/arrays are safe
+                  const safeTemplate = {
+                    ...template,
+                    workflow_assignments: template.workflow_assignments || {},
+                    component_templates: template.component_templates || {},
+                    inheritance_rules: template.inheritance_rules || {},
+                    tags: Array.isArray(template.tags) ? template.tags : [],
+                    template_data: template.template_data || {}
+                  };
+
                   return (
                     <Card key={template?.id || `template-${index}`} className="cursor-pointer hover:shadow-md transition-shadow">
-                      <div className="p-4" onClick={() => template && handleTemplateEdit(template)}>
+                      <div className="p-4" onClick={() => template && handleTemplateEdit(safeTemplate)}>
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
                             <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
