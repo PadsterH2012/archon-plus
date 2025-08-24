@@ -324,15 +324,31 @@ def register_issue_management_tools(mcp: FastMCP):
         """
         Update issue status in the issues database.
 
+        ⚠️ MANDATORY WORKFLOW ENFORCEMENT:
+        - ALWAYS call get_issue_history() FIRST to understand context
+        - MUST include detailed comment documenting all actions performed
+        - Comment should include: actions taken, results achieved, next steps
+
         Args:
             issue_key: Issue key (e.g., ARCH-123)
-            new_status: New status (open, in_progress, resolved, closed)
-            comment: Optional comment for the status change
+            new_status: New status (open, in_progress, testing, closed, reopened)
+            comment: REQUIRED detailed comment documenting all work performed
 
         Returns:
             JSON string with update result
         """
         try:
+            # WORKFLOW ENFORCEMENT: Validate detailed comment is provided
+            if new_status in ['testing', 'closed'] and (not comment or len(comment.strip()) < 50):
+                return json.dumps({
+                    "success": False,
+                    "error": "WORKFLOW VIOLATION: Detailed comment required when moving to testing/closed status",
+                    "workflow_reminder": "Comment must include: 1) Actions performed, 2) Results achieved, 3) Next steps",
+                    "minimum_length": "50 characters minimum for meaningful documentation",
+                    "issue_key": issue_key,
+                    "suggested_format": "ACTIONS PERFORMED: [list actions] RESULTS: [outcomes] NEXT STEPS: [what's next]"
+                }, indent=2)
+
             with get_db_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     # Set current user for audit trail (archon-agent)
@@ -411,11 +427,17 @@ def register_issue_management_tools(mcp: FastMCP):
         """
         Get complete history and audit trail for an issue.
 
+        🔍 MANDATORY FIRST STEP: Always call this tool BEFORE working on any issue!
+
         This tool provides agents with complete diagnostic context by showing:
         - All status changes with timestamps
         - Comments and notes from team members
         - Field changes (assignments, priorities, etc.)
         - Complete audit trail for effective diagnosis
+        - What solutions have been tried before
+        - Current status duration and timeline
+
+        WORKFLOW: get_issue_history() → work on issue → update_issue_status() with detailed comment
 
         Args:
             issue_key: Issue key (e.g., API-1, ARCH-3)
