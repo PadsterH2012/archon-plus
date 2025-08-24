@@ -1,0 +1,164 @@
+# PostgreSQL Issue Database Stack for Archon
+# 
+# This Docker Compose file creates a PostgreSQL database with pgvector extension
+# for Archon's issue management system.
+#
+# Components:
+# - PostgreSQL 15 with pgvector (ankane/pgvector:v0.5.1)
+# - pgAdmin 4 for database administration
+# - Database initialization service for extensions
+#
+# Usage:
+# 1. Configure environment variables in .env file
+# 2. Deploy: docker stack deploy -c docker-compose.yml issues_db
+# 3. Access pgAdmin: http://10.202.70.20:5050
+# 4. Connect to DB: postgresql://archon_user:password@10.202.70.20:5433/archon_issues
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # PostgreSQL Database with pgvector Extension
+  # =============================================================================
+  archon-issue-db:
+    image: ankane/pgvector:v0.5.1
+    container_name: Archon-Issue-DB
+    restart: unless-stopped
+    
+    # Environment Configuration
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-archon_issues}
+      - POSTGRES_USER=${POSTGRES_USER:-archon_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_INITDB_ARGS=${POSTGRES_INITDB_ARGS:---encoding=UTF-8 --lc-collate=C --lc-ctype=C}
+      - PGDATA=${PGDATA:-/var/lib/postgresql/data/pgdata}
+    
+    # Network Ports
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    
+    # Persistent Storage
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - postgres_init:/docker-entrypoint-initdb.d
+    
+    # Health Check
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-archon_user} -d ${POSTGRES_DB:-archon_issues}"]
+      interval: ${HEALTHCHECK_INTERVAL:-30s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-10s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
+      start_period: ${HEALTHCHECK_START_PERIOD:-30s}
+    
+    # Resource Limits
+    deploy:
+      resources:
+        limits:
+          memory: ${POSTGRES_MEMORY_LIMIT:-1G}
+          cpus: '${POSTGRES_CPU_LIMIT:-1.0}'
+        reservations:
+          memory: ${POSTGRES_MEMORY_RESERVATION:-512M}
+          cpus: '${POSTGRES_CPU_RESERVATION:-0.5}'
+    
+    # Network
+    networks:
+      - archon_db_network
+
+  # =============================================================================
+  # pgAdmin 4 - Database Administration Interface
+  # =============================================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: Archon-Issue-DB-Admin
+    restart: unless-stopped
+    
+    # Environment Configuration
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL:-admin@archon.local}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}
+      - PGADMIN_CONFIG_SERVER_MODE=${PGADMIN_CONFIG_SERVER_MODE:-False}
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=${PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED:-False}
+    
+    # Network Ports
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    
+    # Persistent Storage
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    
+    # Dependencies
+    depends_on:
+      - archon-issue-db
+    
+    # Network
+    networks:
+      - archon_db_network
+
+  # =============================================================================
+  # Database Initialization Service
+  # =============================================================================
+  db-init:
+    image: postgres:15
+    container_name: Archon-DB-Init
+    restart: "no"
+    
+    # Environment Configuration
+    environment:
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_USER=${POSTGRES_USER:-archon_user}
+      - POSTGRES_DB=${POSTGRES_DB:-archon_issues}
+    
+    # Dependencies
+    depends_on:
+      - archon-issue-db
+    
+    # Network
+    networks:
+      - archon_db_network
+    
+    # Initialization Commands
+    command: |
+      bash -c "
+      echo 'Waiting for PostgreSQL to be ready...'
+      sleep 15
+      
+      echo 'Installing database extensions...'
+      psql -h archon-issue-db -U $${POSTGRES_USER} -d $${POSTGRES_DB} -c '
+      CREATE EXTENSION IF NOT EXISTS vector;
+      CREATE EXTENSION IF NOT EXISTS pgcrypto;
+      CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";
+      CREATE EXTENSION IF NOT EXISTS pg_trgm;
+      CREATE EXTENSION IF NOT EXISTS btree_gin;
+      CREATE EXTENSION IF NOT EXISTS btree_gist;
+      '
+      
+      echo 'Verifying extensions...'
+      psql -h archon-issue-db -U $${POSTGRES_USER} -d $${POSTGRES_DB} -c '
+      SELECT name, default_version, installed_version 
+      FROM pg_available_extensions 
+      WHERE name IN (\"vector\", \"pgcrypto\", \"uuid-ossp\", \"pg_trgm\", \"btree_gin\", \"btree_gist\")
+      ORDER BY name;
+      '
+      
+      echo 'Database initialization completed successfully!'
+      "
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  archon_db_network:
+    driver: overlay
+    attachable: true
+
+# =============================================================================
+# Named Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  postgres_init:
+    driver: local
+  pgadmin_data:
+    driver: local
