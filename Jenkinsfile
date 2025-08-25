@@ -218,7 +218,7 @@ pipeline {
 
                         # Trigger Portainer webhook to redeploy stack with new images
                         WEBHOOK_RESPONSE=\$(curl -s -w "%{http_code}" -X POST \\
-                            http://10.202.70.20:9000/api/stacks/webhooks/33fc8bc2-1582-4ad5-97b7-d1bb9f4289f8)
+                            http://10.202.70.20:9000/api/stacks/webhooks/842a5971-342a-407c-b037-7de86e690ab1)
 
                         echo "Webhook response: \$WEBHOOK_RESPONSE"
 
