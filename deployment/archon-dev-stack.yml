@@ -37,7 +37,7 @@ services:
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
     ports:
       - target: 8181
-        published: ${ARCHON_SERVER_PORT:-8181}
+        published: ${ARCHON_SERVER_PORT:-9181}
         protocol: tcp
         mode: ingress
     networks:
@@ -95,7 +95,7 @@ services:
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
     ports:
       - target: 8051
-        published: ${ARCHON_MCP_PORT:-8051}
+        published: ${ARCHON_MCP_PORT:-9051}
         protocol: tcp
         mode: ingress
     networks:
@@ -142,7 +142,7 @@ services:
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
     ports:
       - target: 8052
-        published: ${ARCHON_AGENTS_PORT:-8052}
+        published: ${ARCHON_AGENTS_PORT:-9052}
         protocol: tcp
         mode: ingress
     networks:
@@ -171,12 +171,12 @@ services:
   archon-ui:
     image: hl-harbor.techpad.uk/archon/archon-ui:latest
     environment:
-      - VITE_API_URL=http://${HOST:-localhost}:${ARCHON_SERVER_PORT:-8181}
-      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
+      - VITE_API_URL=http://${HOST:-localhost}:${ARCHON_SERVER_PORT:-9181}
+      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-9181}
       - HOST=${HOST:-localhost}
     ports:
       - target: 5173
-        published: ${ARCHON_UI_PORT:-3737}
+        published: ${ARCHON_UI_PORT:-4737}
         protocol: tcp
         mode: ingress
     networks:
@@ -215,7 +215,7 @@ services:
       - PORT=80
     ports:
       - target: 80
-        published: ${ARCHON_EMBEDDINGS_PORT:-8080}
+        published: ${ARCHON_EMBEDDINGS_PORT:-9080}
         protocol: tcp
         mode: ingress
     networks:
