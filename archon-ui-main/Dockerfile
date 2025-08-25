@@ -40,16 +40,19 @@ RUN mkdir -p /var/cache/nginx/client_temp \
              /var/cache/nginx/uwsgi_temp \
              /var/cache/nginx/scgi_temp \
              /var/run/nginx \
+             /run \
              /var/log/nginx && \
     chown -R nginx:nginx /usr/share/nginx/html \
                          /var/cache/nginx \
                          /var/log/nginx \
                          /var/run/nginx \
+                         /run \
                          /etc/nginx/conf.d && \
     chmod -R 755 /usr/share/nginx/html && \
     chmod -R 755 /var/cache/nginx && \
     chmod -R 755 /var/log/nginx && \
-    chmod -R 755 /var/run/nginx
+    chmod -R 755 /var/run/nginx && \
+    chmod -R 755 /run
 
 # Switch to non-root user
 USER nginx
