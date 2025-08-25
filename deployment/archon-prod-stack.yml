@@ -1,18 +1,19 @@
 version: '3.8'
 
-# Archon Stack with SaaS Supabase
-# This template deploys Archon using external Supabase (supabase.com)
-# 
-# Prerequisites:
-# 1. Create a Supabase project at https://supabase.com
-# 2. Get your SUPABASE_URL and SUPABASE_SERVICE_KEY from project settings
-# 3. Run the database migration scripts in your Supabase SQL editor
+# Archon Production Stack with SaaS Supabase
+# This template deploys Archon PRODUCTION environment using external Supabase
 #
-# Services:
+# Prerequisites:
+# 1. Load environment variables: source deployment/.env.prod
+# 2. Ensure production Supabase project is configured
+# 3. Run database migration scripts in Supabase SQL editor
+#
+# Production Services (8xxx ports):
 # - archon-server: Core API and business logic (Port: 8181)
-# - archon-mcp: Model Context Protocol interface (Port: 8051)  
+# - archon-mcp: Model Context Protocol interface (Port: 8051)
 # - archon-agents: AI operations and streaming (Port: 8052)
 # - archon-ui: Web interface (Port: 3737)
+# - archon-embeddings: Text embeddings service (Port: 8080)
 
 services:
   # Core Server Service (FastAPI + Socket.IO + Crawling)
@@ -40,7 +41,9 @@ services:
         protocol: tcp
         mode: ingress
     networks:
-      - archon-network
+      archon-network:
+        aliases:
+          - archon-server
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:

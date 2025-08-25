@@ -30,8 +30,8 @@ FROM nginx:alpine
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
+# Copy nginx configuration template
+COPY nginx.conf.template /etc/nginx/templates/nginx.conf.template
 
 # Create necessary directories and set permissions for nginx user
 RUN mkdir -p /var/cache/nginx/client_temp \
