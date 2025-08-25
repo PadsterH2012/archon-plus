@@ -186,23 +186,8 @@ pipeline {
             }
         }
 
-        stage('Update Deployment Manifests') {
-            steps {
-                script {
-                    // Update docker-compose files with new image tags
-                    sh """
-                        # Create deployment-specific compose file
-                        cp deployment/swarm/archon-stack.yml deployment/swarm/archon-stack-${BUILD_NUMBER}.yml
-
-                        # Update image tags in deployment manifest
-                        sed -i 's|image: hl-harbor.techpad.uk/archon/archon-server:.*|image: ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/archon-server:${IMAGE_TAG}|g' deployment/swarm/archon-stack-${BUILD_NUMBER}.yml
-                        sed -i 's|image: hl-harbor.techpad.uk/archon/archon-mcp:.*|image: ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/archon-mcp:${IMAGE_TAG}|g' deployment/swarm/archon-stack-${BUILD_NUMBER}.yml
-                        sed -i 's|image: hl-harbor.techpad.uk/archon/archon-agents:.*|image: ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/archon-agents:${IMAGE_TAG}|g' deployment/swarm/archon-stack-${BUILD_NUMBER}.yml
-                        sed -i 's|image: hl-harbor.techpad.uk/archon/archon-ui:.*|image: ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/archon-ui:${IMAGE_TAG}|g' deployment/swarm/archon-stack-${BUILD_NUMBER}.yml
-                    """
-                }
-            }
-        }
+        // Note: Deployment manifests are managed via Portainer repository integration
+        // No need to update deployment files as Portainer pulls directly from repository
 
         stage('Deploy via Portainer Webhook') {
             when {
