@@ -104,7 +104,7 @@ services:
       - AGENTS_SERVICE_URL=http://dev-archon-agents:8052
       
       # Port Configuration (internal ports stay standard, external ports are mapped)
-      - ARCHON_MCP_PORT=9051
+      - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-9051}
       - ARCHON_SERVER_PORT=8181
       - ARCHON_AGENTS_PORT=8052
 
